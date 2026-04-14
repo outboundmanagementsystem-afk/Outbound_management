@@ -9,7 +9,7 @@ import {
     createItinerary, addItineraryDay, addItineraryHotel, addItineraryTransfer, addItineraryActivity, addItineraryFlight, addItineraryPricing, getCustomers,
     createPackage, updatePackage, addPackageDay, addPackageHotel, addPackagePricing, getPresetDays, getHotels, deletePackage, clearPackageSubcollections
 } from "@/lib/firestore"
-import { PackageSearch, DropdownMenu, Loader2, Plus, ArrowLeft, Trash2, ChevronDown, Check } from "lucide-react"
+import { PackageSearch, Loader2, Plus, ArrowLeft, Trash2, ChevronDown, Check } from "lucide-react"
 
 export function ReadyMadeGenerator() {
     const { userProfile } = useAuth()
@@ -267,7 +267,7 @@ export function ReadyMadeGenerator() {
             // Map pricing
             if (pricing && pricing.length > 0) {
                 const updatedPricing = paxPricing.map(defaultPax => {
-                    const match = pricing.find((p: any) => p.label === defaultPax.label || p.id === defaultPax.id)
+                    const match = (pricing as any[]).find((p: any) => p.label === defaultPax.label || p.id === defaultPax.id)
                     return match ? { ...defaultPax, net: match.net || 0, margin: match.margin || 20 } : defaultPax
                 })
                 setPaxPricing(updatedPricing)
@@ -568,8 +568,8 @@ export function ReadyMadeGenerator() {
                                             {openStopIdx === idx && (
                                                 <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-auto py-1 animate-in fade-in slide-in-from-top-2 duration-200">
                                                     {subDestinations
-                                                        .filter(loc => !stop.location || loc.toLowerCase().includes(stop.location.toLowerCase()))
-                                                        .map(loc => (
+                                                        .filter((loc: string) => !stop.location || loc.toLowerCase().includes(stop.location.toLowerCase()))
+                                                        .map((loc: string) => (
                                                             <div
                                                                 key={loc}
                                                                 className="px-3 py-2 hover:bg-emerald-50 text-xs font-sans cursor-pointer flex items-center justify-between group transition-colors"
@@ -585,7 +585,7 @@ export function ReadyMadeGenerator() {
                                                                 {stop.location === loc && <Check className="w-3 h-3 text-emerald-600" />}
                                                             </div>
                                                         ))}
-                                                    {stop.location && !subDestinations.some(loc => loc.toLowerCase() === stop.location.toLowerCase()) && (
+                                                    {stop.location && !subDestinations.some((loc: string) => loc.toLowerCase() === stop.location.toLowerCase()) && (
                                                         <div
                                                             className="px-3 py-2 hover:bg-emerald-50 text-xs font-sans cursor-pointer italic text-emerald-600 flex items-center justify-between"
                                                             onMouseDown={(e) => {
@@ -611,8 +611,8 @@ export function ReadyMadeGenerator() {
                                         >
                                             <option value="">Select Hotel...</option>
                                             {filteredPresetHotels
-                                                .filter(h => !stop.location || (h.subDestination || "").toLowerCase().includes(stop.location.toLowerCase()))
-                                                .map(h => (
+                                                .filter((h: any) => !stop.location || (h.subDestination || "").toLowerCase().includes(stop.location.toLowerCase()))
+                                                .map((h: any) => (
                                                     <option key={h.id} value={h.id}>{h.hotelName || h.name}</option>
                                                 ))
                                             }
