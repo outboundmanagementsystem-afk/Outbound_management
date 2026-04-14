@@ -31,16 +31,10 @@ export function ReadyMadeGenerator() {
     const [adults, setAdults] = useState(2)
     const [children, setChildren] = useState(0)
 
-    const [manualPricing, setManualPricing] = useState({
-        hotel: "", transfer: "", activity: "", flight: "", optional: "", margin: ""
-    })
     const [cwb, setCwb] = useState(0)
     const [cnb, setCnb] = useState(0)
     const [activePricing, setActivePricing] = useState<any[]>([])
 
-    const calculatedNet = (Number(manualPricing.hotel) || 0) + (Number(manualPricing.transfer) || 0) + (Number(manualPricing.activity) || 0) + (Number(manualPricing.flight) || 0) + (Number(manualPricing.optional) || 0)
-    const marginAmt = calculatedNet * ((Number(manualPricing.margin) || 0) / 100)
-    const calculatedTotal = calculatedNet + marginAmt
     const [generating, setGenerating] = useState(false)
 
     // New Package Creation State (Admin Flow)
@@ -154,7 +148,7 @@ export function ReadyMadeGenerator() {
     }, [selectedPkg]);
 
     const handleGenerate = async () => {
-        if (!selectedPkg || !customerName || !startDate || calculatedTotal <= 0) {
+        if (!selectedPkg || !customerName || !startDate || totalPrice <= 0) {
             alert("Please fill all required fields and ensure total price is > 0")
             return
         }
@@ -256,7 +250,7 @@ export function ReadyMadeGenerator() {
             if (hotels && hotels.length > 0) {
                 setHotelStops(hotels.map((h: any) => ({
                     location: h.location || h.subDestination || "",
-                    hotelId: h.id || h.hotelId || "", // Try both as some older data might vary
+                    hotelId: h.hotelId || h.id || "", // Prioritize the actual template ID
                     mealPlan: h.mealPlan || "CP",
                     nights: h.nights || 1
                 })))
@@ -328,7 +322,7 @@ export function ReadyMadeGenerator() {
                     await addPackageHotel(pkgId, {
                         location: stop.location,
                         hotelId: stop.hotelId,
-                        hotelName: hotelInfo?.name || "",
+                        hotelName: hotelInfo?.hotelName || hotelInfo?.name || "",
                         mealPlan: stop.mealPlan,
                         nights: stop.nights
                     })
