@@ -206,7 +206,7 @@ export function ReadyMadeGenerator() {
 
             await addItineraryPricing(itinId, {
                 hotelPrice: Number(adultPrice.net) || 0,
-                transferPrice: 0, 
+                transferPrice: 0,
                 activityPrice: 0,
                 flightPrice: 0,
                 optionalPrice: 0,
@@ -241,7 +241,7 @@ export function ReadyMadeGenerator() {
             setNewPkgTier(pkg.tier || "Deluxe")
             setNewPkgNights(pkg.nights || 3)
             setNewPkgDays(pkg.days || 4)
-            
+
             // Map days
             const sortedDays = days.sort((a: any, b: any) => (a.dayNumber || 0) - (b.dayNumber || 0))
             setDayPlans(sortedDays.map((d: any) => d.presetId || ""))
@@ -285,7 +285,7 @@ export function ReadyMadeGenerator() {
         setCreatingSaving(true)
         try {
             const destName = destinations.find(d => d.id === newPkgDest)?.name || ""
-            
+
             const pkgData = {
                 packageName: autoPackageName,
                 destinationId: newPkgDest,
@@ -389,7 +389,7 @@ export function ReadyMadeGenerator() {
                 <div>
                     <h1 className="font-serif text-2xl tracking-wide" style={{ color: '#052210' }}>Ready-Made Itineraries</h1>
                     <p className="font-sans text-[13px] mt-1" style={{ color: '#6b7280' }}>
-                        {isCreating ? "Create a new package template." : "Select a package template and generate a custom itinerary instantly."}
+                        {isCreating ? "Create a new package template" : "Select a package template and generate a custom itinerary instantly."}
                     </p>
                 </div>
                 {!isCreating && userProfile?.role === "admin" && (
@@ -844,7 +844,7 @@ export function ReadyMadeGenerator() {
                                             <option value="">Search existing customer...</option>
                                             {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>)}
                                         </select>
-                                        
+
                                         <div className="grid grid-cols-2 gap-3">
                                             <div className="space-y-1">
                                                 <label className="text-[9px] font-bold text-gray-400 uppercase ml-1">Name</label>
@@ -861,11 +861,11 @@ export function ReadyMadeGenerator() {
                                     <div className="space-y-3">
                                         <label className="text-[10px] font-bold tracking-[0.15em] uppercase text-gray-400 block">Travel Date</label>
                                         <div className="flex items-center gap-3">
-                                            <input 
-                                                type="date" 
-                                                className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-sm focus:border-emerald-500 outline-none text-gray-700 font-medium" 
-                                                value={startDate} 
-                                                onChange={e => setStartDate(e.target.value)} 
+                                            <input
+                                                type="date"
+                                                className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-sm focus:border-emerald-500 outline-none text-gray-700 font-medium"
+                                                value={startDate}
+                                                onChange={e => setStartDate(e.target.value)}
                                             />
                                             {isPeakSeason && (
                                                 <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-100 animate-in fade-in zoom-in duration-300">
