@@ -1,0 +1,7 @@
+name = "outbound-storage"
+main = "src/index.ts"
+compatibility_date = "2024-03-10"
+
+[[r2_buckets]]
+binding = "MY_BUCKET"
+bucket_name = "outbound-files"

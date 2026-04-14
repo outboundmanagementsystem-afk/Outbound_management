@@ -1,0 +1,117 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper Functions ───────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && getUserRole() in ['admin', 'owner'];
+    }
+
+    function isSalesTeam() {
+      return isSignedIn() && getUserRole() in ['admin', 'owner', 'sales_lead', 'sales'];
+    }
+
+    function isOpsTeam() {
+      return isSignedIn() && getUserRole() in ['admin', 'owner', 'ops_lead', 'ops', 'pre_ops', 'pre_ops_lead', 'post_ops_lead', 'post_ops'];
+    }
+
+    function isFinanceTeam() {
+      return isSignedIn() && getUserRole() in ['admin', 'owner', 'finance', 'finance_lead'];
+    }
+
+    function isAnyRole() {
+      return isSignedIn() && getUserRole() in ['admin', 'owner', 'sales_lead', 'sales', 'ops_lead', 'ops', 'pre_ops', 'pre_ops_lead', 'post_ops_lead', 'post_ops', 'finance', 'finance_lead'];
+    }
+
+    // ─── Users Collection ───────────────────────────────
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow delete: if isAdmin() || (isSignedIn() && request.auth.token.email == resource.data.email);
+    }
+
+    // ─── Destinations ───────────────────────────────────
+    match /destinations/{destId} {
+      allow read: if isAnyRole();
+      allow create, update, delete: if isAdmin();
+
+      match /{subCollection}/{docId} {
+        allow read: if isAnyRole();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // ─── Packages (Build Your Package) ──────────────────
+    match /packages/{pkgId} {
+      allow read: if isAnyRole();
+      allow create, update, delete: if isAdmin();
+
+      match /{subCollection}/{docId} {
+        allow read: if isAnyRole();
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    // ─── Itineraries ────────────────────────────────────
+    match /itineraries/{itinId} {
+      allow read: if true;
+      allow create: if isSalesTeam();
+      allow update: if isAnyRole();
+      allow delete: if isAdmin();
+
+      match /payments/{paymentId} {
+        allow read: if isFinanceTeam() || isSalesTeam();
+        allow create, update: if isFinanceTeam() || isSalesTeam();
+        allow delete: if isAdmin();
+      }
+
+      match /{subCollection}/{docId} {
+        allow read: if true;
+        allow create, update: if isSalesTeam() || isOpsTeam() || isFinanceTeam();
+        allow delete: if isAdmin() || isSalesTeam() || isOpsTeam();
+      }
+    }
+
+    // ─── Customers (CRM) ────────────────────────────────
+    match /customers/{customerId} {
+      allow read: if isAnyRole();
+      allow create, update: if isSalesTeam() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ─── Drafts ─────────────────────────────────────────
+    match /drafts/{draftId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // ─── SOPs ───────────────────────────────────────────
+    match /sops/{sopId} {
+      allow read: if isAnyRole();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── SOP Checklists (legacy) ─────────────────────────
+    match /sopChecklists/{checkId} {
+      allow read, write: if isAnyRole();
+    }
+
+    // ─── Settings ───────────────────────────────────────
+    match /settings/{settingId} {
+      allow read: if isAnyRole();
+      allow write: if isAdmin();
+    }
+  }
+}

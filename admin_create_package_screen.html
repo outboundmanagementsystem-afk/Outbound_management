@@ -1,0 +1,260 @@
+
+<h2 class="sr-only">Admin view — Ready-Made Packages page with plus button to create a new package, showing a 4-step form that auto-fetches data from the destination database</h2>
+<style>
+.mock-wrap { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 20px; }
+.mock-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+.mock-title { font-size: 20px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 4px; }
+.mock-sub { font-size: 13px; color: var(--color-text-secondary); margin: 0; }
+.plus-btn { display: inline-flex; align-items: center; gap: 6px; background: #3B6D11; color: #EAF3DE; border: none; border-radius: var(--border-radius-md); padding: 9px 16px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.plus-icon { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.2); border-radius: 50%; font-size: 14px; line-height: 1; }
+.admin-badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 20px; background: #FAEEDA; color: #854F0B; border: 0.5px solid #FAC775; margin-left: 8px; vertical-align: middle; }
+.pkg-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 14px 16px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+.pkg-name { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin: 0 0 3px; }
+.pkg-meta { font-size: 12px; color: var(--color-text-secondary); margin: 0; }
+.tier-pill { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; }
+.t-b { background: #EAF3DE; color: #3B6D11; }
+.t-d { background: #E6F1FB; color: #185FA5; }
+.t-p { background: #FAEEDA; color: #854F0B; }
+.t-l { background: #FAECE7; color: #993C1D; }
+.edit-btn { font-size: 11px; padding: 4px 10px; border-radius: 6px; border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; margin-left: 8px; }
+.divider { border: none; border-top: 0.5px solid var(--color-border-tertiary); margin: 18px 0; }
+.form-wrap { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 18px; }
+.step-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.step-dot { width: 24px; height: 24px; border-radius: 50%; background: #EAF3DE; border: 0.5px solid #C0DD97; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: #3B6D11; flex-shrink: 0; }
+.step-title { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+.step-sub { font-size: 11px; color: var(--color-text-secondary); }
+.field-grid { display: grid; gap: 10px; margin-bottom: 14px; }
+.field-block { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 6px; padding: 8px 10px; }
+.field-lbl { font-size: 10px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-text-tertiary); margin: 0 0 4px; }
+.field-val { font-size: 12px; color: var(--color-text-primary); }
+.field-hint { font-size: 10px; color: var(--color-text-tertiary); margin-top: 2px; }
+.auto-tag { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; background: #E6F1FB; color: #185FA5; border: 0.5px solid #B5D4F4; margin-left: 4px; vertical-align: middle; }
+.dmc-tag { display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 3px; background: #EEEDFE; color: #534AB7; border: 0.5px solid #AFA9EC; margin-left: 4px; vertical-align: middle; }
+.day-row { display: grid; grid-template-columns: 48px 1fr; gap: 8px; margin-bottom: 8px; align-items: center; }
+.day-num { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 6px; padding: 6px; text-align: center; font-size: 11px; font-weight: 500; color: var(--color-text-secondary); }
+.day-select { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 6px; padding: 7px 10px; font-size: 12px; color: var(--color-text-primary); }
+.hotel-row { display: grid; grid-template-columns: 90px 1fr 70px 60px; gap: 8px; margin-bottom: 8px; align-items: center; }
+.pax-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+.pax-tbl th { font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-tertiary); padding: 6px 8px; background: var(--color-background-secondary); border-bottom: 0.5px solid var(--color-border-tertiary); text-align: left; }
+.pax-tbl td { padding: 7px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.pax-tbl tr:last-child td { border-bottom: none; }
+.num-input { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-secondary); border-radius: 4px; padding: 4px 8px; font-size: 12px; color: var(--color-text-primary); text-align: right; width: 80px; }
+.computed { font-size: 12px; font-weight: 500; color: #3B6D11; text-align: right; padding-right: 4px; }
+.save-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.btn-cancel { font-size: 12px; padding: 8px 16px; border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-secondary); background: transparent; color: var(--color-text-secondary); cursor: pointer; }
+.btn-save { font-size: 12px; font-weight: 500; padding: 8px 20px; border-radius: var(--border-radius-md); background: #3B6D11; color: #EAF3DE; border: none; cursor: pointer; }
+</style>
+
+<div class="mock-wrap">
+
+  <div class="mock-header">
+    <div>
+      <p class="mock-title">Ready-Made Itineraries</p>
+      <p class="mock-sub">Select a package template and generate a custom itinerary instantly.</p>
+    </div>
+    <div>
+      <button class="plus-btn">
+        <span class="plus-icon">+</span>
+        New package
+      </button>
+      <span class="admin-badge">Admin only</span>
+    </div>
+  </div>
+
+  <div class="pkg-card">
+    <div>
+      <p class="pkg-name">3N/4D Andaman – Budget</p>
+      <p class="pkg-meta">Andaman · Port Blair + Havelock · 3 nights · 4 days</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="tier-pill t-b">Budget</span>
+      <button class="edit-btn">Edit</button>
+    </div>
+  </div>
+  <div class="pkg-card" style="border-color:#B5D4F4;background:#E6F1FB;">
+    <div>
+      <p class="pkg-name" style="color:#185FA5;">3N/4D Andaman – Deluxe</p>
+      <p class="pkg-meta" style="color:#185FA5;">Andaman · Port Blair + Havelock · 3 nights · 4 days</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="tier-pill t-d">Deluxe</span>
+      <button class="edit-btn">Edit</button>
+    </div>
+  </div>
+  <div class="pkg-card">
+    <div>
+      <p class="pkg-name">5N/6D Andaman – Premium</p>
+      <p class="pkg-meta">Andaman · Port Blair + Havelock + Neil · 5 nights · 6 days</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="tier-pill t-p">Premium</span>
+      <button class="edit-btn">Edit</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div style="font-size:12px;font-weight:500;color:var(--color-text-secondary);margin-bottom:14px;">
+    Creating new package — admin form
+  </div>
+
+  <div class="form-wrap">
+
+    <div class="step-header">
+      <div class="step-dot">1</div>
+      <div>
+        <div class="step-title">Package identity</div>
+        <div class="step-sub">Select destination and tier — everything else auto-fills from your Destination Database</div>
+      </div>
+    </div>
+    <div class="field-grid" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+      <div class="field-block">
+        <div class="field-lbl">Destination</div>
+        <div class="field-val">Andaman ▾</div>
+      </div>
+      <div class="field-block">
+        <div class="field-lbl">Tier</div>
+        <div class="field-val">Deluxe ▾</div>
+        <div class="field-hint">Budget / Deluxe / Super Deluxe / Premium / Luxury / Royal</div>
+      </div>
+      <div class="field-block">
+        <div class="field-lbl">Nights</div>
+        <div class="field-val">3</div>
+      </div>
+      <div class="field-block">
+        <div class="field-lbl">Days</div>
+        <div class="field-val">4</div>
+      </div>
+    </div>
+    <div class="field-block" style="margin-bottom:14px;">
+      <div class="field-lbl">Package name <span class="auto-tag">auto-generated</span></div>
+      <div class="field-val">3N/4D Andaman – Deluxe</div>
+      <div class="field-hint">Generated from your selections above — editable if needed</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="step-header">
+      <div class="step-dot">2</div>
+      <div>
+        <div class="step-title">Day-wise plan <span class="auto-tag">fetched from Destination DB → Day Plans tab</span></div>
+        <div class="step-sub">Pick from the day plans already created in Andaman destination</div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div class="day-row">
+        <div class="day-num">Day 1</div>
+        <div class="day-select">Arrival at Port Blair · Cellular Jail · Light &amp; Sound Show ▾</div>
+      </div>
+      <div class="day-row">
+        <div class="day-num">Day 2</div>
+        <div class="day-select">Transfer to Havelock · Radhanagar Beach ▾</div>
+      </div>
+      <div class="day-row">
+        <div class="day-num">Day 3</div>
+        <div class="day-select">Elephant Beach · Return to Port Blair ▾</div>
+      </div>
+      <div class="day-row">
+        <div class="day-num">Day 4</div>
+        <div class="day-select">Departure transfer ▾</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="step-header">
+      <div class="step-dot">3</div>
+      <div>
+        <div class="step-title">Hotels per stop <span class="auto-tag">fetched from Destination DB → Hotels tab (Deluxe filtered)</span></div>
+        <div class="step-sub">Only Deluxe hotels for Andaman are shown</div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <div style="display:grid;grid-template-columns:100px 1fr 100px 80px;gap:8px;margin-bottom:6px;">
+        <div style="font-size:10px;color:var(--color-text-tertiary);padding:4px 0;">Location</div>
+        <div style="font-size:10px;color:var(--color-text-tertiary);padding:4px 0;">Hotel name</div>
+        <div style="font-size:10px;color:var(--color-text-tertiary);padding:4px 0;">Meal plan</div>
+        <div style="font-size:10px;color:var(--color-text-tertiary);padding:4px 0;">Nights</div>
+      </div>
+      <div style="display:grid;grid-template-columns:100px 1fr 100px 80px;gap:8px;margin-bottom:8px;align-items:center;">
+        <div class="field-val" style="font-size:12px;">Port Blair</div>
+        <div class="day-select">Luxor / Ariees / Idhaya / Olive ▾</div>
+        <div class="day-select">CP ▾</div>
+        <div class="day-select">2 ▾</div>
+      </div>
+      <div style="display:grid;grid-template-columns:100px 1fr 100px 80px;gap:8px;align-items:center;">
+        <div class="field-val" style="font-size:12px;">Havelock</div>
+        <div class="day-select">De Havelock Queen / Sundaze ▾</div>
+        <div class="day-select">CP ▾</div>
+        <div class="day-select">1 ▾</div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="step-header">
+      <div class="step-dot">4</div>
+      <div>
+        <div class="step-title">PAX pricing <span class="dmc-tag">enter from DMC rate sheet</span></div>
+        <div class="step-sub">Type the net cost per person per bracket — selling price is auto-calculated</div>
+      </div>
+    </div>
+    <div style="border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-md);overflow:hidden;">
+      <table class="pax-tbl">
+        <thead>
+          <tr>
+            <th>PAX bracket</th>
+            <th>DMC label</th>
+            <th style="text-align:right">Net/person (you enter)</th>
+            <th style="text-align:right">Margin %</th>
+            <th style="text-align:right">Selling/person (auto)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-size:12px;font-weight:500;">2 PAX</td>
+            <td style="font-size:11px;color:var(--color-text-secondary);">Min 2 pax rate</td>
+            <td style="text-align:right;"><span class="num-input">11,900</span></td>
+            <td style="text-align:right;"><span class="num-input" style="width:52px;">20</span></td>
+            <td><div class="computed">₹14,875</div></td>
+          </tr>
+          <tr>
+            <td style="font-size:12px;font-weight:500;">4 PAX</td>
+            <td style="font-size:11px;color:var(--color-text-secondary);">Min 4 pax rate</td>
+            <td style="text-align:right;"><span class="num-input">10,500</span></td>
+            <td style="text-align:right;"><span class="num-input" style="width:52px;">20</span></td>
+            <td><div class="computed">₹13,125</div></td>
+          </tr>
+          <tr>
+            <td style="font-size:12px;font-weight:500;">6 PAX</td>
+            <td style="font-size:11px;color:var(--color-text-secondary);">Min 6 pax rate</td>
+            <td style="text-align:right;"><span class="num-input">10,100</span></td>
+            <td style="text-align:right;"><span class="num-input" style="width:52px;">18</span></td>
+            <td><div class="computed">₹12,317</div></td>
+          </tr>
+          <tr>
+            <td style="font-size:12px;font-weight:500;">Extra bed</td>
+            <td style="font-size:11px;color:var(--color-text-secondary);">CWB / extra mattress</td>
+            <td style="text-align:right;"><span class="num-input">8,600</span></td>
+            <td style="text-align:right;"><span class="num-input" style="width:52px;">20</span></td>
+            <td><div class="computed">₹10,750</div></td>
+          </tr>
+          <tr>
+            <td style="font-size:12px;font-weight:500;">No bed</td>
+            <td style="font-size:11px;color:var(--color-text-secondary);">CNB / without mattress</td>
+            <td style="text-align:right;"><span class="num-input">7,800</span></td>
+            <td style="text-align:right;"><span class="num-input" style="width:52px;">20</span></td>
+            <td><div class="computed">₹9,750</div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:10px;color:var(--color-text-tertiary);margin-top:6px;">Inclusions, exclusions, important notes and T&C are auto-fetched from the Andaman destination overview — no re-entry needed.</div>
+
+    <div class="save-row">
+      <button class="btn-cancel">Cancel</button>
+      <button class="btn-save">Save &amp; publish package</button>
+    </div>
+
+  </div>
+</div>

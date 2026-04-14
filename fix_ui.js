@@ -1,0 +1,137 @@
+const fs = require('fs');
+const files = [
+    'app/(dashboard)/sales/itinerary/[id]/page.tsx',
+    'app/(dashboard)/ops/booking/[id]/page.tsx',
+    'app/(dashboard)/post-ops/booking/[id]/page.tsx'
+];
+
+for (const file of files) {
+    if (!fs.existsSync(file)) { console.log('not found', file); continue; }
+    let content = fs.readFileSync(file, 'utf8');
+
+    let updaterObj = content.match(/const\s+(update[A-Za-z]+ItemState)\s*=\s*/);
+    if (!updaterObj) continue;
+    const updater = updaterObj[1];
+
+    // Disabled & className replacements
+    content = content.replace(/disabled=\{\(item\.requiresAcknowledgement[\s\S]*?item\.checked\)}/,
+        "disabled={(item.requiresAcknowledgement && !item.acknowledged && !item.checked) || (['file_upload', 'File Upload'].includes(item.type) && !item.fileUrl && !item.checked) || (['file_or_text'].includes(item.type) && !item.fileUrl && !item.response && !item.checked) || (item.isRequired && ['text_input', 'Text Input', 'single_choice', 'Single Choice', 'multiple_choice', 'Multiple Choice', 'rating', 'Rating', 'rating_5', 'rating_10'].includes(item.type) && !item.response && !item.checked) || (item.isRequired && ['multiple_select', 'Multiple Select'].includes(item.type) && (!item.response || item.response.length === 0) && !item.checked)}"
+    );
+
+    content = content.replace(/className=\{mt-0\.5 transition-colors \$\{\(\(item\.requiresAcknowledgement[\s\S]*?'hover:scale-110'\}\}/,
+        "className={\mt-0.5 transition-colors \\}"
+    );
+
+    content = content.replace(/\{\(item\.type === 'file_upload' \|\| item\.type === 'File Upload'\) && !item\.checked && \(/g,
+        "{['file_upload', 'File Upload', 'file_or_text'].includes(item.type) && !item.checked && ("
+    );
+
+    const dynRegex = /\{\/\*\s*Dynamic Input Types\s*\*\/\}([\s\S]*?)(?=\{\/\*\s*File upload section\s*\*\/)/;
+    const newInputs = \{/* Dynamic Input Types */}
+                                    {['text_input', 'Text Input'].includes(item.type) && (
+                                        <div className="mt-3">
+                                            <input 
+                                                type="text"
+                                                disabled={item.checked}
+                                                value={item.response || ''}
+                                                onChange={(e) => \(item.id, { response: e.target.value })}
+                                                placeholder="Enter your answer..."
+                                                className="w-full px-3 py-2 rounded-lg font-sans text-xs outline-none"
+                                                style={{ border: '1px solid rgba(5,34,16,0.1)', color: '#052210' }}
+                                            />
+                                        </div>
+                                    )}
+                                    {['file_or_text'].includes(item.type) && !item.checked && !item.fileUrl && (
+                                        <div className="mt-3">
+                                            <input 
+                                                type="text"
+                                                disabled={item.checked}
+                                                value={item.response || ''}
+                                                onChange={(e) => \(item.id, { response: e.target.value })}
+                                                placeholder="Enter text answer OR upload below..."
+                                                className="w-full px-3 py-2 rounded-lg font-sans text-xs outline-none"
+                                                style={{ border: '1px solid rgba(5,34,16,0.1)', color: '#052210' }}
+                                            />
+                                        </div>
+                                    )}
+                                    {['date_picker', 'Date Picker'].includes(item.type) && (
+                                        <div className="mt-3">
+                                            <input 
+                                                type="date"
+                                                disabled={item.checked}
+                                                value={item.response || ''}
+                                                onChange={(e) => \(item.id, { response: e.target.value })}
+                                                className="px-3 py-2 rounded-lg font-sans text-xs outline-none"
+                                                style={{ border: '1px solid rgba(5,34,16,0.1)', color: '#052210' }}
+                                            />
+                                        </div>
+                                    )}
+                                    {['single_choice', 'Single Choice'].includes(item.type) && (item.options || item.points) && (
+                                        <div className="mt-3 space-y-2">
+                                            {(item.options || item.points || []).map((opt, i) => (
+                                                <label key={i} className="flex items-center gap-2 cursor-pointer">
+                                                    <input 
+                                                        type="radio"
+                                                        disabled={item.checked}
+                                                        name={\single-\\}
+                                                        checked={item.response === opt}
+                                                        onChange={() => \(item.id, { response: opt })}
+                                                        className="w-3.5 h-3.5"
+                                                        style={{ accentColor: '#06a15c' }}
+                                                    />
+                                                    <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.8)' }}>{opt}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {['multiple_choice', 'Multiple Choice', 'multiple_select'].includes(item.type) && (item.options || item.points) && (
+                                        <div className="mt-3 space-y-2">
+                                            {(item.options || item.points || []).map((opt, i) => {
+                                                const currentArr = Array.isArray(item.response) ? item.response : [];
+                                                return (
+                                                    <label key={i} className="flex items-center gap-2 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={currentArr.includes(opt)}
+                                                            onChange={(e) => {
+                                                                let n = [...currentArr];
+                                                                if (e.target.checked) n.push(opt);
+                                                                else n = n.filter(x => x !== opt);
+                                                                \(item.id, { response: n });
+                                                            }}
+                                                            className="w-3.5 h-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600"
+                                                        />
+                                                        <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.8)' }}>{opt}</span>
+                                                    </label>
+                                                )
+                                            })}
+                                        </div>
+                                    )}
+                                    {['rating', 'Rating', 'rating_5', 'rating_10'].includes(item.type) && (
+                                        <div className="mt-3 flex items-center gap-1.5">
+                                            {Array.from({ length: item.type === 'rating_10' ? 10 : (parseInt(item.extraInfo || '5') || 5) }).map((_, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => \(item.id, { response: (i + 1).toString() })}
+                                                    className="text-xl transition-colors hover:scale-110"
+                                                    style={{ color: (parseInt(item.response || '0')) > i ? '#f59e0b' : 'rgba(5,34,16,0.1)' }}
+                                                >
+                                                    ?
+                                                </button>
+                                            ))}
+                                            <span className="ml-2 font-sans text-[10px] text-gray-400">({item.response || 0} / {item.type === 'rating_10' ? 10 : (parseInt(item.extraInfo || '5') || 5)})</span>
+                                        </div>
+                                    )}
+                                    {item.checked && item.response && (
+                                        <div className="mt-2 bg-emerald-50/50 px-3 py-2 rounded-lg border border-emerald-100">
+                                            <span className="font-sans text-[10px] font-bold uppercase tracking-wider block text-emerald-600 mb-1">Response:</span>
+                                            <span className="font-sans text-xs text-emerald-900 font-medium">
+                                                {Array.isArray(item.response) ? item.response.join(', ') : item.response}
+                                            </span>
+                                        </div>
+                                    )}\n                                    \;
+    
+    content = content.replace(dynRegex, newInputs);
+    fs.writeFileSync(file, content, 'utf8');
+    console.log('Processed', file);
+}

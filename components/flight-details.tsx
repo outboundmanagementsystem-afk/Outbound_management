@@ -1,0 +1,152 @@
+"use client"
+
+import { useEffect, useRef, useState } from "react"
+import { Plane, Clock } from "lucide-react"
+
+interface FlightSegment {
+  type: string; from: string; fromCode: string; to: string; toCode: string;
+  departure: string; departureDate: string; arrival: string; arrivalDate: string;
+  airline: string; duration: string; flightNo: string;
+}
+interface FlightDetailsProps { segments?: FlightSegment[] }
+
+const defaultSegments: FlightSegment[] = [
+  { type: "Onward", from: "Trivandrum", fromCode: "TRV", to: "Delhi", toCode: "DEL", departure: "06:15", departureDate: "Mon, 23 Dec 2024", arrival: "09:40", arrivalDate: "Mon, 23 Dec 2024", airline: "Indigo", duration: "3h 25m", flightNo: "6E-7201" },
+  { type: "Onward", from: "Delhi", fromCode: "DEL", to: "Srinagar", toCode: "SXR", departure: "12:40", departureDate: "Mon, 23 Dec 2024", arrival: "14:05", arrivalDate: "Mon, 23 Dec 2024", airline: "Indigo", duration: "1h 25m", flightNo: "6E-2181" },
+  { type: "Return", from: "Srinagar", fromCode: "SXR", to: "Delhi", toCode: "DEL", departure: "15:20", departureDate: "Fri, 27 Dec 2024", arrival: "18:40", arrivalDate: "Fri, 27 Dec 2024", airline: "Air India", duration: "1h 20m", flightNo: "AI-442" },
+]
+
+export function FlightDetails({ segments }: FlightDetailsProps = {}) {
+  const flightSegments = segments || defaultSegments
+  const ref = useRef<HTMLDivElement>(null)
+  const [isVisible, setIsVisible] = useState(false)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setIsVisible(true) },
+      { threshold: 0.1 }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <section
+      className="relative py-8 px-4 avoid-break pdf-section"
+      style={{
+        backgroundImage: "url('/images/bg/page_004.png')",
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundColor: '#051F10'
+      }}
+    >
+      <div className="absolute inset-0 bg-[#00000066] pointer-events-none" />
+
+      <div ref={ref} className={`relative z-20 w-full mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        {/* Section header */}
+        <div className="text-center mb-6 px-2">
+          <div className="inline-flex items-center gap-2 mb-3">
+            <div className="h-[1px] w-6" style={{ background: 'rgba(255,229,0,0.4)' }} />
+            <p className="font-sans text-[8px] font-black tracking-[0.35em] uppercase" style={{ color: '#FFE500' }}>Air Journey</p>
+            <div className="h-[1px] w-6" style={{ background: 'rgba(255,229,0,0.4)' }} />
+          </div>
+          <h2 className="font-serif text-[2.5rem] tracking-tight leading-none font-black uppercase text-white drop-shadow-2xl">Flight Details</h2>
+          <div className="h-1 w-16 bg-[#FFE500] mx-auto mt-4 rounded-full shadow-[0_0_20px_rgba(255,229,0,0.5)]" />
+        </div>
+
+        {/* Flight tickets */}
+        <div className="flex flex-col gap-3">
+          {flightSegments.map((seg, idx) => {
+            const isReturn = seg.type?.toLowerCase() === 'return'
+            return (
+              <div
+                key={idx}
+                className="rounded-[24px] overflow-hidden transition-all duration-500 relative shadow-2xl border border-white/5"
+                style={{
+                  background: '#FDFDFB',
+                  transitionDelay: `${idx * 100}ms`,
+                }}
+              >
+                {/* Ticket header (Dark Green) */}
+                <div
+                  className="flex items-center justify-between px-5 py-3"
+                  style={{ background: '#0B1510' }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="px-3 py-1 rounded-lg font-sans text-[8px] font-black tracking-[0.1em] uppercase"
+                      style={{
+                        background: isReturn ? 'rgba(100,149,237,0.15)' : 'rgba(255,229,0,0.12)',
+                        color: isReturn ? '#87CEEB' : '#FFE500',
+                        border: `1px solid ${isReturn ? 'rgba(135,206,235,0.3)' : 'rgba(255,229,0,0.3)'}`,
+                      }}
+                    >
+                      {seg.type || 'Onward'}
+                    </span>
+                    <span className="font-sans text-[10px] font-bold tracking-widest text-white/40 uppercase">{seg.flightNo || (seg as any).flightNumber || 'TBA'}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="w-3 h-3 text-[#FFE500]" />
+                    <span className="font-sans text-[10px] font-black text-[#FFE500]">{seg.duration ? parseInt(seg.duration) : 2}H</span>
+                  </div>
+                </div>
+
+                {/* Ticket body */}
+                <div className="px-5 py-5 relative">
+                  {/* Main Flight Path */}
+                  <div className="flex items-center justify-between gap-3">
+                    {/* FROM */}
+                    <div className="flex-1">
+                      <p className="font-sans text-[8px] font-black uppercase tracking-[0.2em] text-[#8E918F] mb-1">From</p>
+                      <p className="font-serif text-3xl tracking-tighter leading-none font-black text-[#1A211D]">{(seg.fromCode || (seg as any).origin || 'ORG').toUpperCase()}</p>
+                      <p className="font-sans text-[9px] text-gray-400 mt-1 truncate">{seg.from}</p>
+                    </div>
+
+                    {/* PATH */}
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <Plane className="w-4 h-4 text-[#1A211D] mb-1" />
+                      <div className="w-12 h-0.5 border-t border-dashed border-[#FFE500]" />
+                    </div>
+
+                    {/* TO */}
+                    <div className="flex-1 text-right">
+                      <p className="font-sans text-[8px] font-black uppercase tracking-[0.2em] text-[#8E918F] mb-1 text-right">To</p>
+                      <p className="font-serif text-3xl tracking-tighter leading-none font-black text-[#1A211D]">{(seg.toCode || (seg as any).destination || 'DST').toUpperCase()}</p>
+                      <p className="font-sans text-[9px] text-gray-400 mt-1 truncate">{seg.to}</p>
+                    </div>
+                  </div>
+
+                  <div className="my-4 h-[1px] bg-gray-100" />
+
+                  {/* Details Row */}
+                  <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4">
+                    <div>
+                      <p className="font-sans text-[7px] font-black uppercase tracking-widest text-[#8E918F] mb-0.5">Departure</p>
+                      <p className="font-sans text-xl font-black text-[#1A211D]">{(seg.departure || (seg as any).originTime || '00:00')}</p>
+                      <p className="font-sans text-[8px] text-gray-400">{seg.departureDate}</p>
+                    </div>
+
+                    <div className="w-px h-8 bg-gray-200" />
+
+                    <div className="text-right">
+                      <p className="font-sans text-[7px] font-black uppercase tracking-widest text-[#8E918F] mb-0.5">Arrival</p>
+                      <p className="font-sans text-xl font-black text-[#1A211D]">{(seg.arrival || (seg as any).destinationTime || '00:00')}</p>
+                      <p className="font-sans text-[8px] text-gray-400">{seg.arrivalDate}</p>
+                    </div>
+                  </div>
+
+                  {/* Airline */}
+                  {seg.airline && (
+                    <div className="mt-3 text-center">
+                      <span className="font-sans text-[8px] font-black text-gray-400 uppercase tracking-widest">{seg.airline}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
