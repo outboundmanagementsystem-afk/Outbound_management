@@ -389,7 +389,7 @@ export function ReadyMadeGenerator() {
                 <div>
                     <h1 className="font-serif text-2xl tracking-wide" style={{ color: '#052210' }}>Ready-Made Itineraries</h1>
                     <p className="font-sans text-[13px] mt-1" style={{ color: '#6b7280' }}>
-                        {isCreating ? "Create a new package template" : "Select a package template and generate a custom itinerary instantly."}
+                        {isCreating ? "Create a new package template." : "Select a package template and generate a custom itinerary instantly."}
                     </p>
                 </div>
                 {!isCreating && userProfile?.role === "admin" && (
