@@ -942,7 +942,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
 
                                     {/* Stops Builder */}
                                     <div className="p-6 space-y-6">
-                                        {plan.stops.map((stop, stopIdx) => (
+                                        {plan.stops.map((stop: any, stopIdx: number) => (
                                             <div key={stopIdx} className="relative group/stop animate-in fade-in slide-in-from-left-4 duration-300">
                                                 <div className="flex items-center gap-3 mb-3">
                                                     <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700">
@@ -953,7 +953,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                         <button 
                                                             onClick={() => {
                                                                 const newPlans = [...tierPlans];
-                                                                newPlans[planIdx].stops = newPlans[planIdx].stops.filter((_, i) => i !== stopIdx);
+                                                                newPlans[planIdx].stops = newPlans[planIdx].stops.filter((_: any, i: number) => i !== stopIdx);
                                                                 setTierPlans(newPlans);
                                                             }}
                                                             className="ml-auto p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"

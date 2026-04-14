@@ -492,25 +492,25 @@ function KPIContent() {
                                                 <span>{perf.total} itins</span><span>{perf.confirmed} conf</span><span className="font-bold">{perf.conversion}%</span>
                                             </div>
                                         </div>
-                                        {expandedUser === u.uid && (
+                                        {expandedUser === lead.uid && (
                                             <div className="mt-4 p-4 rounded-xl" style={{ background: '#f8fafc', border: '1px solid #e5e7eb' }}>
                                                 <h5 className="font-sans text-xs font-bold mb-2" style={{ color: '#052210' }}>Personal Analytics ({period})</h5>
                                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                                     <div>
                                                         <p className="font-sans text-[10px] uppercase tracking-wider" style={{ color: '#6b7280' }}>Total Handled</p>
-                                                        <p className="font-sans text-lg font-bold" style={{ color }}>{s.total}</p>
+                                                        <p className="font-sans text-lg font-bold" style={{ color: isSales ? '#06a15c' : '#3b82f6' }}>{perf.total}</p>
                                                     </div>
                                                     <div>
                                                         <p className="font-sans text-[10px] uppercase tracking-wider" style={{ color: '#6b7280' }}>Confirmed</p>
-                                                        <p className="font-sans text-lg font-bold" style={{ color }}>{s.confirmed}</p>
+                                                        <p className="font-sans text-lg font-bold" style={{ color: isSales ? '#06a15c' : '#3b82f6' }}>{perf.confirmed}</p>
                                                     </div>
                                                     <div>
                                                         <p className="font-sans text-[10px] uppercase tracking-wider" style={{ color: '#6b7280' }}>Conversion</p>
-                                                        <p className="font-sans text-lg font-bold" style={{ color }}>{s.total > 0 ? Math.round((s.confirmed / s.total) * 100) : 0}%</p>
+                                                        <p className="font-sans text-lg font-bold" style={{ color: isSales ? '#06a15c' : '#3b82f6' }}>{perf.conversion}%</p>
                                                     </div>
                                                     <div>
                                                         <p className="font-sans text-[10px] uppercase tracking-wider" style={{ color: '#6b7280' }}>Total Profit Generated</p>
-                                                        <p className="font-sans text-lg font-bold" style={{ color }}>₹{s.revenue.toLocaleString()}</p>
+                                                        <p className="font-sans text-lg font-bold" style={{ color: isSales ? '#06a15c' : '#3b82f6' }}>₹{perf.revenue.toLocaleString()}</p>
                                                     </div>
                                                 </div>
                                             </div>
