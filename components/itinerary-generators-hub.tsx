@@ -7,7 +7,24 @@ import { PackageSearch, Settings2, Replace, PenTool } from "lucide-react"
 export function ItineraryGeneratorsHub() {
     const { userProfile } = useAuth()
     const role = userProfile?.role || "sales"
-    const basePath = `/${role}`
+    
+    // Map roles to their base route paths
+    const rolePathMap: Record<string, string> = {
+        admin: "/admin",
+        owner: "/admin",
+        sales: "/sales",
+        sales_lead: "/sales",
+        ops: "/ops",
+        ops_lead: "/ops",
+        pre_ops: "/ops",
+        pre_ops_lead: "/ops",
+        post_ops: "/post-ops",
+        post_ops_lead: "/post-ops",
+        finance: "/finance",
+        finance_lead: "/finance",
+    }
+    
+    const basePath = rolePathMap[role] || `/${role}`
 
     const generators = [
         {
