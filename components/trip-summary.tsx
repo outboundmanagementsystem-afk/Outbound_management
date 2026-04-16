@@ -55,17 +55,16 @@ export function TripSummary({ fields }: TripSummaryProps = {}) {
         </div>
 
         {/* Bottom Light Card */}
-        <div className="bg-[#FDFDFB] rounded-b-[28px] px-5 py-6 relative z-10 shadow-2xl border-x border-b border-gray-100">
+        <div className="bg-[#FDFDFB] rounded-b-[28px] px-8 py-6 relative z-10 shadow-2xl border-x border-b border-gray-100 max-w-xl mx-auto">
           <div className="flex flex-col gap-5 mt-1">
             {summaryFields.filter(f => f.label !== "Booking ID" && f.label !== "Kid's Age").map((field, idx) => (
-              <div key={idx} className="flex flex-col group transition-all duration-300">
-                <span className="font-sans text-[9px] font-black uppercase tracking-[0.35em] text-[#8E918F] mb-1.5">
-                    {field.label}
+              <div key={idx} className="flex items-center gap-4 group transition-all duration-300 w-full">
+                <span className="font-sans text-[9px] font-black uppercase tracking-[0.35em] text-[#8E918F] min-w-[120px] text-left">
+                    {field.label}:
                 </span>
-                <span className="font-sans text-[15px] font-black text-[#1A211D] break-words leading-tight uppercase tracking-tight">
+                <span className="font-sans text-[15px] font-black text-[#1A211D] break-words leading-tight uppercase tracking-tight flex-1">
                     {field.value || "—"}
                 </span>
-                <div className="h-[1.5px] w-6 bg-[#FFE500] mt-3 rounded-full transition-all group-hover:w-12" />
               </div>
             ))}
           </div>

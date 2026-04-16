@@ -35,7 +35,7 @@ export function HeroSection({ customerName, destination, nights, days, startDate
 
       <div className="relative z-10 w-full flex flex-col items-center">
         {/* Logo */}
-        <div className="relative w-36 h-16 mb-6 transition-transform hover:scale-105 duration-700">
+        <div className="relative w-80 h-36 mb-6 transition-transform hover:scale-105 duration-700">
           <Image
             src="/images/outbound png.png"
             alt="Outbound Travelers"

@@ -10,6 +10,7 @@ import {
     createPackage, updatePackage, addPackageDay, addPackageHotel, addPackagePricing, getPresetDays, getHotels, deletePackage, clearPackageSubcollections
 } from "@/lib/firestore"
 import { PackageSearch, Loader2, Plus, ArrowLeft, Trash2, ChevronDown, Check } from "lucide-react"
+import { SuccessModal } from "./success-modal"
 
 export function ReadyMadeGenerator() {
     const { userProfile } = useAuth()
@@ -20,6 +21,10 @@ export function ReadyMadeGenerator() {
     const [destinations, setDestinations] = useState<any[]>([])
     const [customers, setCustomers] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    
+    // Success modal state
+    const [showSuccessModal, setShowSuccessModal] = useState(false)
+    const [successMessage, setSuccessMessage] = useState("")
 
     // Generation State (Existing Flow)
     const [selectedDestId, setSelectedDestId] = useState("")
@@ -149,7 +154,8 @@ export function ReadyMadeGenerator() {
 
     const handleGenerate = async () => {
         if (!selectedPkg || !customerName || !startDate || totalPrice <= 0) {
-            alert("Please fill all required fields and ensure total price is > 0")
+            setSuccessMessage("Please fill all required fields and ensure total price is > 0")
+            setShowSuccessModal(true)
             return
         }
 
@@ -220,7 +226,8 @@ export function ReadyMadeGenerator() {
             router.push(`/itinerary/${itinId}`)
         } catch (err) {
             console.error("Error generating itinerary:", err)
-            alert("Failed to generate itinerary.")
+            setSuccessMessage("Failed to generate itinerary.")
+            setShowSuccessModal(true)
             setGenerating(false)
         }
     }
@@ -271,7 +278,8 @@ export function ReadyMadeGenerator() {
             setIsCreating(true)
         } catch (err) {
             console.error("Error fetching package for edit:", err)
-            alert("Failed to load package data for editing.")
+            setSuccessMessage("Failed to load package data for editing.")
+            setShowSuccessModal(true)
         } finally {
             setFetchingPkgDetails(false)
         }
@@ -279,7 +287,8 @@ export function ReadyMadeGenerator() {
 
     const handleSavePackage = async () => {
         if (!newPkgDest) {
-            alert("Please select a destination")
+            setSuccessMessage("Please select a destination")
+            setShowSuccessModal(true)
             return
         }
         setCreatingSaving(true)
@@ -336,10 +345,12 @@ export function ReadyMadeGenerator() {
             await loadAll()
             setIsCreating(false)
             setEditingPkgId(null)
-            alert(editingPkgId ? "Package updated successfully!" : "Package saved successfully!")
+            setSuccessMessage(editingPkgId ? "Package updated successfully!" : "Package saved successfully!")
+            setShowSuccessModal(true)
         } catch (err) {
             console.error("Error saving package:", err)
-            alert("Failed to save package.")
+            setSuccessMessage("Failed to save package.")
+            setShowSuccessModal(true)
         } finally {
             setCreatingSaving(false)
         }
@@ -359,7 +370,8 @@ export function ReadyMadeGenerator() {
             if (selectedPkg?.id === pkgId) setSelectedPkg(null);
         } catch (error: any) {
             console.error("Error deleting package:", error);
-            alert(`Failed to delete package: ${error.message || "Unknown error"}. Check Firestore permissions.`);
+            setSuccessMessage(`Failed to delete package: ${error.message || "Unknown error"}. Check Firestore permissions.`)
+            setShowSuccessModal(true);
         } finally {
             setIsDeleting(null);
         }
@@ -958,6 +970,12 @@ export function ReadyMadeGenerator() {
                     </div>
                 </div>
             )}
+        {/* Success Modal */}
+        <SuccessModal
+          isOpen={showSuccessModal}
+          message={successMessage}
+          onClose={() => setShowSuccessModal(false)}
+        />
         </div>
-    )
+  )
 }
