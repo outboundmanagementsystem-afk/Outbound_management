@@ -10,7 +10,7 @@ interface TermsSectionProps {
 
 export function TermsSection({ title = "Terms & Conditions", terms = [] }: TermsSectionProps) {
     const ref = useRef<HTMLDivElement>(null)
-    const [isVisible, setIsVisible] = useState(false)
+    const [isVisible, setIsVisible] = useState(true)
 
     useEffect(() => {
         const observer = new IntersectionObserver(

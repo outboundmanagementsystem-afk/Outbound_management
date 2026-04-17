@@ -21,11 +21,16 @@ export function TripSummary({ fields }: TripSummaryProps = {}) {
   const summaryFields = fields || defaultFields
 
   const ref = useRef<HTMLDivElement>(null)
-  const [isVisible, setIsVisible] = useState(false)
+  const [isVisible, setIsVisible] = useState(true)
 
   useEffect(() => {
+    // We still use the observer for the entry animation on scroll, 
+    // but we default to true to ensure it's visible in PDF generation 
+    // where the observer might not trigger.
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setIsVisible(true) },
+      ([entry]) => { 
+        if (entry.isIntersecting) setIsVisible(true) 
+      },
       { threshold: 0.1 }
     )
     if (ref.current) observer.observe(ref.current)

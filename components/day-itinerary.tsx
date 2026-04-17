@@ -16,7 +16,8 @@ interface DayData {
 interface DayItineraryProps { 
   dayPlans?: DayData[]; 
   destination?: string; 
-  totalDays?: number 
+  totalDays?: number;
+  startDate?: string 
 }
 
 const defaultDays: DayData[] = [
@@ -24,7 +25,27 @@ const defaultDays: DayData[] = [
   { day: "Day 02", date: "Tue, 24 Dec", title: "Srinagar to Sonamarg", description: "After breakfast, drive to Sonamarg (Meadow of Gold). Visit Thajiwas Glacier, enjoy the stunning views of snow-covered mountains and pristine valleys. Return to Srinagar for overnight stay.", highlights: ["Thajiwas Glacier", "Meadow of Gold", "Snow Mountains"], overnightStay: "Srinagar" },
 ]
 
-export function DayItinerary({ dayPlans, destination, totalDays }: DayItineraryProps = {}) {
+/**
+ * Compute a sequential date string from a base start date + day index.
+ * Returns formatted uppercase string like "TUE, MAY 5".
+ */
+function computeSequentialDate(startDateStr: string, index: number): string {
+  try {
+    const baseDate = new Date(startDateStr);
+    if (isNaN(baseDate.getTime())) return "";
+    const currentDate = new Date(baseDate);
+    currentDate.setDate(baseDate.getDate() + index);
+    return currentDate.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "short",
+      day: "numeric"
+    }).toUpperCase();
+  } catch {
+    return "";
+  }
+}
+
+export function DayItinerary({ dayPlans, destination, totalDays, startDate }: DayItineraryProps = {}) {
   const days = [...(dayPlans || defaultDays)].sort((a, b) => {
     const numA = parseInt(a.day.replace(/\D/g, '')) || 0;
     const numB = parseInt(b.day.replace(/\D/g, '')) || 0;
@@ -74,11 +95,11 @@ export function DayItinerary({ dayPlans, destination, totalDays }: DayItineraryP
           >
             <div className="absolute inset-0 bg-black/10 pointer-events-none" />
             <div className="relative z-20 w-full">
-              <div className={`p-5 rounded-[24px] shadow-2xl transition-all duration-400 relative overflow-hidden border border-white/5 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#F9FAFB]'}`}>
+              <div className={`p-5 rounded-[24px] shadow-2xl transition-all duration-400 relative overflow-hidden border border-white/5 bg-white`}>
                   
                   {/* Day Marker */}
                   <div className="flex items-center justify-between mb-5">
-                      <div className="bg-[#051F10] text-[#FFE500] px-5 py-2 rounded-[14px] font-sans text-lg font-black uppercase tracking-tighter shadow-lg">
+                      <div className="bg-[#051F10] text-[#FFE500] px-5 py-2 rounded-[14px] font-sans text-lg font-black uppercase tracking-tighter shadow-lg" style={{ color: '#FFD700', fontWeight: 'bold' }} data-pdf-color="yellow">
                           {dayLabel}
                       </div>
                   </div>
@@ -88,14 +109,17 @@ export function DayItinerary({ dayPlans, destination, totalDays }: DayItineraryP
                       <h3 className="font-sans text-[20px] font-black uppercase tracking-tight leading-tight mb-2 text-[#1A211D]">
                           {day.title}
                       </h3>
-                      {day.date && (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="w-3.5 h-3.5 text-[#FFE500] stroke-[3]" />
-                          <p className="font-sans text-[10px] font-bold text-[#6B6B6B] uppercase tracking-[0.15em] opacity-80">
-                              {day.date}
-                          </p>
-                        </div>
-                      )}
+                      {(() => {
+                        const displayDate = startDate ? computeSequentialDate(startDate, idx) : day.date;
+                        return displayDate ? (
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-3.5 h-3.5 stroke-[3]" style={{ color: '#FFE500' }} />
+                            <p className="font-sans text-[10px] font-bold uppercase tracking-[0.15em]" style={{ color: '#6B7280', opacity: 0.8 }}>
+                                {displayDate}
+                            </p>
+                          </div>
+                        ) : null;
+                      })()}
                   </div>
 
                   <div className="w-16 h-1.5 bg-[#FFE500] rounded-full mb-5" />
@@ -130,8 +154,10 @@ export function DayItinerary({ dayPlans, destination, totalDays }: DayItineraryP
                               <Moon className="w-6 h-6 text-[#FFE500]" />
                           </div>
                           <div>
-                              <span className="font-sans text-[9px] font-black text-[#FFE500]/60 uppercase tracking-[0.25em] block mb-1">Overnight Stay</span>
-                              <span className="font-sans text-base font-black text-white uppercase tracking-tight">{day.overnightStay || day.subDestination || dest}</span>
+                              <p className="font-sans font-black uppercase tracking-[0.25em] block mb-1" style={{ color: '#FFD700', fontSize: '12px' }} data-pdf-color="yellow">Overnight Stay</p>
+                              <h3 className="font-sans text-base font-black uppercase tracking-tight" style={{ color: '#FFFFFF', fontWeight: '600' }} data-pdf-color="white">
+                                  {day.overnightStay || day.subDestination || dest}
+                              </h3>
                           </div>
                       </div>
                   </div>

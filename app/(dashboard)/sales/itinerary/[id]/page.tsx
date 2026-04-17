@@ -520,16 +520,33 @@ function ItineraryDetail() {
                     const numA = parseInt((a.day || String(a.dayNumber || "")).replace(/\D/g, '')) || parseInt(a.dayNumber) || 0;
                     const numB = parseInt((b.day || String(b.dayNumber || "")).replace(/\D/g, '')) || parseInt(b.dayNumber) || 0;
                     return numA - numB;
-                }).map((day: any, idx: number) => (
+                }).map((day: any, idx: number) => {
+                    // Compute sequential date from startDate + index
+                    let displayDate = day.date;
+                    if (itin.startDate) {
+                        try {
+                            const baseDate = new Date(itin.startDate);
+                            if (!isNaN(baseDate.getTime())) {
+                                const currentDate = new Date(baseDate);
+                                currentDate.setDate(baseDate.getDate() + idx);
+                                displayDate = currentDate.toLocaleDateString("en-US", {
+                                    weekday: "short",
+                                    month: "short",
+                                    day: "numeric"
+                                }).toUpperCase();
+                            }
+                        } catch { /* fallback to day.date */ }
+                    }
+                    return (
                     <div key={day.id || idx} className="px-6 py-4" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
                         <div className="flex items-center gap-3 mb-2">
                             <span className="px-2.5 py-0.5 rounded-full font-sans text-[10px] font-bold tracking-wider uppercase" style={{ background: 'rgba(6,161,92,0.12)', color: '#06a15c' }}>{day.day}</span>
-                            <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.5)' }}>{day.date}</span>
+                            <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.5)' }}>{displayDate}</span>
                         </div>
                         <p className="font-sans text-sm font-semibold" style={{ color: '#052210' }}>{day.title}</p>
                         {day.description && <p className="font-sans text-xs mt-1" style={{ color: 'rgba(5,34,16,0.7)' }}>{day.description}</p>}
                     </div>
-                ))}
+                )})}
             </div>
         </div>
 

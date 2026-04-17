@@ -21,7 +21,7 @@ export function HeroSection({ customerName, destination, nights, days, startDate
   const displayEndDate = endDate || "TBA"
 
   return (
-    <section className="relative w-full overflow-hidden bg-[#031A0C] avoid-break flex flex-col items-center py-8 px-4 text-center pdf-section" style={{ minHeight: 'auto' }}>
+    <section className="relative w-full overflow-hidden bg-[#031A0C] avoid-break flex flex-col items-center py-10 px-6 text-center pdf-section" style={{ minHeight: 'auto' }}>
       {/* Background with texture */}
       <div className="absolute inset-0 z-0 opacity-40">
         <Image
@@ -35,7 +35,7 @@ export function HeroSection({ customerName, destination, nights, days, startDate
 
       <div className="relative z-10 w-full flex flex-col items-center">
         {/* Logo */}
-        <div className="relative w-80 h-36 mb-6 transition-transform hover:scale-105 duration-700">
+        <div className="relative w-48 h-24 mb-10">
           <Image
             src="/images/outbound png.png"
             alt="Outbound Travelers"
@@ -46,70 +46,66 @@ export function HeroSection({ customerName, destination, nights, days, startDate
         </div>
 
         {/* Top Tagline */}
-        <div className="flex items-center gap-2 mb-5">
-          <div className="h-[1px] w-6 bg-[#FFE500]/40" />
-          <span className="font-sans text-[8px] tracking-[0.35em] font-black text-[#FFE500] uppercase">
+        <div className="flex items-center gap-4 mb-8 w-full justify-center">
+          <div className="h-px w-10 bg-[#FFE500]/50" />
+          <span className="font-sans text-[10px] tracking-[0.4em] font-black text-[#FFE500] uppercase">
             Curated Just For You
           </span>
-          <div className="h-[1px] w-6 bg-[#FFE500]/40" />
+          <div className="h-px w-10 bg-[#FFE500]/50" />
         </div>
 
         {/* Hello Guest */}
-        <div className="mb-6">
-          <h2 className="font-serif text-3xl text-[#FFE500] italic mb-1">Hello!</h2>
-          <h1 className="font-serif text-4xl text-white uppercase font-black leading-tight tracking-tighter break-words max-w-[360px]">
+        <div className="mb-8">
+          <h2 className="font-serif text-4xl text-[#FFE500] italic mb-2">Hello!</h2>
+          <h1 className="font-serif text-5xl text-white uppercase font-black leading-tight tracking-[0.05em] break-words max-w-[400px]">
             {displayName}
           </h1>
         </div>
 
-        <div className="w-10 h-1 bg-[#FFE500] rounded-full mb-6 shadow-[0_0_15px_rgba(255,229,0,0.5)]" />
+        <div className="w-12 h-1 bg-[#FFE500] rounded-full mb-10 shadow-[0_0_20px_rgba(255,229,0,0.6)]" />
 
-        {/* Destination Card */}
-        <div className="w-full bg-white/95 backdrop-blur-sm rounded-[28px] p-3 shadow-2xl mb-6 overflow-hidden border border-white/20">
-          <div className="relative h-36 w-full rounded-[22px] overflow-hidden mb-4">
+        {/* Destination Card - Matching Image 2 */}
+        <div className="w-full max-w-[440px] bg-white rounded-[40px] p-2 shadow-[0_20px_50px_rgba(0,0,0,0.4)] mb-8 overflow-hidden border border-white/10">
+          <div className="relative h-64 w-full rounded-[34px] overflow-hidden">
             <Image
               src="/images/landmarks-bg.png"
               alt={displayDest}
               fill
               className="object-cover"
             />
-            <div className="absolute inset-0 bg-black/20" />
+            <div className="absolute inset-0 bg-black/10" />
           </div>
 
-          <div className="px-3 pb-4">
-            <div className="inline-flex items-center gap-1.5 bg-[#FFE500] px-3 py-1 rounded-full mb-3">
-              <MapPin className="w-3 h-3 text-black" />
-              <span className="font-sans text-[8px] font-black uppercase text-black">Destination</span>
+          <div className="pt-6 pb-8 flex flex-col items-center">
+            <div className="inline-flex items-center gap-2 bg-[#FFE500] px-5 py-2 rounded-full mb-4 shadow-md">
+              <MapPin className="w-4 h-4 text-black" strokeWidth={3} />
+              <span className="font-sans text-[10px] font-black uppercase tracking-widest text-black">Destination</span>
             </div>
-            <h3 className="font-serif text-3xl font-black text-[#1A211D] uppercase tracking-tighter leading-none break-words">
+            <h3 className="font-serif text-[42px] font-black text-[#1A211D] uppercase tracking-tight leading-none px-4 break-words">
               {displayDest}
             </h3>
           </div>
         </div>
 
-        {/* Trip Metadata */}
-        <div className="w-full space-y-2">
-          <div className="bg-white/10 border border-white/10 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        {/* Trip Metadata - Subtle but present for functional reasons */}
+        <div className="w-full max-w-[400px] grid grid-cols-2 gap-3 mb-8">
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
+            <div className="flex items-center gap-2 mb-1">
               <Moon className="w-4 h-4 text-[#FFE500]" />
-              <span className="font-sans text-base font-black text-white">{displayNights} Nights</span>
-            </div>
-            <div className="w-px h-5 bg-white/20" />
-            <div className="flex items-center gap-2">
               <Sun className="w-4 h-4 text-[#FFE500]" />
-              <span className="font-sans text-base font-black text-white">{displayDays} Days</span>
             </div>
+            <span className="font-sans text-lg font-black text-white">{displayNights}N / {displayDays}D</span>
           </div>
 
-          <div className="bg-[#FFE500] rounded-xl p-4 flex items-center justify-center gap-2 shadow-lg">
+          <div className="bg-[#FFE500]/95 backdrop-blur-md rounded-2xl p-4 flex flex-col items-center justify-center gap-1 shadow-lg">
             <Calendar className="w-4 h-4 text-[#1A211D]" />
-            <span className="font-sans text-sm font-black text-[#1A211D] tracking-tighter uppercase whitespace-nowrap">
-              {displayStartDate} – {displayEndDate}
+            <span className="font-sans text-xs font-black text-[#1A211D] tracking-tighter uppercase text-center leading-tight">
+              {displayStartDate}<br/>– {displayEndDate}
             </span>
           </div>
         </div>
 
-        <p className="mt-6 font-sans text-[9px] font-black text-white/40 uppercase tracking-[0.4em]">
+        <p className="font-sans text-[10px] font-black text-[#FFE500]/40 uppercase tracking-[0.5em] mb-4">
           Outbound Travelers Itinerary
         </p>
       </div>

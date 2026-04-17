@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import {
-    getDestinations, getPackages, getPackage, getPackageDays, getPackageHotels, getPackageTransfers, getPackageActivities, getPackageFlights, getPackagePricing,
+    getDestinations, getPackages, getPackage, getPackageDays, getPackageHotels, getPackageTransfers, getPackageActivities, getPackageFlights, getPackagePricing, getDestination,
     createItinerary, addItineraryDay, addItineraryHotel, addItineraryTransfer, addItineraryActivity, addItineraryFlight, addItineraryPricing, getCustomers,
     createPackage, updatePackage, addPackageDay, addPackageHotel, addPackagePricing, getPresetDays, getHotels, deletePackage, clearPackageSubcollections
 } from "@/lib/firestore"
@@ -32,6 +32,22 @@ export function ReadyMadeGenerator() {
     const [customerName, setCustomerName] = useState("")
     const [customerEmail, setCustomerEmail] = useState("")
     const [customerPhone, setCustomerPhone] = useState("")
+    const [countryCode, setCountryCode] = useState("+91")
+    const [nameError, setNameError] = useState("")
+    const [phoneError, setPhoneError] = useState("")
+    const [pricingErrors, setPricingErrors] = useState<Record<string, string>>({})
+
+    const countryCodes = [
+        { code: "+91", label: "🇮🇳 +91" },
+        { code: "+1", label: "🇺🇸 +1" },
+        { code: "+44", label: "🇬🇧 +44" },
+        { code: "+971", label: "🇦🇪 +971" },
+        { code: "+65", label: "🇸🇬 +65" },
+        { code: "+61", label: "🇦🇺 +61" },
+        { code: "+966", label: "🇸🇦 +966" },
+        { code: "+974", label: "🇶🇦 +974" },
+    ]
+
     const [startDate, setStartDate] = useState("")
     const [adults, setAdults] = useState(2)
     const [children, setChildren] = useState(0)
@@ -66,6 +82,7 @@ export function ReadyMadeGenerator() {
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
     const [editingPkgId, setEditingPkgId] = useState<string | null>(null)
     const [fetchingPkgDetails, setFetchingPkgDetails] = useState(false)
+    const [selectedDestinationData, setSelectedDestinationData] = useState<any>(null)
 
     // Dynamic Pricing Helpers
     const getBracketPrice = (id: string) => {
@@ -149,15 +166,66 @@ export function ReadyMadeGenerator() {
                     console.error("Error fetching package pricing:", err);
                     setActivePricing([]);
                 });
+            
+            // Fetch destination data for inclusions/exclusions/terms
+            getDestination(selectedPkg.destinationId)
+                .then(destData => {
+                    console.log("=== DESTINATION DEBUG ===");
+                    console.log("Destination ID:", selectedPkg.destinationId);
+                    console.log("Raw destination data:", destData);
+                    console.log("Destination data keys:", destData ? Object.keys(destData) : 'null');
+                    console.log("Inclusions:", (destData as any)?.inclusions);
+                    console.log("Exclusions:", (destData as any)?.exclusions);
+                    console.log("Terms:", (destData as any)?.termsAndConditions);
+                    console.log("Important Notes:", (destData as any)?.importantNotes);
+                    console.log("Full destData as any:", destData as any);
+                    setSelectedDestinationData(destData);
+                })
+                .catch(err => {
+                    console.warn("Could not fetch destination data:", err);
+                    setSelectedDestinationData(null);
+                });
         }
     }, [selectedPkg]);
 
     const handleGenerate = async () => {
-        if (!selectedPkg || !customerName || !startDate || totalPrice <= 0) {
-            setSuccessMessage("Please fill all required fields and ensure total price is > 0")
-            setShowSuccessModal(true)
+        // Reset errors
+        setNameError("")
+        setPhoneError("")
+
+        // 1. Name Validation
+        const trimmedName = customerName.trim()
+        const nameRegex = /^[A-Za-z.\s]+$/
+        
+        let hasError = false
+        if (!trimmedName) {
+            setNameError("Name is required")
+            hasError = true
+        } else if (!nameRegex.test(trimmedName)) {
+            setNameError("Name should contain only alphabets and dot(.)")
+            hasError = true
+        }
+
+        // 2. Phone Validation
+        const phoneRegex = /^[0-9]{8,15}$/
+        if (!customerPhone) {
+            setPhoneError("Phone number is required")
+            hasError = true
+        } else if (!phoneRegex.test(customerPhone)) {
+            setPhoneError("Enter a valid phone number (8–15 digits)")
+            hasError = true
+        }
+
+        // 3. Other required fields
+        if (hasError || !selectedPkg || !startDate || totalPrice <= 0) {
+            if (!hasError) {
+                setSuccessMessage("Please fill all required fields and ensure total price is > 0")
+                setShowSuccessModal(true)
+            }
             return
         }
+
+        const fullPhone = `${countryCode} ${customerPhone}`
 
         setGenerating(true)
         try {
@@ -179,17 +247,46 @@ export function ReadyMadeGenerator() {
             end.setDate(end.getDate() + (pkg.nights || 0))
             const endDate = end.toISOString().split('T')[0]
 
+            // Helper function to normalize data (handle both array and comma-separated string formats)
+            const normalizeField = (field: any): string[] => {
+                if (!field) return []
+                if (Array.isArray(field)) return field
+                if (typeof field === 'string') {
+                    // Split by comma and clean up
+                    return field.split(',').map(item => item.trim()).filter(item => item.length > 0)
+                }
+                return []
+            }
+
             const itinData = {
                 ...pkg,
-                customerName, customerEmail, customerPhone, startDate, endDate, adults, cwb, cnb,
+                customerName: trimmedName, 
+                customerEmail, 
+                customerPhone: fullPhone, 
+                startDate, 
+                endDate, 
+                adults, cwb, cnb,
                 totalPrice: Math.round(totalPrice),
                 perPersonPrice: Math.round(totalPrice / (adults + cwb + cnb)),
+                destination: selectedDestinationData?.name || selectedDestinationData?.destinationName || destinations.find(d => d.id === selectedDestId)?.name || selectedPkg?.destination || "",
+                destinationName: selectedDestinationData?.name || selectedDestinationData?.destinationName || destinations.find(d => d.id === selectedDestId)?.name || selectedPkg?.destinationName || "",
                 createdBy: userProfile?.uid || "",
                 createdByName: userProfile?.name || "",
                 consultantName: userProfile?.name || "",
                 consultantPhone: userProfile?.phone || "",
-                status: "draft"
+                status: "draft",
+                // Add destination-based fields in pdfTemplate structure
+                pdfTemplate: {
+                    inclusions: normalizeField((selectedDestinationData as any)?.pdfTemplate?.inclusions || (selectedDestinationData as any)?.inclusions),
+                    exclusions: normalizeField((selectedDestinationData as any)?.pdfTemplate?.exclusions || (selectedDestinationData as any)?.exclusions),
+                    termsAndConditions: normalizeField((selectedDestinationData as any)?.pdfTemplate?.termsAndConditions || (selectedDestinationData as any)?.termsAndConditions),
+                    importantNotes: normalizeField((selectedDestinationData as any)?.pdfTemplate?.importantNotes || (selectedDestinationData as any)?.importantNotes),
+                    paymentPolicy: normalizeField((selectedDestinationData as any)?.pdfTemplate?.paymentPolicy || (selectedDestinationData as any)?.paymentPolicy),
+                    cancellationPolicy: normalizeField((selectedDestinationData as any)?.pdfTemplate?.cancellationPolicy || (selectedDestinationData as any)?.cancellationPolicy)
+                }
             } as any
+            
+            console.log("Itinerary pdfTemplate data:", itinData.pdfTemplate);
             delete itinData.id
             delete itinData.packageName
 
@@ -378,8 +475,27 @@ export function ReadyMadeGenerator() {
     }
 
     const updatePaxPricing = (index: number, field: string, value: number) => {
+        const errorKey = `${index}-${field}`
+        const fieldName = field === "net" ? "Net price" : "Margin"
+        
+        // Handle invalid or negative values by defaulting to 0
+        let safeValue = value;
+        if (isNaN(value) || value < 0) {
+            safeValue = 0;
+            setPricingErrors(prev => ({ ...prev, [errorKey]: `${fieldName} cannot be negative` }))
+        } else {
+            // Clear error if valid
+            if (pricingErrors[errorKey]) {
+                setPricingErrors(prev => {
+                    const next = { ...prev }
+                    delete next[errorKey]
+                    return next
+                })
+            }
+        }
+
         const newPax = [...paxPricing]
-        newPax[index] = { ...newPax[index], [field]: value }
+        newPax[index] = { ...newPax[index], [field]: safeValue }
         setPaxPricing(newPax)
     }
 
@@ -696,25 +812,46 @@ export function ReadyMadeGenerator() {
                                         {paxPricing.map((pax, idx) => {
                                             const sellRaw = pax.net + (pax.net * (pax.margin / 100));
                                             const sellRounded = Math.round(sellRaw);
+                                            const netErr = pricingErrors[`${idx}-net`];
+                                            const marginErr = pricingErrors[`${idx}-margin`];
+
                                             return (
                                                 <tr key={pax.id} className="bg-white hover:bg-gray-50 transition-colors">
                                                     <td className="px-3 py-2 font-semibold text-gray-900">{pax.label}</td>
                                                     <td className="px-3 py-2 text-[11px] text-gray-500">{pax.desc}</td>
                                                     <td className="px-3 py-2 text-right">
-                                                        <input
-                                                            type="number"
-                                                            className="w-20 px-2 py-1 bg-gray-50 border border-gray-200 rounded text-right text-xs outline-none focus:border-emerald-400"
-                                                            value={pax.net || ""}
-                                                            onChange={e => updatePaxPricing(idx, "net", Number(e.target.value))}
-                                                        />
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                onKeyDown={e => { if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault(); }}
+                                                                onBlur={e => { if (e.target.value === '' || Number(e.target.value) < 0) updatePaxPricing(idx, "net", 0); }}
+                                                                className={`w-20 px-2 py-1 border rounded text-right text-xs outline-none transition-all ${netErr ? 'border-red-500 bg-red-50' : 'bg-gray-50 border-gray-200 focus:border-emerald-400'}`}
+                                                                value={pax.net ?? 0}
+                                                                onChange={e => {
+                                                                    const val = parseInt(e.target.value);
+                                                                    updatePaxPricing(idx, "net", isNaN(val) ? 0 : val);
+                                                                }}
+                                                            />
+                                                            {netErr && <span className="text-[9px] text-red-500 font-medium whitespace-nowrap">👉 {netErr}</span>}
+                                                        </div>
                                                     </td>
                                                     <td className="px-3 py-2 text-right">
-                                                        <input
-                                                            type="number"
-                                                            className="w-16 px-2 py-1 bg-gray-50 border border-gray-200 rounded text-right text-xs outline-none focus:border-emerald-400"
-                                                            value={pax.margin || ""}
-                                                            onChange={e => updatePaxPricing(idx, "margin", Number(e.target.value))}
-                                                        />
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                onKeyDown={e => { if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault(); }}
+                                                                onBlur={e => { if (e.target.value === '' || Number(e.target.value) < 0) updatePaxPricing(idx, "margin", 0); }}
+                                                                className={`w-16 px-2 py-1 border rounded text-right text-xs outline-none transition-all ${marginErr ? 'border-red-500 bg-red-50' : 'bg-gray-50 border-gray-200 focus:border-emerald-400'}`}
+                                                                value={pax.margin ?? 0}
+                                                                onChange={e => {
+                                                                    const val = parseInt(e.target.value);
+                                                                    updatePaxPricing(idx, "margin", isNaN(val) ? 0 : val);
+                                                                }}
+                                                            />
+                                                            {marginErr && <span className="text-[9px] text-red-500 font-medium whitespace-nowrap">👉 {marginErr}</span>}
+                                                        </div>
                                                     </td>
                                                     <td className="px-3 py-2 text-right font-bold text-[#3B6D11]">
                                                         ₹{sellRounded.toLocaleString()}
@@ -848,8 +985,25 @@ export function ReadyMadeGenerator() {
                                                 const c = customers.find(x => x.id === e.target.value)
                                                 if (c) {
                                                     setCustomerName(c.name || "")
-                                                    setCustomerPhone(c.phone || "")
+                                                    
+                                                    // Handle phone number splitting
+                                                    const rawPhone = (c.phone || "").trim()
+                                                    if (rawPhone.startsWith('+')) {
+                                                        const parts = rawPhone.split(' ')
+                                                        if (parts.length > 1) {
+                                                            setCountryCode(parts[0])
+                                                            setCustomerPhone(parts.slice(1).join('').replace(/\D/g, ''))
+                                                        } else {
+                                                            // Fallback if no space
+                                                            setCustomerPhone(rawPhone.replace(/\D/g, ''))
+                                                        }
+                                                    } else {
+                                                        setCustomerPhone(rawPhone.replace(/\D/g, ''))
+                                                    }
+                                                    
                                                     setCustomerEmail(c.email || "")
+                                                    setNameError("")
+                                                    setPhoneError("")
                                                 }
                                             }}
                                         >
@@ -857,14 +1011,66 @@ export function ReadyMadeGenerator() {
                                             {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>)}
                                         </select>
 
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <div className="flex flex-col gap-4">
+                                            {/* Name Field */}
                                             <div className="space-y-1">
-                                                <label className="text-[9px] font-bold text-gray-400 uppercase ml-1">Name</label>
-                                                <input type="text" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm focus:border-emerald-500 outline-none placeholder:text-gray-300" placeholder="Enter name" value={customerName} onChange={e => setCustomerName(e.target.value)} />
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Name</label>
+                                                <input 
+                                                    type="text" 
+                                                    className={`w-full px-4 py-2.5 rounded-xl border ${nameError ? 'border-red-500 bg-red-50/30' : 'border-gray-200 bg-white'} text-sm outline-none focus:border-emerald-500 transition-all placeholder:text-gray-300`} 
+                                                    placeholder="Enter name" 
+                                                    value={customerName} 
+                                                    onChange={e => {
+                                                        const val = e.target.value.replace(/[^A-Za-z.\s]/g, '')
+                                                        setCustomerName(val)
+                                                        if (nameError) setNameError("")
+                                                    }} 
+                                                />
+                                                {nameError && (
+                                                    <p className="text-[10px] text-red-500 font-medium ml-1 animate-in fade-in slide-in-from-top-1">
+                                                        👉 {nameError}
+                                                    </p>
+                                                )}
                                             </div>
+
+                                            {/* Phone Field */}
                                             <div className="space-y-1">
-                                                <label className="text-[9px] font-bold text-gray-400 uppercase ml-1">Phone</label>
-                                                <input type="text" className="w-full px-4 py-2 rounded-xl border border-gray-200 text-sm focus:border-emerald-500 outline-none placeholder:text-gray-300" placeholder="10-digit" value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} />
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase ml-1">Phone</label>
+                                                <div className="flex gap-2">
+                                                    {/* Country Code Selector */}
+                                                    <div className="relative flex-shrink-0 w-28">
+                                                        <select
+                                                            className="w-full h-full pl-3 pr-8 py-2.5 rounded-xl border border-gray-200 bg-gray-50 text-[13px] font-medium outline-none focus:border-emerald-500 appearance-none cursor-pointer transition-all"
+                                                            value={countryCode}
+                                                            onChange={e => setCountryCode(e.target.value)}
+                                                        >
+                                                            {countryCodes.map(c => (
+                                                                <option key={c.code} value={c.code}>{c.label}</option>
+                                                            ))}
+                                                        </select>
+                                                        <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" />
+                                                    </div>
+
+                                                    {/* Phone Number Input */}
+                                                    <div className="flex-1">
+                                                        <input 
+                                                            type="text" 
+                                                            className={`w-full px-4 py-2.5 rounded-xl border ${phoneError ? 'border-red-500 bg-red-50/30' : 'border-gray-200 bg-white'} text-sm font-medium outline-none focus:border-emerald-500 transition-all placeholder:text-gray-300`} 
+                                                            placeholder="Phone digits" 
+                                                            value={customerPhone} 
+                                                            onChange={e => {
+                                                                const val = e.target.value.replace(/\D/g, '')
+                                                                setCustomerPhone(val)
+                                                                if (phoneError) setPhoneError("")
+                                                            }} 
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {phoneError && (
+                                                    <p className="text-[10px] text-red-500 font-medium ml-1 animate-in fade-in slide-in-from-top-1">
+                                                        👉 {phoneError}
+                                                    </p>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -951,9 +1157,7 @@ export function ReadyMadeGenerator() {
                                         </p>
 
                                         <div className="space-y-3">
-                                            <button className="w-full py-2 text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors">
-                                                Preview itinerary
-                                            </button>
+
                                             <button
                                                 onClick={handleGenerate}
                                                 disabled={generating}

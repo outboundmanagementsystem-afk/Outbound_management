@@ -842,7 +842,7 @@ export function ManualCanvas() {
                                                     }
                                                     return {
                                                         day: d.day || `Day ${String(index + 1).padStart(2, '0')}`,
-                                                        date: d.date || dayDateStr,
+                                                        date: dayDateStr || d.date || '',
                                                         title: d.title || d.name || '',
                                                         description: d.description || '',
                                                         highlights: d.highlights || [],

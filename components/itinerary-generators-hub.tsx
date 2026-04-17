@@ -65,7 +65,15 @@ export function ItineraryGeneratorsHub() {
         }
     ]
 
-    const visibleGenerators = generators.filter(g => g.showAlways || role === "admin" || role === "pre_ops" || role === "pre_ops_lead")
+    const allowedBuildRoles = [
+        "admin", "owner", "sales", "sales_lead", "ops", "ops_lead", 
+        "pre_ops", "pre_ops_lead", "post_ops", "post_ops_lead", 
+        "finance", "finance_lead"
+    ]
+
+    const visibleGenerators = generators.filter(g => 
+        g.showAlways || (g.title === "Build Your Packages" ? allowedBuildRoles.includes(role) : role === "admin")
+    )
 
     return (
         <div className="space-y-8 max-w-6xl mx-auto">

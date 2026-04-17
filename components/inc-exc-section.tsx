@@ -10,7 +10,7 @@ interface IncExcSectionProps {
 
 export function IncExcSection({ inclusions = [], exclusions = [] }: IncExcSectionProps) {
     const ref = useRef<HTMLDivElement>(null)
-    const [isVisible, setIsVisible] = useState(false)
+    const [isVisible, setIsVisible] = useState(true)
 
     useEffect(() => {
         const observer = new IntersectionObserver(

@@ -16,6 +16,8 @@ import { FooterSection } from "@/components/footer-section"
 import Image from "next/image"
 
 export default function PDFPrintPage() {
+    console.log("=== PDF PRINT PAGE LOADED ===");
+    
     const params = useParams()
     const itinId = params.id as string
     const [itin, setItin] = useState<any>(null)
@@ -101,7 +103,21 @@ export default function PDFPrintPage() {
                     windowWidth: totalWidth,
                     width: totalWidth,
                     backgroundColor: bgColor,
-                    logging: false
+                    logging: false,
+                    onclone: function(clonedDoc) {
+                        const allElements = clonedDoc.querySelectorAll('*');
+                        allElements.forEach(el => {
+                            const element = el as HTMLElement;
+                            
+                            // Branding colors - Ultimate Enforcement
+                            const pdfColor = element.getAttribute('data-pdf-color');
+                            if (pdfColor === 'yellow') {
+                                element.style.setProperty('color', '#FFD700', 'important');
+                            } else if (pdfColor === 'white') {
+                                element.style.setProperty('color', '#FFFFFF', 'important');
+                            }
+                        });
+                    }
                 });
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 pdf.addImage(dataUrl, 'JPEG', 0, currentY, totalWidth, item.height, undefined, 'FAST');
@@ -116,6 +132,17 @@ export default function PDFPrintPage() {
         if (!dateStr) return ""
         try { return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) } catch { return dateStr }
     }
+
+    // Debug component state
+    console.log("=== COMPONENT STATE DEBUG ===");
+    console.log("Loading:", loading);
+    console.log("Itinerary:", itin);
+    console.log("Days:", days);
+    console.log("Hotels:", hotels);
+    console.log("Transfers:", transfers);
+    console.log("Flights:", flights);
+    console.log("Activities:", activities);
+    console.log("Pricing:", pricing);
 
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-[#031A0C]">
@@ -152,15 +179,37 @@ export default function PDFPrintPage() {
         roomCategory: h.roomCategory || h.roomType || "",
     }))
 
-    const dayPlans = days.map((d: any) => ({ 
-        day: d.day || `Day ${String(d.dayNumber || 1).padStart(2, '0')}`, 
-        date: d.date || "", 
-        title: d.title || "", 
-        description: d.description || "", 
-        highlights: d.highlights || [],
-        subDestination: d.subDestination || "",
-        overnightStay: d.overnightStay || ""
-    }))
+    // Debug day plans data
+    console.log("=== DAY PLANS DEBUG ===");
+    console.log("Itinerary Start Date:", itin.startDate);
+    console.log("Raw Days Data:", days);
+    console.log("Days Length:", days.length);
+    
+    const dayPlans = days.map((d: any, index: number) => { 
+        // Generate sequential date based on start date
+        const currentDate = new Date(itin.startDate);
+        currentDate.setDate(currentDate.getDate() + index);
+        const formattedDate = currentDate.toLocaleDateString("en-US", { 
+            weekday: "short", 
+            month: "short", 
+            day: "numeric" 
+        }).toUpperCase();
+        
+        // Debug logging
+        console.log(`Day ${index + 1}: Start Date: ${itin.startDate}, Calculated Date: ${formattedDate}, Original Date: ${d.date}`);
+        
+        return {
+            day: d.day || `Day ${String(d.dayNumber || index + 1).padStart(2, '0')}`, 
+            date: formattedDate, 
+            title: d.title || "", 
+            description: d.description || "", 
+            highlights: d.highlights || [],
+            subDestination: d.subDestination || "",
+            overnightStay: d.overnightStay || ""
+        };
+    })
+    
+    console.log("Final Day Plans:", dayPlans);
 
     const hasFlights = flights && flights.length > 0
     const hasHotels = hotelList.length > 0
@@ -218,7 +267,7 @@ export default function PDFPrintPage() {
 
                     {hasDayPlans && (
                         <div className="pdf-chunk pdf-dark-bg w-full">
-                            <DayItinerary dayPlans={dayPlans} destination={itin.destination} totalDays={itin.days} />
+                            <DayItinerary dayPlans={dayPlans} destination={itin.destination} totalDays={itin.days} startDate={itin.startDate} />
                         </div>
                     )}
 
@@ -231,14 +280,20 @@ export default function PDFPrintPage() {
                         />
                     </div>
 
+                    {/* Inclusions & Exclusions from destination */}
                     {(itin.pdfTemplate?.inclusions?.length > 0 || itin.pdfTemplate?.exclusions?.length > 0) && (
                         <div className="pdf-chunk w-full">
                             <IncExcSection inclusions={itin.pdfTemplate.inclusions || []} exclusions={itin.pdfTemplate.exclusions || []} />
                         </div>
                     )}
 
+                    {/* Important Notes from destination */}
                     {itin.pdfTemplate?.importantNotes?.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Important Notes" terms={itin.pdfTemplate.importantNotes} /></div>}
+                    
+                    {/* Terms & Conditions from destination */}
                     {itin.pdfTemplate?.termsAndConditions?.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Terms & Conditions" terms={itin.pdfTemplate.termsAndConditions} /></div>}
+                    
+                    {/* Legacy pdfTemplate sections (fallback) */}
                     {itin.pdfTemplate?.paymentPolicy?.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Payment Policy" terms={itin.pdfTemplate.paymentPolicy} /></div>}
                     {itin.pdfTemplate?.cancellationPolicy?.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Cancellation Policy" terms={itin.pdfTemplate.cancellationPolicy} /></div>}
 
@@ -261,7 +316,7 @@ export default function PDFPrintPage() {
                         </div>
                         <div className="h-[1.5px] w-10 bg-[#FFE500]/30 mx-auto mb-4" />
                         <p className="font-sans text-[10px] text-white/30 uppercase tracking-[0.15em] font-medium">
-                            www.outboundtravelers.com
+                            info@outboundtravelers.com · www.outboundtravelers.com
                         </p>
                         <p className="font-sans text-[9px] text-white/20 mt-4 uppercase tracking-widest">
                             © {new Date().getFullYear()} Outbound Travelers. All Rights Reserved.

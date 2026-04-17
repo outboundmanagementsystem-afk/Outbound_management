@@ -35,9 +35,13 @@ export default function PublicItineraryPage() {
     const [downloading, setDownloading] = useState(false)
 
     const handleDownloadPDF = async () => {
+        const rootElement = document.getElementById("itinerary-content")
         try {
             setDownloading(true)
-            const rootElement = document.getElementById("itinerary-content")
+            if (!rootElement) {
+                setDownloading(false)
+                return
+            }
             if (!rootElement) {
                 setDownloading(false)
                 return
@@ -47,14 +51,8 @@ export default function PublicItineraryPage() {
             const html2canvas = (await import('html2canvas')).default;
             const { toJpeg } = await import('html-to-image');
 
-            // Force all animations/visibility
-            const allElements = rootElement.querySelectorAll('*');
-            allElements.forEach(el => {
-                const e = el as HTMLElement;
-                if (e.classList.contains('opacity-0')) e.style.opacity = '1';
-                if (e.style.transform && e.style.transform !== 'none') e.style.transform = 'none';
-                if (e.style.transition) e.style.transition = 'none';
-            });
+            // Wait for full render before capture
+            await new Promise(resolve => setTimeout(resolve, 1500));
 
             // Wait for images
             const images = Array.from(rootElement.querySelectorAll('img'));
@@ -69,6 +67,9 @@ export default function PublicItineraryPage() {
 
             await new Promise(r => setTimeout(r, 2000));
             await new Promise(r => setTimeout(r, 2000));
+            
+            // Additional delay to ensure PDF styles are fully applied
+            await new Promise(r => setTimeout(r, 500));
 
             const widthPx = Math.floor(rootElement.offsetWidth) || 480;
             const chunks = Array.from(rootElement.querySelectorAll('.pdf-chunk')) as HTMLElement[];
@@ -135,10 +136,227 @@ export default function PublicItineraryPage() {
                 const canvas = await html2canvas(item.chunk, {
                     scale: 2,
                     useCORS: true,
-                    windowWidth: widthPx,
-                    width: widthPx,
+                    allowTaint: true,
                     backgroundColor: bgColor,
-                    logging: false
+                    scrollY: -window.scrollY,
+                    windowWidth: item.chunk.scrollWidth,
+                    windowHeight: item.chunk.scrollHeight,
+                    onclone: function(clonedDoc) {
+                        const cloned = clonedDoc.getElementById('itinerary-content');
+                        if (!cloned) return Promise.resolve();
+
+                        // Step 1: Walk every element and inline its computed color and background-color
+                        const allElements = cloned.querySelectorAll('*');
+                        allElements.forEach(el => {
+                            const element = el as HTMLElement;
+                            const computed = clonedDoc.defaultView?.getComputedStyle(el);
+                            if (!computed) return;
+                            const color = computed.getPropertyValue('color');
+                            const bg = computed.getPropertyValue('background-color');
+                            const fontSize = computed.getPropertyValue('font-size');
+                            const fontWeight = computed.getPropertyValue('font-weight');
+                            const fontFamily = computed.getPropertyValue('font-family');
+
+                            if (color) element.style.setProperty('color', color, 'important');
+                            if (bg && bg !== 'rgba(0, 0, 0, 0)') element.style.setProperty('background-color', bg, 'important');
+                            if (fontSize) element.style.setProperty('font-size', fontSize, 'important');
+                            if (fontWeight) element.style.setProperty('font-weight', fontWeight, 'important');
+                            if (fontFamily) element.style.setProperty('font-family', fontFamily, 'important');
+                        });
+
+                        // Step 2: Force correct colors on specific sections
+
+                        // Dark background sections (Hero, Pricing, etc.) - specific branding colors
+                        cloned.querySelectorAll('[class*="hero"], section[class*="bg-[#031A0C]"], div[class*="bg-[#031A0C]"], section[class*="bg-[#051F10]"], div[class*="bg-[#051F10]"]').forEach(section => {
+                            // General text in dark sections should be white
+                            section.querySelectorAll('*').forEach(el => {
+                                if (!(el as HTMLElement).closest('.bg-white') && !(el as HTMLElement).closest('[class*="bg-[#FFE500]"]')) {
+                                    (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+                                }
+                            });
+
+                            // Branding / Yellow elements
+                            section.querySelectorAll('h2[class*="text-[#FFE500]"], span[class*="text-[#FFE500]"], p[class*="text-[#FFE500]"]').forEach(el => {
+                                (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                            });
+
+                            // Any yellow background - black text
+                            section.querySelectorAll('[class*="bg-[#FFE500]"]').forEach(yellow => {
+                                (yellow as HTMLElement).style.setProperty('background-color', '#ffe500', 'important');
+                                yellow.querySelectorAll('*').forEach(el => {
+                                    (el as HTMLElement).style.setProperty('color', '#1a211d', 'important');
+                                });
+                            });
+
+                            // Destination Card (White background)
+                            section.querySelectorAll('div[class*="bg-white"]').forEach(card => {
+                                (card as HTMLElement).style.setProperty('background-color', '#ffffff', 'important');
+                                card.querySelectorAll('*').forEach(el => {
+                                    const element = el as HTMLElement;
+                                    // Step 3: Skip elements that have explicit branding markers
+                                    const pdfColor = element.getAttribute('data-pdf-color');
+                                    if (pdfColor === 'yellow') {
+                                        element.style.setProperty('color', '#FFD700', 'important');
+                                        return;
+                                    }
+                                    if (pdfColor === 'white') {
+                                        element.style.setProperty('color', '#FFFFFF', 'important');
+                                        return;
+                                    }
+                                    
+                                    // Make everything inside the white card black by default
+                                    element.style.setProperty('color', '#1a211d', 'important');
+                                });
+                                // Keep the yellow pill background
+                                card.querySelectorAll('div[class*="bg-[#FFE500]"]').forEach(pill => {
+                                    (pill as HTMLElement).style.setProperty('background-color', '#ffe500', 'important');
+                                    pill.querySelectorAll('*').forEach(el => {
+                                        (el as HTMLElement).style.setProperty('color', '#000000', 'important');
+                                    });
+                                });
+                                // Destination Name - Selective targeting
+                                card.querySelectorAll('h3').forEach(el => {
+                                    const element = el as HTMLElement;
+                                    if (element.getAttribute('data-pdf-color')) return; // Skip branded titles
+                                    element.style.setProperty('color', '#1a211d', 'important');
+                                    element.style.setProperty('font-weight', '900', 'important');
+                                });
+                            });
+                        });
+
+                        // Final Step: Ultimate Branding Enforcement
+                        // This runs AFTER all other rules and forces marked elements to their branding colors.
+                        cloned.querySelectorAll('[data-pdf-color]').forEach(el => {
+                            const element = el as HTMLElement;
+                            const pdfColor = element.getAttribute('data-pdf-color');
+                            if (pdfColor === 'yellow') {
+                                element.style.setProperty('color', '#FFD700', 'important');
+                            } else if (pdfColor === 'white') {
+                                element.style.setProperty('color', '#FFFFFF', 'important');
+                            }
+                        });
+
+                        // Hotel details
+                        cloned.querySelectorAll('[class*="hotel-name"], [class*="hotel-title"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
+                        });
+                        cloned.querySelectorAll('[class*="hotel-location"], [class*="location-text"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#6b7280', 'important');
+                        });
+                        cloned.querySelectorAll('[class*="nights-badge"], [class*="night-tag"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('background-color', '#f5c518', 'important');
+                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
+                        });
+
+                        // Day itinerary white cards - all text black except markers
+                        cloned.querySelectorAll('[class*="bg-white"] *, [class*="bg-gray-50"] *').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
+                        });
+                        
+                        // Overnight stay dark card - Special handling to match branding
+                        cloned.querySelectorAll('[class*="bg-[#051F10]"]').forEach(card => {
+                            // First, ensure the card background is dark green
+                            (card as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
+                            
+                            // 1. Identify and style the 'Overnight Stay' label (yellow)
+                            card.querySelectorAll('span[class*="text-[#FFE500]"]').forEach(el => {
+                                (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                                (el as HTMLElement).style.setProperty('opacity', '1', 'important');
+                            });
+                            
+                            // 2. Identify and style the destination name (white)
+                            card.querySelectorAll('span[class*="text-white"], span[class*="text-base"]').forEach(el => {
+                                (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+                            });
+                        });
+
+                        // Day Marker (DAY 01) - Ensuring it stays yellow on dark
+                        cloned.querySelectorAll('div[class*="bg-[#051F10]"]').forEach(badge => {
+                             if (badge.textContent?.toUpperCase().includes('DAY')) {
+                                (badge as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
+                                (badge as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                                // Also handle any potential children
+                                badge.querySelectorAll('*').forEach(el => {
+                                    (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                                });
+                             }
+                        });
+
+                        // Package plan
+                        cloned.querySelectorAll('[class*="price"], [class*="amount"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#f5c518', 'important');
+                        });
+                        cloned.querySelectorAll('[class*="per-person"], [class*="package"] p').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+                        });
+
+                        // Inclusions
+                        cloned.querySelectorAll('h3[class*="text-emerald-950"], h3[style*="color: #052e16"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#374151', 'important');
+                        });
+                        cloned.querySelectorAll('p[class*="text-gray-700"], p[style*="color: #374151"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#374151', 'important');
+                        });
+                        cloned.querySelectorAll('span[class*="text-emerald-500"], span[style*="color: #10b981"], svg[style*="color: #10b981"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#22c55e', 'important');
+                        });
+
+                        // Terms, Policies, Notes & Trip Summary (Light Background Sections)
+                        cloned.querySelectorAll('section[style*="background: #FAF9F6"], section[style*="background-color: #FAF9F6"], section[class*="pdf-section"]').forEach(section => {
+                             // Skip dark headers inside summary if any, but focus on the light cards
+                             section.querySelectorAll('div[class*="bg-[#FDFDFB]"], div[class*="bg-white"], div[class*="bg-gray-50"]').forEach(card => {
+                                 card.querySelectorAll('*').forEach(el => {
+                                     (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
+                                 });
+                             });
+
+                             section.querySelectorAll('h2, h3').forEach(el => {
+                                 // Hero and Summary headers might be white on dark, handled by other rules if needed, 
+                                 // but for generic sections on light bg, force dark.
+                                 const parentBg = clonedDoc.defaultView?.getComputedStyle(el.parentElement as Element).backgroundColor;
+                                 if (parentBg === 'rgb(255, 255, 255)' || parentBg === 'rgb(253, 253, 251)' || parentBg === 'rgb(250, 249, 246)') {
+                                    (el as HTMLElement).style.setProperty('color', '#031A0C', 'important');
+                                 }
+                             });
+                             
+                             // Specific fix for Trip Summary Labels and Values
+                             section.querySelectorAll('span[class*="tracking-[0.35em]"]').forEach(el => {
+                                 // This targets the labels like "CONSULTANT:"
+                                 (el as HTMLElement).style.setProperty('color', '#6b7280', 'important');
+                             });
+                             section.querySelectorAll('span[class*="text-[15px]"]').forEach(el => {
+                                 // This targets the values
+                                 (el as HTMLElement).style.setProperty('color', '#1a211d', 'important');
+                             });
+                        });
+
+                        // Footer (Dark Background) - Ensure white text
+                        cloned.querySelectorAll('footer').forEach(footer => {
+                             footer.querySelectorAll('*').forEach(el => {
+                                 (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+                             });
+                             footer.querySelectorAll('span[class*="text-[#FFE500]"]').forEach(el => {
+                                 (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                             });
+                        });
+                        cloned.querySelectorAll('span[class*="text-red-400"], span[style*="color: #f87171"], svg[style*="color: #ef4444"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#ef4444', 'important');
+                        });
+
+                        // Important Notes
+                        cloned.querySelectorAll('span[style*="color: rgba(212,175,55,0.4)"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#c9a84c', 'important');
+                        });
+                        cloned.querySelectorAll('h2[style*="color: #031A0C"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
+                        });
+                        cloned.querySelectorAll('p[class*="text-gray-700"], p[style*="color: #374151"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#374151', 'important');
+                        });
+
+                        // Step 3: Wait for repaint
+                        return new Promise(resolve => setTimeout(resolve, 1500));
+                    }
                 });
 
                 const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
@@ -149,9 +367,14 @@ export default function PublicItineraryPage() {
             }
 
             pdf.save(`Itinerary-${itin?.customerName || "Outbound"}.pdf`);
+            
+            // Remove pdf-render class after PDF generation
+            if (rootElement) rootElement.classList.remove('pdf-render');
         } catch (err) {
             console.error(err);
             alert("Error generating PDF. Please retry.");
+            // Ensure cleanup even on error
+            if (rootElement) rootElement.classList.remove('pdf-render');
         } finally {
             setDownloading(false)
         }
@@ -247,16 +470,35 @@ export default function PublicItineraryPage() {
         roomCategory: h.roomCategory || h.roomType || "",
     }))
 
-    // Build day plans for the component
-    const dayPlans = days.map((d: any) => ({
-        day: d.day || `Day ${String(d.dayNumber || 1).padStart(2, '0')}`,
-        date: d.date || "",
-        title: d.title || "",
-        description: d.description || "",
-        highlights: d.highlights || [],
-        subDestination: d.subDestination || "",
-        overnightStay: d.overnightStay || ""
-    }))
+    // Build day plans for the component with sequential dates
+    console.log("=== MAIN ITINERARY PAGE DATE CALCULATION ===");
+    console.log("Start Date:", itin.startDate);
+    console.log("Raw Days:", days);
+    
+    const dayPlans = days.map((d: any, index: number) => {
+        // Generate sequential date based on start date
+        const currentDate = new Date(itin.startDate);
+        currentDate.setDate(currentDate.getDate() + index);
+        const formattedDate = currentDate.toLocaleDateString("en-US", { 
+            weekday: "short", 
+            month: "short", 
+            day: "numeric" 
+        }).toUpperCase();
+        
+        console.log(`Day ${index + 1}: ${formattedDate} (was: ${d.date})`);
+        
+        return {
+            day: d.day || `Day ${String(d.dayNumber || index + 1).padStart(2, '0')}`,
+            date: formattedDate,
+            title: d.title || "",
+            description: d.description || "",
+            highlights: d.highlights || [],
+            subDestination: d.subDestination || "",
+            overnightStay: d.overnightStay || ""
+        };
+    })
+    
+    console.log("Final Day Plans:", dayPlans);
 
     // Check if flights exist
     const hasFlights = flights && flights.length > 0
@@ -264,6 +506,16 @@ export default function PublicItineraryPage() {
     const hasTransfers = transfers && transfers.length > 0
     const hasDayPlans = dayPlans.length > 0
     const hasInclExcl = itin.pdfTemplate?.inclusions?.length > 0 || itin.pdfTemplate?.exclusions?.length > 0
+    
+    // Debug PDF template data
+    console.log("=== ITINERARY PDF DEBUG ===");
+    console.log("Itinerary ID:", itinId);
+    console.log("PDF Template:", itin.pdfTemplate);
+    console.log("Has Incl/Excl:", hasInclExcl);
+    console.log("Inclusions:", itin.pdfTemplate?.inclusions);
+    console.log("Exclusions:", itin.pdfTemplate?.exclusions);
+    console.log("Terms:", itin.pdfTemplate?.termsAndConditions);
+    console.log("Important Notes:", itin.pdfTemplate?.importantNotes);
 
     return (
         <div className="bg-gray-100 min-h-screen flex justify-center w-full" style={{ '--font-sans': 'var(--font-poppins), sans-serif', '--font-serif': 'var(--font-charmonman), serif' } as React.CSSProperties}>
@@ -333,7 +585,7 @@ export default function PublicItineraryPage() {
                 {/* DAY WISE ITINERARY */}
                 {hasDayPlans && (
                     <div className="pdf-chunk pdf-dark-bg w-full">
-                        <DayItinerary dayPlans={dayPlans} destination={itin.destination} totalDays={itin.days} />
+                        <DayItinerary dayPlans={dayPlans} destination={itin.destination} totalDays={itin.days} startDate={itin.startDate} />
                     </div>
                 )}
                 
@@ -404,7 +656,7 @@ export default function PublicItineraryPage() {
                     </div>
                     <div className="h-[1.5px] w-10 bg-[#FFE500]/30 mx-auto mb-4" />
                     <p className="font-sans text-[10px] text-white/30 uppercase tracking-[0.15em] font-medium">
-                        www.outboundtravelers.com
+                        info@outboundtravelers.com · www.outboundtravelers.com
                     </p>
                     <p className="font-sans text-[9px] text-white/20 mt-4 uppercase tracking-widest">
                         © {new Date().getFullYear()} Outbound Travelers. All Rights Reserved.

@@ -24,14 +24,33 @@ async function generatePdf(url, outputPath) {
     console.log("Waiting for images and content to stabilize...");
     await page.waitForTimeout(3000);
     
-    // Inject CSS to hide download button if visible
-    await page.addStyleTag({ content: "#download-pdf-btn { display: none !important; }" });
+    // Inject CSS to hide download button if visible and ensure proper text colors
+    await page.addStyleTag({ content: `
+        #download-pdf-btn { display: none !important; }
+        /* Ensure proper text colors for TripSummary */
+        .text-\\[#8E918F\\] { color: #6B7280 !important; } /* Gray labels */
+        .text-\\[#1A211D\\] { color: #000000 !important; } /* Black values */
+        /* Ensure text visibility on dark backgrounds */
+        .pdf-dark-bg * { color: #000000 !important; }
+        .text-gray-600 { color: #000000 !important; }
+        .text-gray-500 { color: #000000 !important; }
+        .text-gray-400 { color: #000000 !important; }
+        .text-blue-800 { color: #000000 !important; }
+        .text-blue-600 { color: #000000 !important; }
+        .text-blue-500 { color: #000000 !important; }
+        /* Ensure all sections are visible */
+        .pdf-chunk { display: block !important; visibility: visible !important; }
+    ` });
     
     // Ensure scroll to bottom to trigger any lazy loading
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(1000);
+    
+    // Wait for dynamic content to fully load
+    console.log("Waiting for dynamic content to load...");
+    await page.waitForTimeout(3000);
 
     // Calculate total height for dynamic PDF sizing
     const dimensions = await page.evaluate(() => {
