@@ -56,6 +56,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
 
     // Step 1: Customer & Trip
     const [customerName, setCustomerName] = useState("")
+    const [packageDescription, setPackageDescription] = useState("")
     const [customerPhone, setCustomerPhone] = useState("")
     const [customerEmail, setCustomerEmail] = useState("")
     const [destinationId, setDestinationId] = useState("")
@@ -308,6 +309,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     setConsultantName(it.consultantName || "")
                     setConsultantPhone(it.consultantPhone || "")
                     setMargin(it.margin || 15)
+                    setPackageDescription(it.description || "")
                 }
 
                 if (p && p.length > 0) {
@@ -492,6 +494,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 const packageData = {
                     ...baseData,
                     packageName: customerName,
+                    description: packageDescription,
                 }
                 if (editId) {
                     await updatePackage(editId, packageData)
@@ -697,6 +700,19 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                 <div><label className={labelClass} style={labelStyle}>Phone</label><input className={inputClass} style={inputStyle} value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="9840341529" /></div>
                                 <div className="sm:col-span-2"><label className={labelClass} style={labelStyle}>Email</label><input className={inputClass} style={inputStyle} value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="customer@email.com" /></div>
                             </div>
+                            {mode === "package" && (
+                                <div className="mt-4">
+                                    <label className={labelClass} style={labelStyle}>Description</label>
+                                    <textarea 
+                                        className={inputClass} 
+                                        style={{ ...inputStyle, minHeight: '100px' }} 
+                                        value={packageDescription} 
+                                        onChange={e => setPackageDescription(e.target.value)} 
+                                        placeholder="Enter package description..." 
+                                        rows={3}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         <div className="h-px" style={{ background: '#f3f4f6' }} />

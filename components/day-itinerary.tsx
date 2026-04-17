@@ -99,7 +99,7 @@ export function DayItinerary({ dayPlans, destination, totalDays, startDate }: Da
                   
                   {/* Day Marker */}
                   <div className="flex items-center justify-between mb-5">
-                      <div className="bg-[#051F10] text-[#FFE500] px-5 py-2 rounded-[14px] font-sans text-lg font-black uppercase tracking-tighter shadow-lg" style={{ color: '#FFD700', fontWeight: 'bold' }} data-pdf-color="yellow">
+                      <div className="bg-[#051F10] text-[#FFE500] px-5 py-2 rounded-[14px] font-sans text-lg font-black uppercase tracking-tighter shadow-lg day-marker-badge" style={{ color: '#FFD700', fontWeight: 'bold' }} data-pdf-color="yellow">
                           {dayLabel}
                       </div>
                   </div>
@@ -154,8 +154,8 @@ export function DayItinerary({ dayPlans, destination, totalDays, startDate }: Da
                               <Moon className="w-6 h-6 text-[#FFE500]" />
                           </div>
                           <div>
-                              <p className="font-sans font-black uppercase tracking-[0.25em] block mb-1" style={{ color: '#FFD700', fontSize: '12px' }} data-pdf-color="yellow">Overnight Stay</p>
-                              <h3 className="font-sans text-base font-black uppercase tracking-tight" style={{ color: '#FFFFFF', fontWeight: '600' }} data-pdf-color="white">
+                              <p className="font-sans font-black uppercase tracking-[0.25em] block mb-1 overnight-stay-label" style={{ color: '#FFD700', fontSize: '12px' }} data-pdf-color="yellow">Overnight Stay</p>
+                              <h3 className="font-sans text-base font-black uppercase tracking-tight overnight-stay-value" style={{ color: '#FFFFFF', fontWeight: '600' }} data-pdf-color="white">
                                   {day.overnightStay || day.subDestination || dest}
                               </h3>
                           </div>

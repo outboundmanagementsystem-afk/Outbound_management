@@ -105,17 +105,52 @@ export default function PDFPrintPage() {
                     backgroundColor: bgColor,
                     logging: false,
                     onclone: function(clonedDoc) {
-                        const allElements = clonedDoc.querySelectorAll('*');
-                        allElements.forEach(el => {
-                            const element = el as HTMLElement;
-                            
-                            // Branding colors - Ultimate Enforcement
-                            const pdfColor = element.getAttribute('data-pdf-color');
-                            if (pdfColor === 'yellow') {
-                                element.style.setProperty('color', '#FFD700', 'important');
-                            } else if (pdfColor === 'white') {
-                                element.style.setProperty('color', '#FFFFFF', 'important');
-                            }
+                        // 1. Force black text on white backgrounds (Safety baseline)
+                        clonedDoc.querySelectorAll('[class*="bg-white"] *, [class*="bg-gray-50"] *').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
+                        });
+
+                        // 2. Day Label Recovery
+                        clonedDoc.querySelectorAll('[class*="day-marker-badge"], [class*="bg-[#051F10]"]').forEach(badge => {
+                             if (badge.textContent?.toUpperCase().includes('DAY')) {
+                                (badge as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
+                                (badge as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                                badge.querySelectorAll('*').forEach(el => {
+                                    (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                                });
+                             }
+                        });
+
+                        // 3. Overnight Stay Recovery
+                        clonedDoc.querySelectorAll('[class*="bg-[#051F10]"]').forEach(card => {
+                            (card as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
+                            card.querySelectorAll('p, h3, span, div').forEach(el => {
+                                const element = el as HTMLElement;
+                                const text = element.textContent?.toUpperCase() || "";
+                                if (text.includes('OVERNIGHT') || element.classList.contains('overnight-stay-label')) {
+                                    element.style.setProperty('color', '#ffe500', 'important');
+                                } else if (element.classList.contains('overnight-stay-value') || element.tagName === 'H3' || element.classList.contains('text-white')) {
+                                    element.style.setProperty('color', '#ffffff', 'important');
+                                }
+                            });
+                        });
+
+                        // 4. Pricing Recovery
+                        clonedDoc.querySelectorAll('[class*="price"], [class*="amount"], [class*="per-person"]').forEach(el => {
+                             const element = el as HTMLElement;
+                             if (element.classList.contains('price-amount')) {
+                                element.style.setProperty('color', '#ffe500', 'important');
+                             } else if (element.classList.contains('per-person-label')) {
+                                element.style.setProperty('color', '#ffffff', 'important');
+                             }
+                        });
+
+                        // 5. Final Pass: Marked Branding Enforcement
+                        clonedDoc.querySelectorAll('[data-pdf-color]').forEach(el => {
+                            const pdfColor = el.getAttribute('data-pdf-color');
+                            if (pdfColor === 'yellow') (el as HTMLElement).style.setProperty('color', '#FFD700', 'important');
+                            if (pdfColor === 'white') (el as HTMLElement).style.setProperty('color', '#FFFFFF', 'important');
+                            if (pdfColor === 'black') (el as HTMLElement).style.setProperty('color', '#1a211d', 'important');
                         });
                     }
                 });

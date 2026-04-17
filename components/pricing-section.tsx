@@ -36,7 +36,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
     <>
       {/* HEADER SECTION */}
       <section
-        className="relative py-8 px-4 overflow-hidden page-break-before pdf-section"
+        className="relative py-8 px-4 overflow-hidden page-break-before pdf-section bg-[#051F10]"
         style={{
           backgroundImage: "url('/images/bg/page_008.png')",
           backgroundSize: 'cover',
@@ -64,7 +64,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
           return (
             <section
               key={idx}
-              className="relative py-3 px-4 avoid-break pdf-section"
+              className="relative py-3 px-4 avoid-break pdf-section bg-[#051F10]"
               style={{
                 backgroundImage: "url('/images/bg/page_008.png')",
                 backgroundSize: 'cover',
@@ -111,10 +111,10 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
 
                     <div className="mb-6">
                       <div className="flex flex-col items-center">
-                        <span className="font-sans text-4xl font-black text-[#1A211D] tracking-tighter leading-none mb-2">
+                        <span className="font-sans text-4xl font-black text-[#1A211D] tracking-tighter leading-none mb-2 price-amount" data-pdf-color="black">
                           ₹{plan.total.toLocaleString()}
                         </span>
-                        <span className="font-sans text-[8px] font-black uppercase tracking-[0.35em] text-[#8E918F]">
+                        <span className="font-sans text-[8px] font-black uppercase tracking-[0.35em] text-[#8E918F] per-person-label">
                             NET PRICE PER PERSON
                         </span>
                       </div>
@@ -122,7 +122,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
 
                     <div className="bg-[#051F10] px-4 py-3 rounded-xl flex items-center gap-2 shadow-xl w-full justify-center border border-white/5">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#FFE500] animate-pulse" />
-                      <span className="font-sans text-[9px] font-black text-white/80 uppercase tracking-tight">
+                      <span className="font-sans text-[9px] font-black text-white/80 uppercase tracking-tight" style={{ color: '#ffffff' }} data-pdf-color="white">
                         {displayGst}
                       </span>
                     </div>
@@ -134,7 +134,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
         })
       ) : (
         <section
-          className="relative py-10 px-4 avoid-break pdf-section"
+          className="relative py-10 px-4 avoid-break pdf-section bg-[#051F10]"
           style={{
             backgroundImage: "url('/images/bg/page_008.png')",
             backgroundSize: 'cover',
@@ -144,14 +144,14 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
         >
           <div className="absolute inset-0 bg-[#00000088] pointer-events-none" />
           <div className="relative z-10 text-center w-full">
-            <h2 className="font-sans text-5xl font-black text-[#FFE500] tracking-tighter mb-8 drop-shadow-2xl leading-none">
+            <h2 className="font-sans text-5xl font-black text-[#FFE500] tracking-tighter mb-8 drop-shadow-2xl leading-none price-amount" data-pdf-color="yellow">
               {price || '₹44,900'}
             </h2>
             <div className="flex flex-col gap-4 items-center">
               {displayInclusions.map((item) => (
                 <div key={item} className="flex items-center gap-3 group">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#FFE500]" />
-                  <span className="font-sans text-[10px] font-black uppercase tracking-[0.25em] text-white/80">{item}</span>
+                  <span className="font-sans text-[10px] font-black uppercase tracking-[0.25em] text-white per-person-label" style={{ color: '#ffffff' }} data-pdf-color="white">{item}</span>
                 </div>
               ))}
             </div>

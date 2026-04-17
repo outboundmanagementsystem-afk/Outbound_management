@@ -9,7 +9,7 @@ import {
     createItinerary, addItineraryDay, addItineraryHotel, addItineraryTransfer, addItineraryActivity, addItineraryFlight, addItineraryPricing, getCustomers,
     createPackage, updatePackage, addPackageDay, addPackageHotel, addPackagePricing, getPresetDays, getHotels, deletePackage, clearPackageSubcollections
 } from "@/lib/firestore"
-import { PackageSearch, Loader2, Plus, ArrowLeft, Trash2, ChevronDown, Check } from "lucide-react"
+import { PackageSearch, Loader2, Plus, ArrowLeft, Trash2, ChevronDown, Check, X, Eye } from "lucide-react"
 import { SuccessModal } from "./success-modal"
 
 export function ReadyMadeGenerator() {
@@ -68,6 +68,7 @@ export function ReadyMadeGenerator() {
     const [newPkgTier, setNewPkgTier] = useState("Deluxe")
     const [newPkgNights, setNewPkgNights] = useState(3)
     const [newPkgDays, setNewPkgDays] = useState(4)
+    const [newPkgDescription, setNewPkgDescription] = useState("")
 
     const [dayPlans, setDayPlans] = useState<string[]>([]) // Array of day plan IDs or names
     const [hotelStops, setHotelStops] = useState<any[]>([{ location: "", hotelId: "", mealPlan: "CP", nights: 2 }])
@@ -83,6 +84,14 @@ export function ReadyMadeGenerator() {
     const [editingPkgId, setEditingPkgId] = useState<string | null>(null)
     const [fetchingPkgDetails, setFetchingPkgDetails] = useState(false)
     const [selectedDestinationData, setSelectedDestinationData] = useState<any>(null)
+
+    // Preview Itinerary state
+    const [showPreview, setShowPreview] = useState(false)
+    const [previewFlights, setPreviewFlights] = useState<any[]>([])
+    const [previewHotels, setPreviewHotels] = useState<any[]>([])
+    const [previewActivities, setPreviewActivities] = useState<any[]>([])
+    const [previewDays, setPreviewDays] = useState<any[]>([])
+    const [fetchingDetails, setFetchingDetails] = useState(false)
 
     // Dynamic Pricing Helpers
     const getBracketPrice = (id: string) => {
@@ -183,8 +192,27 @@ export function ReadyMadeGenerator() {
                 })
                 .catch(err => {
                     console.warn("Could not fetch destination data:", err);
-                    setSelectedDestinationData(null);
+                    setSuccessMessage("Could not fetch destination details.");
+                    setShowSuccessModal(true);
                 });
+            
+            // Additional fetch for Preview Modal
+            setFetchingDetails(true);
+            Promise.all([
+                getPackageFlights(selectedPkg.id),
+                getPackageHotels(selectedPkg.id),
+                getPackageActivities(selectedPkg.id),
+                getPackageDays(selectedPkg.id)
+            ]).then(([flights, hotels, activities, days]) => {
+                setPreviewFlights(flights);
+                setPreviewHotels(hotels);
+                setPreviewActivities(activities);
+                setPreviewDays(days);
+            }).catch(err => {
+                console.error("Error fetching preview details:", err);
+            }).finally(() => {
+                setFetchingDetails(false);
+            });
         }
     }, [selectedPkg]);
 
@@ -345,6 +373,7 @@ export function ReadyMadeGenerator() {
             setNewPkgTier(pkg.tier || "Deluxe")
             setNewPkgNights(pkg.nights || 3)
             setNewPkgDays(pkg.days || 4)
+            setNewPkgDescription(pkg.description || "")
 
             // Map days
             const sortedDays = days.sort((a: any, b: any) => (a.dayNumber || 0) - (b.dayNumber || 0))
@@ -399,6 +428,7 @@ export function ReadyMadeGenerator() {
                 tier: newPkgTier,
                 nights: newPkgNights,
                 days: newPkgDays,
+                description: newPkgDescription,
                 status: "active"
             }
 
@@ -529,6 +559,7 @@ export function ReadyMadeGenerator() {
                                 setNewPkgTier("Deluxe")
                                 setNewPkgNights(3)
                                 setNewPkgDays(4)
+                                setNewPkgDescription("")
                                 setDayPlans(Array(4).fill(""))
                                 setHotelStops([{ location: "", hotelId: "", mealPlan: "CP", nights: 2 }])
                                 setPaxPricing([
@@ -599,6 +630,16 @@ export function ReadyMadeGenerator() {
                                     <input type="number" min="1" className="px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none" value={newPkgDays} onChange={e => setNewPkgDays(Number(e.target.value))} />
                                 </div>
                             </div>
+                            <div className="flex flex-col mt-3">
+                                <label className="text-[10px] font-semibold tracking-wider uppercase text-gray-500 mb-1">Description</label>
+                                <textarea 
+                                    className="px-3 py-2 bg-white border border-gray-200 rounded-md text-xs outline-none focus:border-emerald-400 transition-all font-sans min-h-[80px]" 
+                                    placeholder="Enter package description..." 
+                                    value={newPkgDescription} 
+                                    onChange={e => setNewPkgDescription(e.target.value)}
+                                    rows={3}
+                                />
+                            </div>
                             <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mt-3">
                                 <label className="flex items-center gap-2 text-[10px] font-semibold tracking-wider uppercase text-gray-500 mb-1">
                                     Package name <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#E6F1FB] text-[#185FA5] border border-[#B5D4F4] normal-case">auto-generated</span>
@@ -652,13 +693,11 @@ export function ReadyMadeGenerator() {
                             <div className="flex items-start gap-3 mb-4">
                                 <div className="w-6 h-6 rounded-full bg-[#EAF3DE] border border-[#C0DD97] flex items-center justify-center text-[11px] font-bold text-[#3B6D11] flex-shrink-0">3</div>
                                 <div>
-                                    <h3 className="flex items-center gap-2 text-[13px] font-semibold text-gray-900">
-                                        Hotels per stop
-                                        <span className="text-[9px] font-normal px-1.5 py-0.5 rounded bg-[#E6F1FB] text-[#185FA5] border border-[#B5D4F4]">fetched from Hotels ({newPkgTier} filtered)</span>
-                                    </h3>
-                                    <p className="text-[11px] text-gray-500">Only {newPkgTier} hotels for {destinations.find(d => d.id === newPkgDest)?.name || 'the destination'} are shown</p>
+                                    <h3 className="text-[13px] font-semibold text-gray-900">Hotel stops</h3>
+                                    <p className="text-[11px] text-gray-500">Pick hotels for this package. The price is auto-fetched.</p>
                                 </div>
                             </div>
+
                             <div className="space-y-2">
                                 <div className="grid grid-cols-[minmax(100px,3fr)_minmax(100px,3fr)_minmax(80px,1.5fr)_minmax(60px,1fr)_80px] gap-2 mb-1 px-1">
                                     <div className="text-[10px] font-semibold tracking-wider uppercase text-gray-500">Location / Stop</div>
@@ -794,10 +833,11 @@ export function ReadyMadeGenerator() {
                                         PAX pricing
                                         <span className="text-[9px] font-normal px-1.5 py-0.5 rounded bg-[#EEEDFE] text-[#534AB7] border border-[#AFA9EC]">enter from DMC rate sheet</span>
                                     </h3>
-                                    <p className="text-[11px] text-gray-500">Type net cost per person. Selling price is auto-calculated based on margin.</p>
+                                <p className="text-[11px] text-gray-500">Type net cost per person. Selling price is auto-calculated based on margin.</p>
                                 </div>
                             </div>
-                            <div className="border border-gray-200 rounded-xl overflow-x-auto mt-3">
+
+                            <div className="border border-gray-200 rounded-xl p-4 bg-gray-50/30 space-y-3">
                                 <table className="w-full text-left text-xs min-w-[600px]">
                                     <thead className="bg-gray-50 border-b border-gray-200">
                                         <tr>
@@ -925,6 +965,11 @@ export function ReadyMadeGenerator() {
                                                     <p className="text-[12px] opacity-80" style={{ color: isSelected ? tStyle.color : '#6b7280' }}>
                                                         {pkg.destination} · {pkg.nights} nights · {pkg.days} days
                                                     </p>
+                                                    {pkg.description && (
+                                                        <p className="text-[11px] mt-1 line-clamp-2" style={{ color: isSelected ? tStyle.color : '#9ca3af', opacity: isSelected ? 0.7 : 1 }}>
+                                                            {pkg.description}
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     {pkg.tier && (
@@ -1157,6 +1202,14 @@ export function ReadyMadeGenerator() {
                                         </p>
 
                                         <div className="space-y-3">
+                                            <button
+                                                onClick={() => setShowPreview(true)}
+                                                disabled={!selectedPkg || generating || fetchingDetails}
+                                                className="w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-[#059669] transition-all flex items-center justify-center gap-2 hover:bg-emerald-50 border border-emerald-100 disabled:opacity-50"
+                                            >
+                                                {fetchingDetails ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Eye className="w-3.5 h-3.5" />}
+                                                {fetchingDetails ? "Loading Preview..." : "Preview Itinerary"}
+                                            </button>
 
                                             <button
                                                 onClick={handleGenerate}
@@ -1180,6 +1233,122 @@ export function ReadyMadeGenerator() {
           message={successMessage}
           onClose={() => setShowSuccessModal(false)}
         />
+
+        {/* Preview Itinerary Modal */}
+        {showPreview && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="absolute inset-0 bg-[#052210]/30 backdrop-blur-sm" onClick={() => setShowPreview(false)} />
+                
+                <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+                    {/* Header */}
+                    <div className="flex items-center justify-between p-6 border-b border-gray-100">
+                        <div>
+                            <h3 className="font-serif text-xl font-bold text-[#052210]">Itinerary Summary</h3>
+                            <p className="text-[11px] text-gray-400 mt-1 uppercase tracking-widest font-bold">Review details before generation</p>
+                        </div>
+                        <button 
+                            onClick={() => setShowPreview(false)}
+                            className="p-2 hover:bg-gray-50 rounded-full transition-colors"
+                        >
+                            <X className="w-5 h-5 text-gray-400" />
+                        </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="p-6 overflow-y-auto max-h-[70vh] space-y-3">
+                        {[
+                            { l: "Customer", v: customerName || "None" },
+                            { l: "Destination", v: selectedPkg?.destination || "None" },
+                            { l: "Duration", v: selectedPkg ? `${selectedPkg.nights}N / ${selectedPkg.days}D` : "None" },
+                            { 
+                                l: "Dates", 
+                                v: startDate ? (
+                                    (() => {
+                                        const start = new Date(startDate);
+                                        const end = new Date(start);
+                                        end.setDate(end.getDate() + (selectedPkg?.nights || 0));
+                                        return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} → ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+                                    })()
+                                ) : "Date not selected" 
+                            },
+                            { l: "PAX (Adults/CWB/CNB)", v: `${adults} Adults${cwb > 0 ? `, ${cwb} CWB` : ""}${cnb > 0 ? `, ${cnb} CNB` : ""}` },
+                            { 
+                                l: "Flights", 
+                                v: previewFlights.length > 0 
+                                    ? previewFlights.map(f => `${f.airline} (${f.fromCode}→${f.toCode})`).join(", ") 
+                                    : "None" 
+                            },
+                            { 
+                                l: "Hotels", 
+                                v: previewHotels.length > 0 ? (
+                                    <div className="space-y-1">
+                                        {previewHotels.map((h, i) => {
+                                            const name = h.hotelName || h.name;
+                                            const details = [
+                                                h.location || h.subDestination,
+                                                h.mealPlan,
+                                                h.nights ? `${h.nights} ${h.nights === 1 ? 'Night' : 'Nights'}` : (h.selectedNights ? `${h.selectedNights} ${h.selectedNights === 1 ? 'Night' : 'Nights'}` : null)
+                                            ].filter(Boolean).join(" | ");
+                                            return (
+                                                <div key={i}>
+                                                    {name}{details ? ` (${details})` : ""}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : "None" 
+                            },
+                            { 
+                                l: "DAY PLANS", 
+                                v: previewDays.length > 0 ? (
+                                    <div className="space-y-1">
+                                        {previewDays
+                                            .sort((a, b) => {
+                                                const numA = parseInt(a.day?.replace(/\D/g, '') || "0")
+                                                const numB = parseInt(b.day?.replace(/\D/g, '') || "0")
+                                                return numA - numB
+                                            })
+                                            .map((d, i) => (
+                                                <div key={i} className="text-[13px]">
+                                                    <span className="text-[#059669] font-bold">Day {i + 1}:</span> {d.title || d.description || "Plan not specified"}
+                                                </div>
+                                            ))}
+                                    </div>
+                                ) : "None" 
+                            },
+                            { 
+                                l: "Plans", 
+                                v: activePricing.length > 0 
+                                    ? activePricing.map(p => {
+                                        const total = (Number(p.net) || 0) + ((Number(p.net) || 0) * (Number(p.margin) || 0) / 100);
+                                        return `${p.label}: ₹${Math.round(total).toLocaleString()}`;
+                                      }).join(" | ")
+                                    : "None" 
+                            }
+                        ].map(item => (
+                            <div key={item.l} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0 px-4 py-3 rounded-2xl border border-gray-50 bg-gray-50/50">
+                                <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-[#059669] sm:w-36 flex-shrink-0">{item.l}</span>
+                                <span className="font-sans text-sm font-bold text-[#052210]">{item.v}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-6 bg-gray-50 flex items-center justify-between border-t border-gray-100">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-gray-400 tracking-[0.15em] uppercase">Total Quote Value</span>
+                            <span className="text-2xl font-serif font-bold text-[#052210]">₹{Math.round(totalPrice).toLocaleString()}</span>
+                        </div>
+                        <button 
+                            onClick={() => setShowPreview(false)}
+                            className="px-6 py-2.5 bg-[#052210] text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-opacity"
+                        >
+                            Close Preview
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
         </div>
   )
 }

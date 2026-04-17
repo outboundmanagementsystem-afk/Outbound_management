@@ -142,12 +142,10 @@ export default function PublicItineraryPage() {
                     windowWidth: item.chunk.scrollWidth,
                     windowHeight: item.chunk.scrollHeight,
                     onclone: function(clonedDoc) {
-                        const cloned = clonedDoc.getElementById('itinerary-content');
-                        if (!cloned) return Promise.resolve();
-
-                        // Step 1: Walk every element and inline its computed color and background-color
-                        const allElements = cloned.querySelectorAll('*');
-                        allElements.forEach(el => {
+                        // Use the entire cloned document for queries to ensure no elements are missed
+                        
+                        // Step 1: Walk every element and inline its computed styles
+                        clonedDoc.querySelectorAll('*').forEach(el => {
                             const element = el as HTMLElement;
                             const computed = clonedDoc.defaultView?.getComputedStyle(el);
                             if (!computed) return;
@@ -164,10 +162,8 @@ export default function PublicItineraryPage() {
                             if (fontFamily) element.style.setProperty('font-family', fontFamily, 'important');
                         });
 
-                        // Step 2: Force correct colors on specific sections
-
-                        // Dark background sections (Hero, Pricing, etc.) - specific branding colors
-                        cloned.querySelectorAll('[class*="hero"], section[class*="bg-[#031A0C]"], div[class*="bg-[#031A0C]"], section[class*="bg-[#051F10]"], div[class*="bg-[#051F10]"]').forEach(section => {
+                        // Step 2: Dark Background Sections Logic (Hero, Pricing, etc.)
+                        clonedDoc.querySelectorAll('[class*="hero"], section[class*="bg-[#031A0C]"], div[class*="bg-[#031A0C]"], section[class*="bg-[#051F10]"], div[class*="bg-[#051F10]"]').forEach(section => {
                             // General text in dark sections should be white
                             section.querySelectorAll('*').forEach(el => {
                                 if (!(el as HTMLElement).closest('.bg-white') && !(el as HTMLElement).closest('[class*="bg-[#FFE500]"]')) {
@@ -175,7 +171,7 @@ export default function PublicItineraryPage() {
                                 }
                             });
 
-                            // Branding / Yellow elements
+                            // Branding / Yellow elements inside these sections
                             section.querySelectorAll('h2[class*="text-[#FFE500]"], span[class*="text-[#FFE500]"], p[class*="text-[#FFE500]"]').forEach(el => {
                                 (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
                             });
@@ -187,57 +183,67 @@ export default function PublicItineraryPage() {
                                     (el as HTMLElement).style.setProperty('color', '#1a211d', 'important');
                                 });
                             });
+                        });
 
-                            // Destination Card (White background)
-                            section.querySelectorAll('div[class*="bg-white"]').forEach(card => {
-                                (card as HTMLElement).style.setProperty('background-color', '#ffffff', 'important');
-                                card.querySelectorAll('*').forEach(el => {
-                                    const element = el as HTMLElement;
-                                    // Step 3: Skip elements that have explicit branding markers
-                                    const pdfColor = element.getAttribute('data-pdf-color');
-                                    if (pdfColor === 'yellow') {
-                                        element.style.setProperty('color', '#FFD700', 'important');
-                                        return;
-                                    }
-                                    if (pdfColor === 'white') {
-                                        element.style.setProperty('color', '#FFFFFF', 'important');
-                                        return;
-                                    }
-                                    
-                                    // Make everything inside the white card black by default
-                                    element.style.setProperty('color', '#1a211d', 'important');
+                        // Step 3: White Card / Light Background Purge (Ensures text visibility on typical white cards)
+                        clonedDoc.querySelectorAll('[class*="bg-white"] *, [class*="bg-gray-50"] *, .bg-white *, .bg-gray-50 *').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
+                        });
+                        
+                        // Step 4: Nested Element Recovery (Restoring colors for dark badges inside white cards)
+                        
+                        // Day Label & Badge Recovery
+                        clonedDoc.querySelectorAll('[class*="day-marker-badge"], [class*="bg-[#051F10]"]').forEach(badge => {
+                             if (badge.textContent?.toUpperCase().includes('DAY')) {
+                                (badge as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
+                                (badge as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                                badge.querySelectorAll('*').forEach(el => {
+                                    (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
                                 });
-                                // Keep the yellow pill background
-                                card.querySelectorAll('div[class*="bg-[#FFE500]"]').forEach(pill => {
-                                    (pill as HTMLElement).style.setProperty('background-color', '#ffe500', 'important');
-                                    pill.querySelectorAll('*').forEach(el => {
-                                        (el as HTMLElement).style.setProperty('color', '#000000', 'important');
-                                    });
-                                });
-                                // Destination Name - Selective targeting
-                                card.querySelectorAll('h3').forEach(el => {
-                                    const element = el as HTMLElement;
-                                    if (element.getAttribute('data-pdf-color')) return; // Skip branded titles
-                                    element.style.setProperty('color', '#1a211d', 'important');
-                                    element.style.setProperty('font-weight', '900', 'important');
-                                });
+                             }
+                        });
+
+                        // Overnight stay dark card - Robust Recovery
+                        clonedDoc.querySelectorAll('[class*="bg-[#051F10]"]').forEach(card => {
+                            (card as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
+                            card.querySelectorAll('p, h3, span, div').forEach(el => {
+                                const element = el as HTMLElement;
+                                const text = element.textContent?.toUpperCase() || "";
+                                if (text.includes('OVERNIGHT') || element.classList.contains('overnight-stay-label')) {
+                                    element.style.setProperty('color', '#ffe500', 'important');
+                                    element.style.setProperty('opacity', '1', 'important');
+                                } else if (element.classList.contains('overnight-stay-value') || element.tagName === 'H3' || element.classList.contains('text-white')) {
+                                    element.style.setProperty('color', '#ffffff', 'important');
+                                    element.style.setProperty('opacity', '1', 'important');
+                                }
                             });
                         });
 
-                        // Final Step: Ultimate Branding Enforcement
-                        // This runs AFTER all other rules and forces marked elements to their branding colors.
-                        cloned.querySelectorAll('[data-pdf-color]').forEach(el => {
+                        // Pricing / Package plan - Robust Recovery
+                        clonedDoc.querySelectorAll('[class*="price"], [class*="amount"], [class*="per-person"]').forEach(el => {
+                             const element = el as HTMLElement;
+                             if (element.classList.contains('price-amount') || element.classList.contains('amount')) {
+                                element.style.setProperty('color', '#ffe500', 'important');
+                             } else if (element.classList.contains('per-person-label') || element.classList.contains('per-person')) {
+                                element.style.setProperty('color', '#ffffff', 'important');
+                             }
+                        });
+
+                        // Final Step: Ultimate Branding Marker Enforcement (Absolute highest priority)
+                        clonedDoc.querySelectorAll('[data-pdf-color]').forEach(el => {
                             const element = el as HTMLElement;
                             const pdfColor = element.getAttribute('data-pdf-color');
                             if (pdfColor === 'yellow') {
                                 element.style.setProperty('color', '#FFD700', 'important');
                             } else if (pdfColor === 'white') {
                                 element.style.setProperty('color', '#FFFFFF', 'important');
+                            } else if (pdfColor === 'black') {
+                                element.style.setProperty('color', '#1a211d', 'important');
                             }
                         });
 
-                        // Hotel details
-                        cloned.querySelectorAll('[class*="hotel-name"], [class*="hotel-title"]').forEach(el => {
+                        // Misc Fixes (Hotel names, etc.)
+                        clonedDoc.querySelectorAll('[class*="hotel-name"], [class*="hotel-title"]').forEach(el => {
                             (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
                         });
                         cloned.querySelectorAll('[class*="hotel-location"], [class*="location-text"]').forEach(el => {
@@ -253,41 +259,44 @@ export default function PublicItineraryPage() {
                             (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
                         });
                         
-                        // Overnight stay dark card - Special handling to match branding
-                        cloned.querySelectorAll('[class*="bg-[#051F10]"]').forEach(card => {
-                            // First, ensure the card background is dark green
-                            (card as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
-                            
-                            // 1. Identify and style the 'Overnight Stay' label (yellow)
-                            card.querySelectorAll('span[class*="text-[#FFE500]"]').forEach(el => {
-                                (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
-                                (el as HTMLElement).style.setProperty('opacity', '1', 'important');
-                            });
-                            
-                            // 2. Identify and style the destination name (white)
-                            card.querySelectorAll('span[class*="text-white"], span[class*="text-base"]').forEach(el => {
-                                (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
-                            });
-                        });
-
-                        // Day Marker (DAY 01) - Ensuring it stays yellow on dark
-                        cloned.querySelectorAll('div[class*="bg-[#051F10]"]').forEach(badge => {
+                        // Day Label & Badge Recovery (Ensuring Day 01 stays yellow on dark)
+                        cloned.querySelectorAll('[class*="day-marker-badge"], [class*="bg-[#051F10]"]').forEach(badge => {
                              if (badge.textContent?.toUpperCase().includes('DAY')) {
                                 (badge as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
                                 (badge as HTMLElement).style.setProperty('color', '#ffe500', 'important');
-                                // Also handle any potential children
                                 badge.querySelectorAll('*').forEach(el => {
                                     (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
                                 });
                              }
                         });
 
-                        // Package plan
-                        cloned.querySelectorAll('[class*="price"], [class*="amount"]').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#f5c518', 'important');
+                        // Overnight stay dark card - Robust Recovery
+                        cloned.querySelectorAll('[class*="bg-[#051F10]"]').forEach(card => {
+                            (card as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
+                            
+                            // Style ALL potential labels/text inside the dark green card
+                            card.querySelectorAll('p, h3, span, div').forEach(el => {
+                                const element = el as HTMLElement;
+                                const text = element.textContent?.toUpperCase() || "";
+                                
+                                if (text.includes('OVERNIGHT') || element.classList.contains('overnight-stay-label')) {
+                                    element.style.setProperty('color', '#ffe500', 'important');
+                                    element.style.setProperty('opacity', '1', 'important');
+                                } else if (element.classList.contains('overnight-stay-value') || element.closest('h3') || element.tagName === 'H3' || element.classList.contains('text-white')) {
+                                    element.style.setProperty('color', '#ffffff', 'important');
+                                    element.style.setProperty('opacity', '1', 'important');
+                                }
+                            });
                         });
-                        cloned.querySelectorAll('[class*="per-person"], [class*="package"] p').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+
+                        // Pricing / Package plan - Robust Recovery
+                        cloned.querySelectorAll('[class*="price"], [class*="amount"], [class*="per-person"], [class*="package"]').forEach(el => {
+                             const element = el as HTMLElement;
+                             if (element.classList.contains('price-amount') || element.classList.contains('amount')) {
+                                element.style.setProperty('color', '#ffe500', 'important');
+                             } else if (element.classList.contains('per-person-label') || element.classList.contains('per-person')) {
+                                element.style.setProperty('color', '#ffffff', 'important');
+                             }
                         });
 
                         // Inclusions

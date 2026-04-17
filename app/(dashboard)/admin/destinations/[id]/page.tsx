@@ -14,6 +14,7 @@ import {
 } from "@/lib/firestore"
 import { Hotel, Landmark, Bike, Car, Plus, Trash2, ArrowLeft, Globe, MapPin, FileText, Save, FileEdit, Calendar, Eye, X, Phone, MapPinned, ChevronDown, ChevronUp, Check } from "lucide-react"
 import Link from "next/link"
+import { SuccessModal } from "@/components/success-modal"
 
 const TABS = [
     { key: "overview", label: "Overview", icon: Globe },
@@ -59,6 +60,15 @@ function DestinationEditor() {
     const [openOvernightDropdown, setOpenOvernightDropdown] = useState(false)
     const [localSubDestSearch, setLocalSubDestSearch] = useState("")
     const [localOvernightSearch, setLocalOvernightSearch] = useState("")
+
+    // Success dialog states
+    const [showSuccessModal, setShowSuccessModal] = useState(false)
+    const [successMessage, setSuccessMessage] = useState("")
+
+    // Hotel Filters state
+    const [selectedTier, setSelectedTier] = useState("")
+    const [selectedPlace, setSelectedPlace] = useState("")
+    const [searchName, setSearchName] = useState("")
 
     // Overview form states
     const [destName, setDestName] = useState("")
@@ -169,6 +179,8 @@ function DestinationEditor() {
                 },
             })
             await loadDest()
+            setSuccessMessage("Destination saved successfully")
+            setShowSuccessModal(true)
         } catch (err) { console.error(err) }
         finally { setSaving(false) }
     }
@@ -212,7 +224,9 @@ function DestinationEditor() {
         setFormData({})
         setEditingId(null)
         setShowForm(false)
-        loadItems()
+        await loadItems()
+        setSuccessMessage(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1, -1)} saved successfully`)
+        setShowSuccessModal(true)
     }
 
     const handleEdit = (item: any) => {
@@ -790,15 +804,82 @@ function DestinationEditor() {
             )}
 
             {/* ━━━ SUB-COLLECTION TABS ━━━ */}
-            {activeTab !== "overview" && (
+            {activeTab !== "overview" && (() => {
+                const filteredItems = activeTab === "hotels" 
+                    ? items.filter(hotel => {
+                        const matchesTier = !selectedTier || (hotel.category || "").toLowerCase().includes(selectedTier.toLowerCase());
+                        const matchesPlace = !selectedPlace || (hotel.subDestination || hotel.destination || "").toLowerCase() === selectedPlace.toLowerCase();
+                        const matchesName = !searchName || (hotel.hotelName || hotel.name || "").toLowerCase().includes(searchName.trim().toLowerCase());
+                        return matchesTier && matchesPlace && matchesName;
+                      })
+                    : items;
+
+                const availablePlaces = activeTab === "hotels" 
+                    ? Array.from(new Set(items.map(h => h.subDestination || h.destination).filter(Boolean))) as string[]
+                    : [];
+
+                return (
                 <>
-                    <button
-                        onClick={() => { setShowForm(!showForm); setFormData({}); setEditingId(null); }}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs tracking-wider uppercase"
-                        style={{ background: '#06a15c', color: '#FFFFFF' }}
-                    >
-                        <Plus className="w-4 h-4" /> Add {activeTab === "vehicleRules" ? "Vehicle Rule" : activeTab === "transfers" ? "Transfer Point" : activeTab.slice(0, -1).replace(/^\w/, c => c.toUpperCase())}
-                    </button>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                        <button
+                            onClick={() => { setShowForm(!showForm); setFormData({}); setEditingId(null); }}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs tracking-wider uppercase shrink-0"
+                            style={{ background: '#06a15c', color: '#FFFFFF' }}
+                        >
+                            <Plus className="w-4 h-4" /> Add {activeTab === "vehicleRules" ? "Vehicle Rule" : activeTab === "transfers" ? "Transfer Point" : activeTab.slice(0, -1).replace(/^\w/, c => c.toUpperCase())}
+                        </button>
+
+                        {/* Hotel Filters UI */}
+                        {activeTab === "hotels" && (
+                            <div className="flex flex-wrap items-center gap-2 bg-emerald-50/30 p-2 rounded-xl border border-emerald-100/50">
+                                <select 
+                                    className="px-3 py-2 bg-white border border-emerald-100/50 rounded-lg text-[11px] font-sans outline-none focus:border-emerald-400 min-w-[120px]"
+                                    value={selectedTier}
+                                    onChange={e => setSelectedTier(e.target.value)}
+                                >
+                                    <option value="">All Tiers</option>
+                                    {allHotelCategories.map(cat => (
+                                        <option key={cat} value={cat}>{cat}</option>
+                                    ))}
+                                </select>
+
+                                <select 
+                                    className="px-3 py-2 bg-white border border-emerald-100/50 rounded-lg text-[11px] font-sans outline-none focus:border-emerald-400 min-w-[120px]"
+                                    value={selectedPlace}
+                                    onChange={e => setSelectedPlace(e.target.value)}
+                                >
+                                    <option value="">All Places</option>
+                                    {availablePlaces.sort().map(loc => (
+                                        <option key={loc} value={loc}>{loc}</option>
+                                    ))}
+                                </select>
+
+                                <div className="relative">
+                                    <input 
+                                        type="text"
+                                        placeholder="Search name..."
+                                        className="pl-3 pr-8 py-2 bg-white border border-emerald-100/50 rounded-lg text-[11px] font-sans outline-none focus:border-emerald-400 min-w-[150px]"
+                                        value={searchName}
+                                        onChange={e => setSearchName(e.target.value)}
+                                    />
+                                    {searchName && (
+                                        <button onClick={() => setSearchName("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-emerald-600">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {(selectedTier || selectedPlace || searchName) && (
+                                    <button 
+                                        onClick={() => { setSelectedTier(""); setSelectedPlace(""); setSearchName(""); }}
+                                        className="px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-emerald-700 hover:text-emerald-800 transition-colors"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
 
                     {showForm && (
                         <div className="rounded-2xl p-6 space-y-4" style={{ background: '#f8faf9', border: '1px solid rgba(5,34,16,0.08)' }}>
@@ -813,9 +894,9 @@ function DestinationEditor() {
                     <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)' }}>
                         {loading ? (
                             <div className="px-6 py-8 text-center"><p className="font-sans text-sm" style={{ color: 'rgba(5,34,16,0.4)' }}>Loading...</p></div>
-                        ) : items.length === 0 ? (
-                            <div className="px-6 py-8 text-center"><p className="font-sans text-sm" style={{ color: 'rgba(5,34,16,0.4)' }}>No {activeTab} added yet</p></div>
-                        ) : items.map((item: any) => (
+                        ) : filteredItems.length === 0 ? (
+                            <div className="px-6 py-8 text-center"><p className="font-sans text-sm" style={{ color: 'rgba(5,34,16,0.4)' }}>{selectedTier || selectedPlace || searchName ? "No hotels found matching your filters" : `No ${activeTab} added yet`}</p></div>
+                        ) : filteredItems.map((item: any) => (
                             <div key={item.id} style={{ borderBottom: '1px solid rgba(5,34,16,0.05)' }}>
                                 <div
                                     className={`px-6 py-4 flex items-center justify-between transition-colors ${activeTab === "hotels" ? "cursor-pointer" : ""} ${previewingId === item.id ? "bg-emerald-50/50" : "hover:bg-gray-50"}`}
@@ -942,7 +1023,14 @@ function DestinationEditor() {
                         ))}
                     </div>
                 </>
-            )}
+                )
+            })()}
+
+            <SuccessModal 
+                isOpen={showSuccessModal} 
+                message={successMessage} 
+                onClose={() => setShowSuccessModal(false)} 
+            />
         </div>
     )
 }
