@@ -327,10 +327,9 @@ export function ManualCanvas() {
                             if (fontWeight) element.style.setProperty('font-weight', fontWeight, 'important');
                         });
 
-                        // Force the root backdrop to match the dark scheme so empty gaps aren't rendered naked white
+                        // Force the root backdrop to match the dark scheme so empty A4 gaps aren't rendered naked white
                         const rootEl = clonedDoc.getElementById('print-container');
                         if (rootEl) {
-                            rootEl.classList.remove('bg-white');
                             rootEl.style.setProperty('background-color', '#051F10', 'important');
                         }
 
@@ -338,12 +337,8 @@ export function ManualCanvas() {
                         clonedDoc.querySelectorAll('.pdf-section, section[class*="bg-[#031A0C]"], section[class*="bg-[#051F10]"], div[class*="bg-[#051F10]"]').forEach(section => {
                             section.querySelectorAll('p, span, h1, h2, h3, div').forEach(el => {
                                 const element = el as HTMLElement;
-                                
-                                // Explicitly recover yellow items manually if compute fails
-                                if (element.classList.contains('text-[#FFE500]') || element.classList.contains('text-yellow-400')) {
-                                    element.style.setProperty('color', '#FFE500', 'important');
-                                } 
-                                else if (!element.closest('.bg-white') && !element.closest('.bg-gray-50') && !element.getAttribute('data-pdf-color')) {
+                                if (!element.closest('.bg-white') && !element.closest('.bg-gray-50') && 
+                                    !element.classList.contains('text-[#FFE500]') && !element.getAttribute('data-pdf-color')) {
                                     element.style.setProperty('color', '#ffffff', 'important');
                                 }
                             });
@@ -443,7 +438,8 @@ export function ManualCanvas() {
                         });
                     }
                 },
-                jsPDF: { unit: 'px' as const, format: [element.offsetWidth, element.scrollHeight], orientation: 'portrait' as const }
+                jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
             }
             await html2pdf().set(opt).from(element).save()
         } catch (error) {
@@ -631,9 +627,8 @@ export function ManualCanvas() {
                     <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center', transition: 'transform 0.2s', width: '100%', display: 'flex', justifyContent: 'center' }}>
                         {/* A4 page */}
                         <div
-                            id="print-container"
                             ref={printRef}
-                            className="flex flex-col relative"
+                            className="bg-white flex flex-col relative"
                             style={{
                                 width: '210mm', // Fixed exact width to allow true scaling
                                 minHeight: '297mm',
