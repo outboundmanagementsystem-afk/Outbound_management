@@ -235,12 +235,16 @@ export function ReadyMadeGenerator() {
         }
 
         // 2. Phone Validation
-        const phoneRegex = /^[0-9]{8,15}$/
-        if (!customerPhone) {
+        const phoneToValidate = customerPhone ? customerPhone.trim() : "";
+        console.log("Debug phone:", phoneToValidate, "Length:", phoneToValidate.length);
+        console.log("Validation inputs:", { countryCode, phone: phoneToValidate, combinedPhone: `${countryCode}${phoneToValidate}` })
+
+        const phoneRegex = /^[6-9]\d{9}$/
+        if (!phoneToValidate) {
             setPhoneError("Phone number is required")
             hasError = true
-        } else if (!phoneRegex.test(customerPhone)) {
-            setPhoneError("Enter a valid phone number (8–15 digits)")
+        } else if (!phoneRegex.test(phoneToValidate)) {
+            setPhoneError("Enter a valid 10-digit phone number starting with 6-9")
             hasError = true
         }
 
@@ -253,7 +257,7 @@ export function ReadyMadeGenerator() {
             return
         }
 
-        const fullPhone = `${countryCode} ${customerPhone}`
+        const fullPhone = `${countryCode}${customerPhone}`
 
         setGenerating(true)
         try {
@@ -1099,7 +1103,7 @@ export function ReadyMadeGenerator() {
                                                     {/* Phone Number Input */}
                                                     <div className="flex-1">
                                                         <input 
-                                                            type="text" 
+                                                            type="tel" 
                                                             className={`w-full px-4 py-2.5 rounded-xl border ${phoneError ? 'border-red-500 bg-red-50/30' : 'border-gray-200 bg-white'} text-sm font-medium outline-none focus:border-emerald-500 transition-all placeholder:text-gray-300`} 
                                                             placeholder="Phone digits" 
                                                             value={customerPhone} 

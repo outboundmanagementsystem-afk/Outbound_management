@@ -8,7 +8,7 @@ async function generatePdf(url, outputPath) {
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
         viewport: { width: 1200, height: 800 },
-        deviceScaleFactor: 2
+        deviceScaleFactor: 3
     });
     
     const page = await context.newPage();

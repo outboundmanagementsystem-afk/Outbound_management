@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Star, MapPin, Building2, BedDouble, UtensilsCrossed } from "lucide-react"
 
-interface HotelData { name: string; subtitle: string; location: string; rating: number; tag: string | null; nights: string; amenities: string[]; mealPlan?: string; roomCategory?: string }
+interface HotelData { name?: string; hotelName?: string; subtitle: string; location: string; rating: number; tag: string | null; nights: string; amenities: string[] | string; mealPlan?: string; roomCategory?: string }
 interface HotelDetailsProps { hotelList?: HotelData[] }
 
 const defaultHotels: HotelData[] = [
@@ -71,7 +71,7 @@ export function HotelDetails({ hotelList }: HotelDetailsProps = {}) {
 
               {/* Hotel Name */}
               <h3 className="font-sans text-[20px] font-black uppercase tracking-tight leading-tight mb-1 text-[#1A211D]">
-                  {hotel.name}
+                  {hotel.name || hotel.hotelName || "Unnamed Hotel"}
               </h3>
               <p className="font-sans text-[11px] text-gray-400 italic mb-4">{hotel.subtitle || "Or Similar Property"}</p>
 
@@ -106,11 +106,15 @@ export function HotelDetails({ hotelList }: HotelDetailsProps = {}) {
 
               {/* Amenities */}
               <div className="flex flex-wrap gap-1.5">
-                {hotel.amenities?.map((amenity, aIdx) => (
-                  <span key={aIdx} className="px-3 py-1.5 rounded-lg font-sans text-[8px] font-black uppercase tracking-wider bg-gray-50 text-[#1A211D] border border-gray-100">
-                      {amenity}
-                  </span>
-                ))}
+                {(typeof hotel.amenities === 'string' ? hotel.amenities.split(',') : (hotel.amenities || [])).map((amenity, aIdx) => {
+                  const trimmed = typeof amenity === 'string' ? amenity.trim() : amenity;
+                  if (!trimmed) return null;
+                  return (
+                    <span key={aIdx} className="px-3 py-1.5 rounded-lg font-sans text-[8px] font-black uppercase tracking-wider bg-gray-50 text-[#1A211D] border border-gray-100">
+                        {trimmed}
+                    </span>
+                  )
+                })}
               </div>
 
             </div>

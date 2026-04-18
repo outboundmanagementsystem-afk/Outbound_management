@@ -134,7 +134,7 @@ export default function PublicItineraryPage() {
                 const bgColor = (item.isFooter || item.isDarkBg) ? '#031A0C' : '#ffffff';
 
                 const canvas = await html2canvas(item.chunk, {
-                    scale: 2,
+                    scale: 3,
                     useCORS: true,
                     allowTaint: true,
                     backgroundColor: bgColor,
@@ -222,7 +222,22 @@ export default function PublicItineraryPage() {
                             (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
                         });
 
-                        // 3. Pricing & Amount Recovery
+                        // 3. Trip Summary Fixes
+                        clonedDoc.querySelectorAll('.trip-summary-label').forEach(el => {
+                            const element = el as HTMLElement;
+                            element.style.setProperty('color', '#8E918F', 'important');
+                            element.style.setProperty('font-size', '14px', 'important');
+                            element.style.setProperty('font-weight', '400', 'important');
+                            element.style.setProperty('letter-spacing', '0.1em', 'important');
+                        });
+                        clonedDoc.querySelectorAll('.trip-summary-value').forEach(el => {
+                            const element = el as HTMLElement;
+                            element.style.setProperty('color', '#1A211D', 'important');
+                            element.style.setProperty('font-size', '14px', 'important');
+                            element.style.setProperty('font-weight', '400', 'important');
+                        });
+
+                        // 4. Pricing & Amount Recovery
                         clonedDoc.querySelectorAll('[class*="price-amount"], [class*="amount"]').forEach(el => {
                             (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
                         });
@@ -238,7 +253,15 @@ export default function PublicItineraryPage() {
                             });
                         });
 
-                        // --- PHASE 4: Terminal Branding Enforcement (Absolute Source of Truth) ---
+                        clonedDoc.querySelectorAll('[data-pdf-logo]').forEach(el => {
+                            const element = el as HTMLElement;
+                            element.style.setProperty('width', '160px', 'important');
+                            element.style.setProperty('height', 'auto', 'important');
+                            element.style.setProperty('display', 'block', 'important');
+                            element.style.setProperty('object-fit', 'contain', 'important');
+                            element.style.setProperty('max-width', 'none', 'important');
+                        });
+
                         clonedDoc.querySelectorAll('[data-pdf-color]').forEach(el => {
                             const element = el as HTMLElement;
                             const pdfColor = element.getAttribute('data-pdf-color');

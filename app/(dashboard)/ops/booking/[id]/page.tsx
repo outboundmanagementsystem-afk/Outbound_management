@@ -257,8 +257,8 @@ function BookingDetail() {
                     <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels ({hotels.length})</h3>
                     {hotels.map((h: any) => (
                         <div key={h.id} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
-                            <span className="font-sans text-sm" style={{ color: '#052210' }}>{h.name}</span>
-                            <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>{h.category} · {h.rating}★</span>
+                            <span className="font-sans text-sm" style={{ color: '#052210' }}>{h.name || h.hotelName || "Unnamed Hotel"}</span>
+                            <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>{h.category}{h.rating ? ` · ${h.rating}★` : ''}</span>
                         </div>
                     ))}
                 </div>

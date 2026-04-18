@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
+import { Poppins } from 'next/font/google'
+
+const poppins = Poppins({ 
+  weight: ['400', '500', '600', '700', '800', '900'], 
+  subsets: ['latin'],
+  display: 'swap',
+})
 
 interface TripSummaryProps {
   fields?: { label: string; value: string; icon?: string }[]
@@ -51,7 +58,7 @@ export function TripSummary({ fields }: TripSummaryProps = {}) {
         <div className="bg-[#051F10] rounded-t-[28px] pt-6 text-center shadow-[0_10px_40px_rgba(0,0,0,0.5)] relative z-20 flex flex-col items-center justify-center pb-4 border-b border-white/5">
           <div className="flex items-center justify-center gap-2 mb-3 w-full px-4">
             <div className="h-px bg-[#FFE500] opacity-40 flex-1 max-w-[40px]" />
-            <span className="font-sans text-[8px] font-black tracking-[0.35em] text-[#FFE500] uppercase mx-1 whitespace-nowrap">Premium Itinerary</span>
+            <span className={`${poppins.className} text-[8px] font-black tracking-[0.35em] text-[#FFE500] uppercase mx-1 whitespace-nowrap`}>Premium Itinerary</span>
             <div className="h-px bg-[#FFE500] opacity-40 flex-1 max-w-[40px]" />
           </div>
           <h2 className="font-serif text-3xl tracking-tight uppercase text-white leading-none font-black">
@@ -64,10 +71,10 @@ export function TripSummary({ fields }: TripSummaryProps = {}) {
           <div className="flex flex-col gap-5 mt-1">
             {summaryFields.filter(f => f.label !== "Booking ID" && f.label !== "Kid's Age").map((field, idx) => (
               <div key={idx} className="flex items-center gap-4 group transition-all duration-300 w-full">
-                <span className="font-sans text-[9px] font-black uppercase tracking-[0.35em] text-[#8E918F] min-w-[120px] text-left">
+                <span className={`${poppins.className} text-[14px] font-normal uppercase tracking-[0.1em] text-[#8E918F] min-w-[140px] text-left trip-summary-label`}>
                     {field.label}:
                 </span>
-                <span className="font-sans text-[15px] font-black text-[#1A211D] break-words leading-tight uppercase tracking-tight flex-1">
+                <span className={`${poppins.className} text-[14px] font-normal text-[#1A211D] break-words leading-tight uppercase tracking-tight flex-1 trip-summary-value`}>
                     {field.value || "—"}
                 </span>
               </div>

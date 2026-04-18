@@ -23,14 +23,18 @@ export function FooterSection() {
 
           {/* Logo mark */}
           <div className="flex justify-center mb-6">
-            <div className="relative w-[140px] h-[70px]">
-              <Image
-                src="/images/outbound png 3.png"
-                alt="Outbound Travelers"
-                fill
-                className="object-contain"
-              />
-            </div>
+            <img
+              src="/images/outbound png 3.png"
+              alt="Outbound Travelers"
+              data-pdf-logo="true"
+              style={{ 
+                width: '140px', 
+                height: 'auto', 
+                display: 'block', 
+                objectFit: 'contain',
+                maxWidth: 'none'
+              }}
+            />
           </div>
 
           {/* Tagline */}

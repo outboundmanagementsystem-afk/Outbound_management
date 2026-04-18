@@ -70,6 +70,71 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
     const [childAges, setChildAges] = useState<string[]>([])
     const [consultantName, setConsultantName] = useState("")
     const [consultantPhone, setConsultantPhone] = useState("")
+    
+    // UI Split Phone States
+    const [customerCountryCode, setCustomerCountryCode] = useState("+91")
+    const [customerPhoneNum, setCustomerPhoneNum] = useState("")
+
+    const COUNTRY_CODES = [
+        { code: "+91", country: "India" },
+        { code: "+1", country: "USA" },
+        { code: "+44", country: "UK" },
+        { code: "+971", country: "UAE" },
+        { code: "+65", country: "Singapore" },
+        { code: "+60", country: "Malaysia" },
+        { code: "+66", country: "Thailand" },
+        { code: "+61", country: "Australia" },
+        { code: "+64", country: "New Zealand" },
+        { code: "+33", country: "France" },
+        { code: "+49", country: "Germany" },
+    ]
+
+    const splitPhoneNumber = (full: string) => {
+        if (!full) return { code: "+91", num: "" }
+        const match = COUNTRY_CODES.find(c => full.startsWith(c.code))
+        if (match) {
+            return { code: match.code, num: full.slice(match.code.length) }
+        }
+        // Fallback: try to guess if it starts with + and 1-3 digits
+        if (full.startsWith("+")) {
+            // Rough guess for unknown codes: assume first 3 digits if not in list
+            return { code: "+91", num: full.slice(1) } // Simplified fallback
+        }
+        return { code: "+91", num: full }
+    }
+    
+    // Validation Errors
+    const [errors, setErrors] = useState({
+        customerName: "",
+        customerPhone: "",
+        customerEmail: "",
+    })
+
+    const validateName = (name: string) => {
+        if (!name) return "Customer name is required"
+        if (name.length < 2) return "Name must be at least 2 characters"
+        if (name.length > 50) return "Name must be at most 50 characters"
+        if (!/^[a-zA-Z\s.]+$/.test(name)) return "Name must contain only letters, spaces, or dot."
+        return ""
+    }
+
+    const validatePhone = (phoneNum: string) => {
+        const phoneToValidate = phoneNum ? phoneNum.trim() : "";
+        console.log("Debug phone:", phoneToValidate, "Length:", phoneToValidate.length);
+        console.log("Validation inputs:", { countryCode: customerCountryCode, phone: phoneToValidate, combinedPhone: `${customerCountryCode}${phoneToValidate}` })
+        
+        if (!phoneToValidate) return "Phone number is required"
+        const phoneRegex = /^[6-9]\d{9}$/
+        if (!phoneRegex.test(phoneToValidate)) return "Enter a valid 10-digit phone number starting with 6-9"
+        return ""
+    }
+
+    const validateEmail = (email: string) => {
+        if (!email) return "Email is required"
+        const trimmed = email.trim()
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return "Enter a valid email address."
+        return ""
+    }
 
     // Hotel Search
     const [hotelSearchTerm, setHotelSearchTerm] = useState("")
@@ -137,7 +202,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                         selectedNights: stop.nights,
                         mealPlan: stop.mealPlan,
                         roomType: stop.roomType || hotel.roomType || "Standard",
-                        ratePerNight: stop.ratePerNight || 0
+                        ratePerNight: stop.ratePerNight || 0,
+                        location: stop.location || hotel.location || ""
                     })
                 }
             })
@@ -297,6 +363,9 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 if (it) {
                     setCustomerName(it.customerName || it.packageName || "")
                     setCustomerPhone(it.customerPhone || "")
+                    const split = splitPhoneNumber(it.customerPhone || "")
+                    setCustomerCountryCode(split.code)
+                    setCustomerPhoneNum(split.num)
                     setCustomerEmail(it.customerEmail || "")
                     setDestinationId(it.destinationId || "")
                     setDestinationName(it.destination || "")
@@ -473,6 +542,22 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
     useEffect(() => { calculatePricing() }, [selectedHotels, transfers, selectedActivities, margin, nights, adults, children, dayPlans, manualHotelCost, manualTransferCost, manualActivityCost])
 
     const handleSave = async () => {
+        // --- VALIDATION CHECK ---
+        const nameErr = validateName(customerName)
+        const phoneErr = validatePhone(customerPhoneNum)
+        const emailErr = validateEmail(customerEmail)
+
+        if (nameErr || phoneErr || emailErr) {
+            setErrors({
+                customerName: nameErr,
+                customerPhone: phoneErr,
+                customerEmail: emailErr,
+            })
+            setStep(0) // Jump back to Step 0 where the errors are
+            alert("Please fix the validation errors in Step 1 before saving.")
+            return
+        }
+
         setSaving(true)
         try {
             const selectedDest = destinations.find((d: any) => d.id === destinationId)
@@ -686,7 +771,11 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                             if (c) {
                                                 setCustomerName(c.name || "")
                                                 setCustomerPhone(c.phone || "")
+                                                const split = splitPhoneNumber(c.phone || "")
+                                                setCustomerCountryCode(split.code)
+                                                setCustomerPhoneNum(split.num)
                                                 setCustomerEmail(c.email || "")
+                                                setErrors(prev => ({ ...prev, customerName: "", customerPhone: "", customerEmail: "" }))
                                             }
                                         }}
                                     >
@@ -696,9 +785,72 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                         ))}
                                     </select>
                                 </div>
-                                <div><label className={labelClass} style={labelStyle}>{mode === "package" ? "Package Name / Customer Name" : "Customer Name"} <span className="text-red-500">*</span></label><input className={inputClass} style={inputStyle} value={customerName} onChange={e => setCustomerName(e.target.value)} placeholder={mode === "package" ? "e.g. Mr. Wasim (or Package Name)" : "e.g. Mr. Wasim"} /></div>
-                                <div><label className={labelClass} style={labelStyle}>Phone</label><input className={inputClass} style={inputStyle} value={customerPhone} onChange={e => setCustomerPhone(e.target.value)} placeholder="9840341529" /></div>
-                                <div className="sm:col-span-2"><label className={labelClass} style={labelStyle}>Email</label><input className={inputClass} style={inputStyle} value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} placeholder="customer@email.com" /></div>
+                                <div>
+                                    <label className={labelClass} style={labelStyle}>{mode === "package" ? "Package Name / Customer Name" : "Customer Name"} <span className="text-red-500">*</span></label>
+                                    <input 
+                                        className={inputClass} 
+                                        style={{ ...inputStyle, borderColor: errors.customerName ? '#ef4444' : '#e2e8f0' }} 
+                                        value={customerName} 
+                                        onBlur={() => setErrors(prev => ({ ...prev, customerName: validateName(customerName) }))}
+                                        onChange={e => {
+                                            setCustomerName(e.target.value);
+                                            if (errors.customerName) setErrors(prev => ({ ...prev, customerName: validateName(e.target.value) }));
+                                        }} 
+                                        placeholder={mode === "package" ? "e.g. Mr. Wasim (or Package Name)" : "e.g. Mr. Wasim"} 
+                                    />
+                                    {errors.customerName && <p className="text-[10px] text-red-500 mt-1 ml-1 font-semibold">{errors.customerName}</p>}
+                                </div>
+                                <div>
+                                    <label className={labelClass} style={labelStyle}>Phone <span className="text-red-500">*</span></label>
+                                    <div className="flex gap-2">
+                                        <select 
+                                            className="w-[100px] px-3 py-3 rounded-xl font-sans text-sm focus:border-emerald-400" 
+                                            style={{ ...inputStyle, borderColor: errors.customerPhone ? '#ef4444' : '#e2e8f0', appearance: 'none', backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%236b7280\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }} 
+                                            value={customerCountryCode}
+                                            onChange={e => {
+                                                const newCode = e.target.value;
+                                                setCustomerCountryCode(newCode);
+                                                const full = newCode + customerPhoneNum;
+                                                setCustomerPhone(full);
+                                                if (errors.customerPhone) setErrors(prev => ({ ...prev, customerPhone: validatePhone(customerPhoneNum) }));
+                                            }}
+                                        >
+                                            {COUNTRY_CODES.map(c => <option key={c.code} value={c.code}>{c.code}</option>)}
+                                        </select>
+                                        <input 
+                                            type="tel"
+                                            className="flex-1 px-4 py-3 rounded-xl font-sans text-sm focus:border-emerald-400" 
+                                            style={{ ...inputStyle, borderColor: errors.customerPhone ? '#ef4444' : '#e2e8f0' }} 
+                                            value={customerPhoneNum} 
+                                            placeholder="9876543210"
+                                            onBlur={() => setErrors(prev => ({ ...prev, customerPhone: validatePhone(customerPhoneNum) }))}
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 10); // Only digits, max 10
+                                                setCustomerPhoneNum(val);
+                                                const full = customerCountryCode + val;
+                                                setCustomerPhone(full);
+                                                if (errors.customerPhone) setErrors(prev => ({ ...prev, customerPhone: validatePhone(val) }));
+                                            }} 
+                                        />
+                                    </div>
+                                    {errors.customerPhone && <p className="text-[10px] text-red-500 mt-1 ml-1 font-semibold">{errors.customerPhone}</p>}
+                                </div>
+                                <div className="sm:col-span-2">
+                                    <label className={labelClass} style={labelStyle}>Email <span className="text-red-500">*</span></label>
+                                    <input 
+                                        className={inputClass} 
+                                        style={{ ...inputStyle, borderColor: errors.customerEmail ? '#ef4444' : '#e2e8f0' }} 
+                                        value={customerEmail} 
+                                        onBlur={() => setErrors(prev => ({ ...prev, customerEmail: validateEmail(customerEmail) }))}
+                                        onChange={e => {
+                                            const val = e.target.value.toLowerCase().trim();
+                                            setCustomerEmail(val);
+                                            if (errors.customerEmail) setErrors(prev => ({ ...prev, customerEmail: validateEmail(val) }));
+                                        }} 
+                                        placeholder="customer@email.com" 
+                                    />
+                                    {errors.customerEmail && <p className="text-[10px] text-red-500 mt-1 ml-1 font-semibold">{errors.customerEmail}</p>}
+                                </div>
                             </div>
                             {mode === "package" && (
                                 <div className="mt-4">
@@ -805,8 +957,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                         </div>
                                     </div>
                                 </div>
-                                <div><label className={labelClass} style={labelStyle}>Adults <span className="text-red-500">*</span></label><input type="number" className={inputClass} style={inputStyle} value={adults} onChange={e => setAdults(Number(e.target.value))} min={1} /></div>
-                                <div><label className={labelClass} style={labelStyle}>Children</label><input type="number" className={inputClass} style={inputStyle} value={children} onChange={e => setChildren(Number(e.target.value))} min={0} /></div>
+                                <div><label className={labelClass} style={labelStyle}>Adults <span className="text-red-500">*</span></label><input type="number" className={`${inputClass} pr-10`} style={inputStyle} value={adults === 0 ? "" : adults} onFocus={e => { if (adults === 0) e.target.value = "" }} onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setAdults(0); else setAdults(Math.max(1, parseInt(val) || 0)); }} onBlur={e => { if (e.target.value === "") setAdults(1); }} min={1} /></div>
+                                <div><label className={labelClass} style={labelStyle}>Children</label><input type="number" className={`${inputClass} pr-10`} style={inputStyle} value={children === 0 ? "" : children} onFocus={e => { if (children === 0) e.target.value = "" }} onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setChildren(0); else setChildren(Math.max(0, parseInt(val) || 0)); }} onBlur={e => { if (e.target.value === "") setChildren(0); }} min={0} /></div>
                                 {children > 0 && Array.from({ length: children }).map((_, i) => (
                                     <div key={i}><label className={labelClass} style={labelStyle}>Child {i + 1} Age</label><input className={inputClass} style={inputStyle} value={childAges[i] || ""} onChange={e => { const newAges = [...childAges]; newAges[i] = e.target.value; setChildAges(newAges) }} placeholder="e.g. 6 Yrs" /></div>
                                 ))}
@@ -867,7 +1019,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                 <input className={inputClass} style={inputStyle} placeholder="To (KUL)" value={seg.toCode} onChange={e => { const s = [...flightSegments]; s[idx].toCode = e.target.value; setFlightSegments(s) }} />
                                 <input className={inputClass} style={inputStyle} placeholder="Arrival" value={seg.arrival} onChange={e => { const s = [...flightSegments]; s[idx].arrival = e.target.value; setFlightSegments(s) }} />
                                 <input className={inputClass} style={inputStyle} placeholder="Duration" value={seg.duration} onChange={e => { const s = [...flightSegments]; s[idx].duration = e.target.value; setFlightSegments(s) }} />
-                                <input type="number" className={inputClass} style={inputStyle} placeholder="Price ₹" value={seg.price || ""} onChange={e => { const s = [...flightSegments]; s[idx].price = Number(e.target.value); setFlightSegments(s) }} />
+                                <input type="number" className={`${inputClass} pr-10`} style={inputStyle} placeholder="Price ₹" value={seg.price === 0 ? "" : seg.price} onFocus={e => { if (seg.price === 0) e.target.value = "" }} onChange={e => { let val = e.target.value.replace(/^0+/, ''); const s = [...flightSegments]; if (val === "") s[idx].price = 0; else s[idx].price = Math.max(0, parseInt(val) || 0); setFlightSegments(s); }} onBlur={e => { if (e.target.value === "") { const s = [...flightSegments]; s[idx].price = 0; setFlightSegments(s); } }} />
                                 {seg.flightType === "Connecting" && (
                                     <div className="sm:col-span-2"><input className={inputClass} style={inputStyle} placeholder="Layover Details" value={seg.layoverDetails || ""} onChange={e => { const s = [...flightSegments]; s[idx].layoverDetails = e.target.value; setFlightSegments(s) }} /></div>
                                 )}
@@ -1156,16 +1308,26 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                         <div className="relative">
                                                             <input 
                                                                 type="number" 
-                                                                className="w-full px-4 py-3 bg-white rounded-xl border border-gray-200 text-sm font-sans font-bold text-gray-900 outline-none focus:border-emerald-500 shadow-sm transition-all"
+                                                                className="w-full pl-4 pr-16 py-3 bg-white rounded-xl border border-gray-200 text-sm font-sans font-bold text-gray-900 outline-none focus:border-emerald-500 shadow-sm transition-all"
                                                                 min={1}
-                                                                value={stop.nights}
+                                                                value={stop.nights === 0 ? "" : stop.nights}
+                                                                onFocus={e => { if (stop.nights === 0) e.target.value = "" }}
                                                                 onChange={(e) => {
+                                                                    let val = e.target.value.replace(/^0+/, '');
                                                                     const newPlans = [...tierPlans];
-                                                                    newPlans[planIdx].stops[stopIdx].nights = Number(e.target.value);
+                                                                    if (val === "") newPlans[planIdx].stops[stopIdx].nights = 0;
+                                                                    else newPlans[planIdx].stops[stopIdx].nights = Math.max(0, parseInt(val) || 0);
                                                                     setTierPlans(newPlans);
                                                                 }}
+                                                                onBlur={e => {
+                                                                    if (e.target.value === "") {
+                                                                        const newPlans = [...tierPlans];
+                                                                        newPlans[planIdx].stops[stopIdx].nights = 0;
+                                                                        setTierPlans(newPlans);
+                                                                    }
+                                                                }}
                                                             />
-                                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-bold text-gray-300 uppercase">NTS</span>
+                                                            <span className="absolute right-8 top-1/2 -translate-y-1/2 text-[9px] font-bold text-gray-300 uppercase">NTS</span>
                                                         </div>
                                                     </div>
 
@@ -1246,15 +1408,25 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                             <div className="relative">
                                                                 <input 
                                                                     type="number"
-                                                                    className="w-full px-4 py-2.5 bg-white/50 rounded-lg border border-gray-200 text-xs font-sans font-bold text-emerald-700 outline-none focus:border-emerald-400 transition-all"
-                                                                    value={stop.ratePerNight}
+                                                                    className="w-full pl-4 pr-32 py-2.5 bg-white/50 rounded-lg border border-gray-200 text-xs font-sans font-bold text-emerald-700 outline-none focus:border-emerald-400 transition-all"
+                                                                    value={stop.ratePerNight === 0 ? "" : stop.ratePerNight}
+                                                                    onFocus={e => { if (stop.ratePerNight === 0) e.target.value = "" }}
                                                                     onChange={(e) => {
+                                                                        let val = e.target.value.replace(/^0+/, '');
                                                                         const newPlans = [...tierPlans];
-                                                                        newPlans[planIdx].stops[stopIdx].ratePerNight = Number(e.target.value);
+                                                                        if (val === "") newPlans[planIdx].stops[stopIdx].ratePerNight = 0;
+                                                                        else newPlans[planIdx].stops[stopIdx].ratePerNight = Math.max(0, parseInt(val) || 0);
                                                                         setTierPlans(newPlans);
                                                                     }}
+                                                                    onBlur={e => {
+                                                                        if (e.target.value === "") {
+                                                                            const newPlans = [...tierPlans];
+                                                                            newPlans[planIdx].stops[stopIdx].ratePerNight = 0;
+                                                                            setTierPlans(newPlans);
+                                                                        }
+                                                                    }}
                                                                 />
-                                                                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-emerald-100/50 px-2 py-1 rounded text-[9px] font-bold text-emerald-700">
+                                                                <div className="absolute right-9 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-emerald-100/50 px-2 py-1 rounded text-[9px] font-bold text-emerald-700">
                                                                     TOTAL: ₹{(stop.ratePerNight * stop.nights).toLocaleString()}
                                                                 </div>
                                                             </div>
@@ -1345,7 +1517,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                 ) : (
                                     <input className={inputClass} style={inputStyle} placeholder="Vehicle Type" value={t.vehicleType} onChange={e => { const tr = [...transfers]; tr[idx].vehicleType = e.target.value; setTransfers(tr) }} />
                                 )}
-                                <input type="number" className={inputClass} style={inputStyle} placeholder="Price (₹)" value={t.price} onChange={e => { const tr = [...transfers]; tr[idx].price = Number(e.target.value); setTransfers(tr) }} />
+                                <input type="number" className={`${inputClass} pr-10`} style={inputStyle} placeholder="Price (₹)" value={t.price === 0 ? "" : t.price} onFocus={e => { if (t.price === 0) e.target.value = "" }} onChange={e => { let val = e.target.value.replace(/^0+/, ''); const tr = [...transfers]; if (val === "") tr[idx].price = 0; else tr[idx].price = Math.max(0, parseInt(val) || 0); setTransfers(tr); }} onBlur={e => { if (e.target.value === "") { const tr = [...transfers]; tr[idx].price = 0; setTransfers(tr); } }} />
                                 <button onClick={() => setTransfers(transfers.filter((_, i) => i !== idx))} className="absolute top-2 right-2 p-1.5 rounded-xl hover:bg-red-50 transition-colors" title="Remove">
                                     <Trash2 className="w-4 h-4" style={{ color: '#ef4444' }} />
                                 </button>
@@ -1652,7 +1824,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
 
                                         <div className="pt-2">
                                             <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold" style={{ color: '#059669' }}>Highlights</label>
-                                            <input className={inputClass} style={inputStyle} placeholder="Highlights (comma-separated)" value={day.highlights?.join(", ") || ""} onChange={e => { const d = [...dayPlans]; d[idx].highlights = e.target.value.split(",").map((h: string) => h.trim()).filter(Boolean); setDayPlans(d) }} />
+                                            <input className={inputClass} style={inputStyle} placeholder="Highlights (comma-separated)" value={day.highlights?.join(", ") || ""} onChange={e => { const d = [...dayPlans]; d[idx].highlights = e.target.value.split(",").map((h: string) => h.trim()); setDayPlans(d) }} />
                                         </div>
 
                                         {/* Optional Pricing - hidden in package mode */}
@@ -1661,7 +1833,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                                 <div>
                                                     <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold" style={{ color: 'rgba(5,34,16,0.4)' }}>Optional Cost (₹)</label>
-                                                    <input type="number" className={inputClass} style={inputStyle} placeholder="e.g. 1500" value={day.optionalPrice || ""} onChange={e => { const d = [...dayPlans]; d[idx].optionalPrice = Number(e.target.value); setDayPlans(d) }} />
+                                                    <input type="number" className={`${inputClass} pr-10`} style={inputStyle} placeholder="e.g. 1500" value={day.optionalPrice === 0 ? "" : day.optionalPrice} onFocus={e => { if (day.optionalPrice === 0) e.target.value = "" }} onChange={e => { let val = e.target.value.replace(/^0+/, ''); const d = [...dayPlans]; if (val === "") d[idx].optionalPrice = 0; else d[idx].optionalPrice = Math.max(0, parseInt(val) || 0); setDayPlans(d); }} onBlur={e => { if (e.target.value === "") { const d = [...dayPlans]; d[idx].optionalPrice = 0; setDayPlans(d); } }} />
                                                 </div>
                                                 <div className="sm:col-span-2">
                                                     <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold" style={{ color: 'rgba(5,34,16,0.4)' }}>Optional Item Description</label>
@@ -1693,30 +1865,36 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                 <span className="font-sans text-sm" style={{ color: '#6b7280' }}>Hotel Cost ({nights} nights)</span>
                                 <input
                                     type="number"
-                                    className="w-32 px-3 py-2 rounded-lg font-sans text-sm text-right font-bold"
+                                    className="w-40 pl-3 pr-10 py-2 rounded-lg font-sans text-sm text-right font-bold"
                                     style={inputStyle}
-                                    value={manualHotelCost ?? 0}
-                                    onChange={e => setManualHotelCost(e.target.value === "" ? 0 : Number(e.target.value))}
+                                    value={(manualHotelCost === 0 || manualHotelCost === null) ? "" : manualHotelCost}
+                                    onFocus={e => { if (Number(e.target.value) === 0) e.target.value = "" }}
+                                    onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualHotelCost(0); else setManualHotelCost(Math.max(0, parseInt(val) || 0)); }}
+                                    onBlur={e => { if (e.target.value === "") setManualHotelCost(0); }}
                                 />
                             </div>
                             <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                                 <span className="font-sans text-sm" style={{ color: '#6b7280' }}>Transfer Cost</span>
                                 <input
                                     type="number"
-                                    className="w-32 px-3 py-2 rounded-lg font-sans text-sm text-right font-bold"
+                                    className="w-40 pl-3 pr-10 py-2 rounded-lg font-sans text-sm text-right font-bold"
                                     style={inputStyle}
-                                    value={manualTransferCost ?? 0}
-                                    onChange={e => setManualTransferCost(e.target.value === "" ? 0 : Number(e.target.value))}
+                                    value={(manualTransferCost === 0 || manualTransferCost === null) ? "" : manualTransferCost}
+                                    onFocus={e => { if (Number(e.target.value) === 0) e.target.value = "" }}
+                                    onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualTransferCost(0); else setManualTransferCost(Math.max(0, parseInt(val) || 0)); }}
+                                    onBlur={e => { if (e.target.value === "") setManualTransferCost(0); }}
                                 />
                             </div>
                             <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                                 <span className="font-sans text-sm" style={{ color: '#6b7280' }}>Activities Cost</span>
                                 <input
                                     type="number"
-                                    className="w-32 px-3 py-2 rounded-lg font-sans text-sm text-right font-bold"
+                                    className="w-40 pl-3 pr-10 py-2 rounded-lg font-sans text-sm text-right font-bold"
                                     style={inputStyle}
-                                    value={manualActivityCost ?? 0}
-                                    onChange={e => setManualActivityCost(e.target.value === "" ? 0 : Number(e.target.value))}
+                                    value={(manualActivityCost === 0 || manualActivityCost === null) ? "" : manualActivityCost}
+                                    onFocus={e => { if (Number(e.target.value) === 0) e.target.value = "" }}
+                                    onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualActivityCost(0); else setManualActivityCost(Math.max(0, parseInt(val) || 0)); }}
+                                    onBlur={e => { if (e.target.value === "") setManualActivityCost(0); }}
                                 />
                             </div>
 
@@ -1729,7 +1907,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
 
                             <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                                 <span className="font-sans text-sm" style={{ color: '#6b7280' }}>Margin % (Applies to Base)</span>
-                                <input type="number" className="w-20 px-3 py-2 rounded-lg font-sans text-sm text-right font-bold" style={inputStyle} value={margin} onChange={e => setMargin(Number(e.target.value))} />
+                                <input type="number" className="w-24 pl-3 pr-10 py-2 rounded-lg font-sans text-sm text-right font-bold" style={inputStyle} value={margin === 0 ? "" : margin} onFocus={e => { if (margin === 0) e.target.value = "" }} onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setMargin(0); else setMargin(Math.max(0, parseInt(val) || 0)); }} onBlur={e => { if (e.target.value === "") setMargin(0); }} />
                             </div>
                         </div>
 
@@ -1750,11 +1928,15 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                             <label className="font-sans text-[10px] uppercase tracking-wider mb-1 block" style={{ color: '#059669' }}>Override Package Total (₹)</label>
                                             <input
                                                 type="number"
-                                                className="w-full px-3 py-2 rounded-lg font-sans text-sm font-bold outline-none"
+                                                className="w-full pl-3 pr-10 py-2 rounded-lg font-sans text-sm font-bold outline-none"
                                                 style={{ background: '#FFFFFF', border: '1px solid #6ee7b7', color: '#052210' }}
-                                                value={plan.total}
+                                                value={plan.total === 0 ? "" : plan.total}
+                                                onFocus={e => { if (plan.total === 0) e.target.value = "" }}
                                                 onChange={e => {
-                                                    const newTotal = Number(e.target.value);
+                                                    let val = e.target.value.replace(/^0+/, '');
+                                                    let newTotal = 0;
+                                                    if (val !== "") newTotal = Math.max(0, parseInt(val) || 0);
+                                                    
                                                     const newPlans = [...plans];
                                                     const pax = adults + children;
                                                     newPlans[idx].total = newTotal;
@@ -1764,6 +1946,18 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                     if (idx === 0) {
                                                         setTotalPrice(newTotal);
                                                         setPerPersonPrice(newPlans[idx].perPersonPrice);
+                                                    }
+                                                }}
+                                                onBlur={e => {
+                                                    if (e.target.value === "") {
+                                                        const newPlans = [...plans];
+                                                        newPlans[idx].total = 0;
+                                                        newPlans[idx].perPersonPrice = 0;
+                                                        setPlans(newPlans);
+                                                        if (idx === 0) {
+                                                            setTotalPrice(0);
+                                                            setPerPersonPrice(0);
+                                                        }
                                                     }
                                                 }}
                                             />
@@ -1805,7 +1999,10 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                 { l: "Dates", v: `${startDate} → ${endDate}` },
                                 { l: "Pax", v: `${adults} Adults${children > 0 ? `, ${children} Children` : ""}` },
                                 { l: "Flights", v: flightSegments.length ? flightSegments.map(f => `${f.airline} (${f.fromCode}→${f.toCode})`).join(", ") : "None" },
-                                { l: "Hotels", v: selectedHotels.map((h: any) => `${h.name || h.hotelName}${h.roomType ? ` (${h.roomType})` : ""}`).join(", ") || "None" },
+                                { l: "Hotels", v: selectedHotels.length ? selectedHotels.map((h: any) => {
+                                    const details = [h.location, h.roomType, h.mealPlan ? h.mealPlan.split(' ')[0] : '', h.selectedNights ? `${h.selectedNights} Nights` : ''].filter(Boolean).join(" • ");
+                                    return `${h.name || h.hotelName}${details ? ` (${details})` : ""}`;
+                                }).join(", ") : "No hotel selected" },
                                 { l: "Activities", v: selectedActivities.map((a: any) => a.name || a.activityName).join(", ") || "None" },
                                 { l: "Plans", v: plans.map(p => `${p.hotelName} (₹${p.total.toLocaleString()})`).join(" | ") || "None" }
                             ].map(item => (

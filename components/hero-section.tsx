@@ -35,13 +35,18 @@ export function HeroSection({ customerName, destination, nights, days, startDate
 
       <div className="relative z-10 w-full flex flex-col items-center">
         {/* Logo */}
-        <div className="relative w-48 h-24 mb-10">
-          <Image
+        <div style={{ marginBottom: '40px', display: 'flex', justifyContent: 'center', width: '100%' }}>
+          <img
             src="/images/outbound png.png"
             alt="Outbound Travelers"
-            fill
-            className="object-contain"
-            priority
+            data-pdf-logo="true"
+            style={{ 
+              width: '160px', 
+              height: 'auto', 
+              display: 'block', 
+              objectFit: 'contain',
+              maxWidth: 'none'
+            }}
           />
         </div>
 

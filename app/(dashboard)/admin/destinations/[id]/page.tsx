@@ -620,7 +620,7 @@ function DestinationEditor() {
                 
 
 
-                <div><label className={labelClass} style={labelStyle}>Highlights (comma-separated)</label><input className={inputClass} style={inputStyle} placeholder="Burj Khalifa, Desert Safari" value={Array.isArray(formData.highlights) ? formData.highlights.join(", ") : formData.highlights || ""} onChange={e => setFormData({ ...formData, highlights: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })} /></div>
+                <div><label className={labelClass} style={labelStyle}>Highlights (comma-separated)</label><input className={inputClass} style={inputStyle} placeholder="Burj Khalifa, Desert Safari" value={Array.isArray(formData.highlights) ? formData.highlights.join(", ") : formData.highlights || ""} onChange={e => setFormData({ ...formData, highlights: e.target.value.split(",").map(s => s.trim()) })} /></div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t" style={{ borderColor: 'rgba(5,34,16,0.1)' }}>
                     <div><label className={labelClass} style={labelStyle}>Optional Pricing (₹)</label><input type="number" className={inputClass} style={inputStyle} placeholder="e.g. 5000" value={formData.optionalPrice || ""} onChange={e => setFormData({ ...formData, optionalPrice: Number(e.target.value) })} /></div>
                     <div><label className={labelClass} style={labelStyle}>Optional Pricing Description</label><input className={inputClass} style={inputStyle} placeholder="e.g. VIP Upgrade" value={formData.optionalPriceDescription || ""} onChange={e => setFormData({ ...formData, optionalPriceDescription: e.target.value })} /></div>

@@ -13,7 +13,7 @@ interface PricingPlan {
 interface PricingSectionProps {
   price?: string
   plans?: PricingPlan[]
-  inclusions?: string[]
+  inclusions?: string | string[]
   gstNote?: string
   applyGST?: boolean
   applyTCS?: boolean
@@ -26,7 +26,15 @@ const defaultImages = [
 ]
 
 export function PricingSection({ price, plans, inclusions, gstNote, applyGST, applyTCS }: PricingSectionProps = {}) {
-  const baseInclusions = inclusions || ['Per Person', 'Hand Baggage 7kg', 'Check-in 15kg']
+  let baseInclusions: string[] = []
+  if (typeof inclusions === 'string') {
+    baseInclusions = inclusions.split(',').map(item => item.trim()).filter(item => item !== "")
+  } else if (Array.isArray(inclusions)) {
+    baseInclusions = inclusions
+  } else {
+    baseInclusions = ['Per Person', 'Hand Baggage 7kg', 'Check-in 15kg']
+  }
+
   const displayInclusions = [...baseInclusions]
   if (applyGST) displayInclusions.push('GST 5% Inclusive')
   if (applyTCS) displayInclusions.push('TCS 2% + GST Inclusive')
@@ -147,11 +155,11 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
             <h2 className="font-sans text-5xl font-black text-[#FFE500] tracking-tighter mb-8 drop-shadow-2xl leading-none price-amount" data-pdf-color="yellow">
               {price || '₹44,900'}
             </h2>
-            <div className="flex flex-col gap-4 items-center">
-              {displayInclusions.map((item) => (
-                <div key={item} className="flex items-center gap-3 group">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#FFE500]" />
-                  <span className="font-sans text-[10px] font-black uppercase tracking-[0.25em] text-white per-person-label" style={{ color: '#ffffff' }} data-pdf-color="white">{item}</span>
+            <div className="mt-4 px-4 flex flex-wrap items-center justify-center gap-2">
+              {displayInclusions.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 whitespace-nowrap bg-black/10 px-2.5 py-1 rounded-md">
+                   <span className="font-sans text-[11px] font-black text-[#FFE500] leading-none" data-pdf-color="yellow">•</span>
+                   <span className="font-sans text-[9px] font-black uppercase tracking-[0.2em] text-white/90 leading-none" data-pdf-color="white">{item}</span>
                 </div>
               ))}
             </div>

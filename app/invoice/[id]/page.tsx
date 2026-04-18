@@ -157,12 +157,18 @@ export default function InvoicePage() {
                     }}>
                         {/* Logo + Title */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ position: 'relative', width: 160, height: 52 }}>
-                                <Image
+                            <div style={{ marginBottom: '8px' }}>
+                                <img
                                     src="/images/outbound png.png"
                                     alt="Outbound Travelers"
-                                    fill
-                                    style={{ objectFit: 'contain', objectPosition: 'left' }}
+                                    style={{ 
+                                        width: '180px', 
+                                        height: 'auto', 
+                                        display: 'block', 
+                                        objectFit: 'contain', 
+                                        objectPosition: 'left',
+                                        maxWidth: 'none'
+                                    }}
                                 />
                             </div>
                             <p style={{
@@ -286,11 +292,17 @@ export default function InvoicePage() {
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <p style={{ fontFamily: 'Inter', fontSize: 9, color: '#9ca3af', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>This is a computer generated invoice</p>
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                     src="/images/outbound png.png"
                                     alt="Outbound"
-                                    style={{ height: 44, width: 'auto', display: 'block', marginLeft: 'auto', objectFit: 'contain' }}
+                                    style={{ 
+                                        width: '140px', 
+                                        height: 'auto', 
+                                        display: 'block', 
+                                        marginLeft: 'auto', 
+                                        objectFit: 'contain',
+                                        maxWidth: 'none'
+                                    }}
                                 />
                             </div>
                         </div>

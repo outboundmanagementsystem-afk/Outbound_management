@@ -244,13 +244,13 @@ export function ManualCanvas() {
             case 'HERO': return { customerName: 'Mr. Wasim', destination: 'Kashmir', nights: 4, days: 5, startDate: 'Dec 23', endDate: 'Dec 27' }
             case 'TRIP_SUMMARY': return { fields: [{ label: 'Name', value: 'Mr. Wasim', icon: '✦' }, { label: 'Trip To', value: 'Kashmir', icon: '📍' }, { label: 'No. of Nights', value: '4N / 5D', icon: '🌙' }] }
             case 'FLIGHT_DETAILS': return { segments: [{ flightNumber: '6E 2131', airline: 'IndiGo', origin: 'DEL', destination: 'SXR', originTime: '10:00 AM', destinationTime: '11:30 AM', duration: '1h 30m', departureDate: 'Dec 23, 2024', originType: 'non-stop' }] }
-            case 'HOTEL_DETAILS': return { hotelList: [{ name: 'Srinagar Premium Hotel', subtitle: 'Or Similar Property', location: 'Srinagar', rating: 4, nights: '2 Nights', amenities: ['Breakfast', 'Dinner', 'Heater'] }] }
+            case 'HOTEL_DETAILS': return { hotelList: [{ name: 'Srinagar Premium Hotel', subtitle: 'Or Similar Property', location: 'Srinagar', rating: 4, nights: '2 Nights', amenities: 'Breakfast, Dinner, Heater' }] }
             case 'TRANSFER_DETAILS': return { transfers: [{ type: 'Private Sedan', date: 'Dec 23, 2024', time: '12:00 PM', pickup: 'Srinagar Airport', drop: 'Srinagar Hotel', vehicle: 'Etios / Dzire' }] }
             case 'DAY_ITINERARY': return { destination: 'Kashmir', totalDays: 5, dayPlans: [{ day: 'Day 01', date: 'Dec 23', title: 'Arrival in Srinagar', description: 'Arrive at Srinagar airport, transfer to hotel and relax.', highlights: ['Shikara Ride'], overnightStay: 'Srinagar' }] }
-            case 'PRICING_SECTION': return { price: '₹140,000', inclusions: ['2 Adults', 'Per Person'], gstNote: '5% GST applicable' }
+            case 'PRICING_SECTION': return { price: '₹140,000', inclusions: '2 Adults, Per Person', gstNote: '5% GST applicable' }
             case 'INC_EXC': return { inclusions: ['Accommodation as per itinerary', 'Daily Breakfast & Dinner', 'All transfers via private vehicle', 'Toll, parking and driver bata'], exclusions: ['Airfare / Train tickets', 'Lunch & any other meals', 'Personal expenses', 'Entry tickets & guide fees'] }
             case 'TERMS': return { terms: ['100% advance payment required for flight bookings.', '50% advance required to confirm the package.', 'Standard check-in time is 14:00 and check-out is 11:00.', 'No refunds for unutilized services or no-shows.'] }
-            case 'TEXT': return { heading: 'Notes', content: 'Enter your custom long text description here...' }
+            case 'TEXT': return { heading: '', content: '' }
             default: return {}
         }
     }
@@ -304,9 +304,146 @@ export function ManualCanvas() {
                 margin: 0,
                 filename: 'Itinerary.pdf',
                 image: { type: 'jpeg' as const, quality: 0.99 },
-                html2canvas: { scale: 2, useCORS: true, scrollY: 0, windowHeight: element.scrollHeight, logging: false },
-                jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const },
-                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+                html2canvas: { 
+                    scale: 3, 
+                    useCORS: true, 
+                    scrollY: 0, 
+                    windowHeight: element.scrollHeight, 
+                    logging: false,
+                    onclone: function(clonedDoc) {
+                        // --- PHASE 1: Baseline Style Inlining ---
+                        clonedDoc.querySelectorAll('*').forEach(el => {
+                            const element = el as HTMLElement;
+                            const computed = clonedDoc.defaultView?.getComputedStyle(el);
+                            if (!computed) return;
+                            const color = computed.getPropertyValue('color');
+                            const bg = computed.getPropertyValue('background-color');
+                            const fontSize = computed.getPropertyValue('font-size');
+                            const fontWeight = computed.getPropertyValue('font-weight');
+
+                            if (color) element.style.setProperty('color', color, 'important');
+                            if (bg && bg !== 'rgba(0, 0, 0, 0)') element.style.setProperty('background-color', bg, 'important');
+                            if (fontSize) element.style.setProperty('font-size', fontSize, 'important');
+                            if (fontWeight) element.style.setProperty('font-weight', fontWeight, 'important');
+                        });
+
+                        // Force the root backdrop to match the dark scheme so empty gaps aren't rendered naked white
+                        const rootEl = clonedDoc.getElementById('print-container');
+                        if (rootEl) {
+                            rootEl.classList.remove('bg-white');
+                            rootEl.style.setProperty('background-color', '#051F10', 'important');
+                        }
+
+                        // --- PHASE 2: Global Context & Visibility Logic ---
+                        clonedDoc.querySelectorAll('.pdf-section, section[class*="bg-[#031A0C]"], section[class*="bg-[#051F10]"], div[class*="bg-[#051F10]"]').forEach(section => {
+                            section.querySelectorAll('p, span, h1, h2, h3, div').forEach(el => {
+                                const element = el as HTMLElement;
+                                
+                                // Explicitly recover yellow items manually if compute fails
+                                if (element.classList.contains('text-[#FFE500]') || element.classList.contains('text-yellow-400')) {
+                                    element.style.setProperty('color', '#FFE500', 'important');
+                                } 
+                                else if (!element.closest('.bg-white') && !element.closest('.bg-gray-50') && !element.getAttribute('data-pdf-color')) {
+                                    element.style.setProperty('color', '#ffffff', 'important');
+                                }
+                            });
+                        });
+
+                        clonedDoc.querySelectorAll('.bg-white, .bg-gray-50, section[style*="#FAF9F6"], section[style*="#faf9f6"], section[style*="rgb(250, 249, 246)"]').forEach(container => {
+                           container.querySelectorAll('p, h1, h2, h3, span:not(.text-white), li').forEach(el => {
+                               const element = el as HTMLElement;
+                               if (!element.closest('[class*="bg-[#051F10]"]') && !element.closest('[class*="day-marker-badge"]')) {
+                                   element.style.setProperty('color', '#1a211d', 'important');
+                               }
+                           });
+                        });
+
+                        // --- PHASE 3: Targeted Component Recovery ---
+                        clonedDoc.querySelectorAll('[class*="day-marker-badge"]').forEach(badge => {
+                            (badge as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
+                            (badge as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                            badge.querySelectorAll('*').forEach(child => {
+                                (child as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                            });
+                        });
+
+                        clonedDoc.querySelectorAll('.overnight-stay-label').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                            (el as HTMLElement).style.setProperty('opacity', '1', 'important');
+                        });
+                        clonedDoc.querySelectorAll('.overnight-stay-value').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
+                            (el as HTMLElement).style.setProperty('opacity', '1', 'important');
+                        });
+
+                        clonedDoc.querySelectorAll('h3[class*="emerald-950"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#052e16', 'important');
+                        });
+                        clonedDoc.querySelectorAll('p[class*="text-gray-700"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#374151', 'important');
+                        });
+                        clonedDoc.querySelectorAll('[class*="hotel-name"], [class*="hotel-title"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
+                        });
+                        clonedDoc.querySelectorAll('[class*="hotel-location"], [class*="location-text"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#6b7280', 'important');
+                        });
+                        clonedDoc.querySelectorAll('[class*="nights-badge"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('background-color', '#f5c518', 'important');
+                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
+                        });
+
+                        clonedDoc.querySelectorAll('.trip-summary-label').forEach(el => {
+                            const element = el as HTMLElement;
+                            element.style.setProperty('color', '#8E918F', 'important');
+                            element.style.setProperty('font-size', '14px', 'important');
+                            element.style.setProperty('font-weight', '400', 'important');
+                            element.style.setProperty('letter-spacing', '0.1em', 'important');
+                        });
+                        clonedDoc.querySelectorAll('.trip-summary-value').forEach(el => {
+                            const element = el as HTMLElement;
+                            element.style.setProperty('color', '#1A211D', 'important');
+                            element.style.setProperty('font-size', '14px', 'important');
+                            element.style.setProperty('font-weight', '400', 'important');
+                        });
+
+                        clonedDoc.querySelectorAll('[class*="price-amount"], [class*="amount"]').forEach(el => {
+                            (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                        });
+
+                        clonedDoc.querySelectorAll('footer').forEach(footer => {
+                            (footer as HTMLElement).style.setProperty('background-color', '#031a0c', 'important');
+                            footer.querySelectorAll('*').forEach(el => {
+                                const element = el as HTMLElement;
+                                if (!element.hasAttribute('data-pdf-color') && !element.classList.contains('text-[#FFE500]')) {
+                                    element.style.setProperty('color', '#ffffff', 'important');
+                                }
+                            });
+                        });
+
+                        clonedDoc.querySelectorAll('[data-pdf-logo]').forEach(el => {
+                            const element = el as HTMLElement;
+                            element.style.setProperty('width', '160px', 'important');
+                            element.style.setProperty('height', 'auto', 'important');
+                            element.style.setProperty('display', 'block', 'important');
+                            element.style.setProperty('object-fit', 'contain', 'important');
+                            element.style.setProperty('max-width', 'none', 'important');
+                        });
+
+                        clonedDoc.querySelectorAll('[data-pdf-color]').forEach(el => {
+                            const element = el as HTMLElement;
+                            const pdfColor = element.getAttribute('data-pdf-color');
+                            if (pdfColor === 'yellow') {
+                                element.style.setProperty('color', '#FFE500', 'important');
+                            } else if (pdfColor === 'white') {
+                                element.style.setProperty('color', '#FFFFFF', 'important');
+                            } else if (pdfColor === 'black') {
+                                element.style.setProperty('color', '#1a211d', 'important');
+                            }
+                        });
+                    }
+                },
+                jsPDF: { unit: 'px' as const, format: [element.offsetWidth, element.scrollHeight], orientation: 'portrait' as const }
             }
             await html2pdf().set(opt).from(element).save()
         } catch (error) {
@@ -494,8 +631,9 @@ export function ManualCanvas() {
                     <div style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center', transition: 'transform 0.2s', width: '100%', display: 'flex', justifyContent: 'center' }}>
                         {/* A4 page */}
                         <div
+                            id="print-container"
                             ref={printRef}
-                            className="bg-white flex flex-col relative"
+                            className="flex flex-col relative"
                             style={{
                                 width: '210mm', // Fixed exact width to allow true scaling
                                 minHeight: '297mm',
@@ -670,16 +808,44 @@ export function ManualCanvas() {
                                         <LabelEl>Nights</LabelEl>
                                         <InputEl
                                             type="number"
-                                            value={selectedBlock.data.nights}
-                                            onChange={e => updateBlockData(selectedBlock.id, 'nights', Number(e.target.value))}
+                                            min="0"
+                                            value={selectedBlock.data.nights !== undefined && selectedBlock.data.nights !== null ? selectedBlock.data.nights : ''}
+                                            onKeyDown={e => { if (e.key === '-' || e.key === 'e' || e.key === '.') e.preventDefault() }}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === '') {
+                                                    updateBlockData(selectedBlock.id, 'nights', '');
+                                                } else {
+                                                    updateBlockData(selectedBlock.id, 'nights', Math.max(0, parseInt(val, 10) || 0));
+                                                }
+                                            }}
+                                            onBlur={e => {
+                                                if (selectedBlock.data.nights === '' || Number(selectedBlock.data.nights) < 0 || isNaN(Number(selectedBlock.data.nights))) {
+                                                    updateBlockData(selectedBlock.id, 'nights', 0);
+                                                }
+                                            }}
                                         />
                                     </div>
                                     <div>
                                         <LabelEl>Days</LabelEl>
                                         <InputEl
                                             type="number"
-                                            value={selectedBlock.data.days}
-                                            onChange={e => updateBlockData(selectedBlock.id, 'days', Number(e.target.value))}
+                                            min="0"
+                                            value={selectedBlock.data.days !== undefined && selectedBlock.data.days !== null ? selectedBlock.data.days : ''}
+                                            onKeyDown={e => { if (e.key === '-' || e.key === 'e' || e.key === '.') e.preventDefault() }}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === '') {
+                                                    updateBlockData(selectedBlock.id, 'days', '');
+                                                } else {
+                                                    updateBlockData(selectedBlock.id, 'days', Math.max(0, parseInt(val, 10) || 0));
+                                                }
+                                            }}
+                                            onBlur={e => {
+                                                if (selectedBlock.data.days === '' || Number(selectedBlock.data.days) < 0 || isNaN(Number(selectedBlock.data.days))) {
+                                                    updateBlockData(selectedBlock.id, 'days', 0);
+                                                }
+                                            }}
                                         />
                                     </div>
                                 </div>
@@ -779,7 +945,18 @@ export function ManualCanvas() {
                                             <InputEl type="number" placeholder="Rating (1–5)" value={h.rating} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].rating = Number(e.target.value); updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
                                             <InputEl placeholder="Nights (e.g. 2 Nights)" value={h.nights} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].nights = e.target.value; updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
                                         </div>
-                                        <InputEl placeholder="Amenities (comma separated)" value={(h.amenities || []).join(', ')} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].amenities = e.target.value.split(',').map((x: string) => x.trim()).filter(Boolean); updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
+                                        <InputEl placeholder="Amenities (comma separated)" value={Array.isArray(h.amenities) ? h.amenities.join(', ') : (h.amenities || '')} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].amenities = e.target.value; updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {(typeof h.amenities === 'string' ? h.amenities.split(',') : (h.amenities || [])).map((item: string, idx: number) => {
+                                                const trimmed = item.trim()
+                                                if (!trimmed) return null
+                                                return (
+                                                    <span key={idx} className="bg-[#f1f1f1] px-3 py-1.5 rounded-[16px] text-[12px] font-sans" style={{ color: '#1A211D' }}>
+                                                        {trimmed}
+                                                    </span>
+                                                )
+                                            })}
+                                        </div>
                                     </FieldCard>
                                 ))}
                                 <AddBtn onClick={() => updateBlockData(selectedBlock.id, 'hotelList', [...selectedBlock.data.hotelList, { name: '', location: '', rating: 3, nights: '', amenities: [] }])} label="Add Hotel" />
@@ -887,7 +1064,7 @@ export function ManualCanvas() {
                                             <InputEl placeholder="Day Title" value={d.title} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].title = e.target.value; updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
                                             <TextAreaEl rows={3} placeholder="Description..." value={d.description} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].description = e.target.value; updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
                                             <div className="grid grid-cols-2 gap-2 mt-1">
-                                                <InputEl placeholder="Highlights (csv)" value={(d.highlights || []).join(', ')} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].highlights = e.target.value.split(',').map((x: string) => x.trim()).filter(Boolean); updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
+                                                <InputEl placeholder="Highlights (csv)" value={(d.highlights || []).join(', ')} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].highlights = e.target.value.split(',').map((x: string) => x.trim()); updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
                                                 <InputEl placeholder="Overnight Stay" value={d.overnightStay || ''} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].overnightStay = e.target.value; updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
                                             </div>
                                         </FieldCard>
@@ -912,8 +1089,8 @@ export function ManualCanvas() {
                                     <LabelEl>Inclusions (comma separated)</LabelEl>
                                     <InputEl
                                         placeholder="e.g. 2 Adults, Per Person"
-                                        value={(selectedBlock.data.inclusions || []).join(', ')}
-                                        onChange={e => updateBlockData(selectedBlock.id, 'inclusions', e.target.value.split(',').map((x: string) => x.trim()).filter(Boolean))}
+                                        value={Array.isArray(selectedBlock.data.inclusions) ? selectedBlock.data.inclusions.join(', ') : (selectedBlock.data.inclusions || '')}
+                                        onChange={e => updateBlockData(selectedBlock.id, 'inclusions', e.target.value)}
                                     />
                                 </div>
 
@@ -1079,18 +1256,18 @@ export function ManualCanvas() {
                                 <div>
                                     <LabelEl>Heading</LabelEl>
                                     <InputEl
-                                        value={selectedBlock.data.heading}
+                                        value={selectedBlock.data.heading || ''}
                                         onChange={e => updateBlockData(selectedBlock.id, 'heading', e.target.value)}
-                                        placeholder="Section heading"
+                                        placeholder="Enter heading"
                                     />
                                 </div>
                                 <div>
                                     <LabelEl>Content</LabelEl>
                                     <TextAreaEl
                                         rows={8}
-                                        value={selectedBlock.data.content}
+                                        value={selectedBlock.data.content || ''}
                                         onChange={e => updateBlockData(selectedBlock.id, 'content', e.target.value)}
-                                        placeholder="Write your content here..."
+                                        placeholder="Enter your custom long text description here..."
                                     />
                                 </div>
                             </>

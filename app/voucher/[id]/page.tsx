@@ -54,10 +54,20 @@ export default function VoucherPage() {
             buttons.forEach((el: any) => el.style.display = 'none')
 
             const canvas = await html2canvas(element, {
-                scale: 2, // Higher quality for text-heavy documents
+                scale: 3, // Higher quality for text-heavy documents
                 useCORS: true,
                 logging: false,
                 windowWidth: 1000, // Fixed width for consistent layout
+                onclone: (clonedDoc) => {
+                    clonedDoc.querySelectorAll('[data-pdf-logo]').forEach(el => {
+                        const element = el as HTMLElement;
+                        element.style.setProperty('width', '240px', 'important'); // Larger for voucher header
+                        element.style.setProperty('height', 'auto', 'important');
+                        element.style.setProperty('display', 'block', 'important');
+                        element.style.setProperty('object-fit', 'contain', 'important');
+                        element.style.setProperty('max-width', 'none', 'important');
+                    });
+                }
             })
 
             const imgData = canvas.toDataURL("image/jpeg", 0.95)
@@ -142,10 +152,19 @@ export default function VoucherPage() {
                 <div className="p-12 md:p-16">
                     {/* Header */}
                     <div className="flex justify-between items-start mb-12 pb-8" style={{ borderBottom: '1px solid rgba(6,161,92,0.3)' }}>
-                        <div className="relative w-72 h-28">
-                            <div className="absolute inset-0 flex items-center">
-                                <img src="/images/outbound png 3.png" alt="Outbound Travelers" className="h-full w-auto object-contain" />
-                            </div>
+                        <div className="flex items-center">
+                            <img
+                                src="/images/outbound png 3.png"
+                                alt="Outbound Travelers"
+                                data-pdf-logo="true"
+                                style={{ 
+                                    width: '240px', 
+                                    height: 'auto', 
+                                    display: 'block', 
+                                    objectFit: 'contain',
+                                    maxWidth: 'none'
+                                }}
+                            />
                         </div>
                         <div className="text-right">
                             <h2 className="font-serif text-4xl mb-2" style={{ color: '#06a15c' }}>TRAVEL VOUCHER</h2>
@@ -217,8 +236,8 @@ export default function VoucherPage() {
                                 {hotels.map((hotel: any, idx: number) => (
                                     <div key={idx} className="flex items-center justify-between p-5 rounded-xl font-sans" style={{ backgroundColor: '#f9fafb', border: '1px solid #f3f4f6' }}>
                                         <div>
-                                            <p className="font-bold text-lg" style={{ color: '#111827' }}>{hotel.name}</p>
-                                            <p className="text-sm mt-0.5" style={{ color: '#6b7280' }}>{hotel.category || 'Standard'} · {hotel.rating ? `${hotel.rating}★` : ''} Or Similar Property</p>
+                                            <p className="font-bold text-lg" style={{ color: '#111827' }}>{hotel.name || hotel.hotelName || "Unnamed Hotel"}</p>
+                                            <p className="text-sm mt-0.5" style={{ color: '#6b7280' }}>{hotel.category || 'Standard'}{hotel.rating ? ` · ${hotel.rating}★` : ''} Or Similar Property</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="font-bold" style={{ color: '#06a15c' }}>{itin.nights || 0} Nights</p>

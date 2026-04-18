@@ -98,7 +98,7 @@ export default function PDFPrintPage() {
             for (const item of chunkData) {
                 const bgColor = (item.isFooter || item.isDarkBg) ? '#031A0C' : '#ffffff';
                 const canvas = await html2canvas(item.chunk, {
-                    scale: 2,
+                    scale: 3,
                     useCORS: true,
                     windowWidth: totalWidth,
                     width: totalWidth,
@@ -143,6 +143,15 @@ export default function PDFPrintPage() {
                              } else if (element.classList.contains('per-person-label')) {
                                 element.style.setProperty('color', '#ffffff', 'important');
                              }
+                        });
+
+                        clonedDoc.querySelectorAll('[data-pdf-logo]').forEach(el => {
+                            const element = el as HTMLElement;
+                            element.style.setProperty('width', '160px', 'important');
+                            element.style.setProperty('height', 'auto', 'important');
+                            element.style.setProperty('display', 'block', 'important');
+                            element.style.setProperty('object-fit', 'contain', 'important');
+                            element.style.setProperty('max-width', 'none', 'important');
                         });
 
                         // 5. Final Pass: Marked Branding Enforcement
