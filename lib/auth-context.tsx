@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react"
 import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, User } from "firebase/auth"
 import { doc, getDoc, setDoc, collection, getDocs, query, where } from "firebase/firestore"
 import { auth, db, googleProvider } from "./firebase"
@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null)
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
     const [loading, setLoading] = useState(true)
+    const isSignInInProgress = useRef(false)
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -118,10 +119,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const handleSignIn = async () => {
+        if (isSignInInProgress.current) return;
+        
         try {
+            isSignInInProgress.current = true;
+            setLoading(true);
             await signInWithPopup(auth, googleProvider)
-        } catch (error) {
-            console.error("Sign-in error:", error)
+        } catch (error: any) {
+            if (error?.code !== 'auth/cancelled-popup-request' && error?.code !== 'auth/popup-closed-by-user') {
+                console.error("Sign-in error:", error)
+            }
+        } finally {
+            isSignInInProgress.current = false;
+            setLoading(false);
         }
     }
 
