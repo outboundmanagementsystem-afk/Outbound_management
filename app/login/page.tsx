@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { Plane } from "lucide-react"
 
@@ -10,14 +10,63 @@ export default function LoginPage() {
     const { user, userProfile, loading, signInWithGoogle } = useAuth()
     const router = useRouter()
 
+    const hasRedirected = useRef(false)
+    const [timeoutError, setTimeoutError] = useState(false)
+
+    // 10s timeout fallback to prevent infinite loading
     useEffect(() => {
-        if (!loading && userProfile) {
-            if (userProfile.role === "admin" || userProfile.role === "owner") router.push("/admin")
-            else if (userProfile.role === "sales_lead" || userProfile.role === "sales") router.push("/sales")
-            else if (userProfile.role === "pre_ops_lead" || userProfile.role === "pre_ops") router.push("/ops")
-            else if (userProfile.role === "post_ops" || userProfile.role === "post_ops_lead") router.push("/post-ops")
+        const timer = setTimeout(() => {
+            if (loading) {
+                setTimeoutError(true)
+            }
+        }, 10000)
+        return () => clearTimeout(timer)
+    }, [loading])
+
+    useEffect(() => {
+        if (loading || !userProfile || hasRedirected.current) return;
+
+        const handleRedirect = async () => {
+            try {
+                hasRedirected.current = true;
+                console.log("LoginPage: Before navigation...");
+                
+                if (userProfile.role === "admin" || userProfile.role === "owner") router.push("/admin")
+                else if (userProfile.role === "sales_lead" || userProfile.role === "sales") router.push("/sales")
+                else if (userProfile.role === "pre_ops_lead" || userProfile.role === "pre_ops") router.push("/ops")
+                else if (userProfile.role === "post_ops" || userProfile.role === "post_ops_lead") router.push("/post-ops")
+                else if (userProfile.role === "finance" || userProfile.role === "finance_lead") router.push("/finance")
+                else {
+                    hasRedirected.current = false; // reset if no route matched to allow retry if needed
+                    console.error("LoginPage: Unhandled role", userProfile.role)
+                }
+
+                console.log("LoginPage: After navigation...");
+            } catch (error) {
+                console.error("Redirect error:", error)
+                setTimeoutError(true)
+            }
         }
+        
+        handleRedirect();
     }, [userProfile, loading, router])
+
+    if (timeoutError && loading) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center" style={{ background: '#031A0C' }}>
+                <p className="font-sans text-sm tracking-widest uppercase mb-4" style={{ color: '#ef4444' }}>
+                    Something went wrong. Please refresh.
+                </p>
+                <button 
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2 rounded-lg text-white font-sans text-xs tracking-widest uppercase transition-all hover:bg-white/10"
+                    style={{ border: '1px solid rgba(212,175,55,0.5)', color: '#D4AF37' }}
+                >
+                    Refresh Page
+                </button>
+            </div>
+        )
+    }
 
     return (
         <div className="min-h-screen relative overflow-hidden flex items-center justify-center grain-overlay" style={{ background: 'linear-gradient(180deg, #031A0C 0%, #052210 45%, #0B2E2B 100%)' }}>

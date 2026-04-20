@@ -2,32 +2,66 @@
 
 import { useAuth, UserRole } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 
 export function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: UserRole[] }) {
     const { userProfile, loading } = useAuth()
     const router = useRouter()
+    const hasRedirected = useRef(false)
+    const [timeoutError, setTimeoutError] = useState(false)
+
+    // 10s timeout fallback
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (loading) {
+                setTimeoutError(true)
+            }
+        }, 10000)
+        return () => clearTimeout(timer)
+    }, [loading])
 
     useEffect(() => {
-        if (!loading) {
-            if (!userProfile) {
-                router.push("/login")
-            } else {
-                // Owner can access admin pages
-                const effectiveRoles = [...allowedRoles]
-                if (effectiveRoles.includes("admin") && !effectiveRoles.includes("owner")) {
-                    effectiveRoles.push("owner")
-                }
-                if (!effectiveRoles.includes(userProfile.role)) {
-                    // Redirect to appropriate dashboard
-                    if (userProfile.role === "admin" || userProfile.role === "owner") router.push("/admin")
-                    else if (userProfile.role === "sales_lead" || userProfile.role === "sales") router.push("/sales")
-                    else if (userProfile.role === "pre_ops_lead" || userProfile.role === "pre_ops") router.push("/ops")
-                    else if (userProfile.role === "post_ops" || userProfile.role === "post_ops_lead") router.push("/post-ops")
-                }
+        if (loading || hasRedirected.current) return;
+
+        if (!userProfile) {
+            hasRedirected.current = true;
+            console.log("ProtectedRoute: No userProfile, redirecting to /login...");
+            router.push("/login")
+        } else {
+            // Owner can access admin pages
+            const effectiveRoles = [...allowedRoles]
+            if (effectiveRoles.includes("admin") && !effectiveRoles.includes("owner")) {
+                effectiveRoles.push("owner")
+            }
+            if (!effectiveRoles.includes(userProfile.role)) {
+                hasRedirected.current = true;
+                console.log(`ProtectedRoute: Role ${userProfile.role} not in [${effectiveRoles.join(",")}]. Redirecting...`);
+                // Redirect to appropriate dashboard
+                if (userProfile.role === "admin" || userProfile.role === "owner") router.push("/admin")
+                else if (userProfile.role === "sales_lead" || userProfile.role === "sales") router.push("/sales")
+                else if (userProfile.role === "pre_ops_lead" || userProfile.role === "pre_ops") router.push("/ops")
+                else if (userProfile.role === "post_ops" || userProfile.role === "post_ops_lead") router.push("/post-ops")
+                else router.push("/login")
             }
         }
-    }, [userProfile, loading, allowedRoles, router])
+    }, [userProfile, loading, router]) // Removed allowedRoles from deps to prevent re-triggering if passed inline
+
+    if (timeoutError && loading) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center" style={{ background: '#031A0C' }}>
+                <p className="font-sans text-sm tracking-widest uppercase mb-4" style={{ color: '#ef4444' }}>
+                    Something went wrong. Please refresh.
+                </p>
+                <button 
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-2 rounded-lg text-white font-sans text-xs tracking-widest uppercase transition-all hover:bg-white/10"
+                    style={{ border: '1px solid rgba(212,175,55,0.5)', color: '#D4AF37' }}
+                >
+                    Refresh Page
+                </button>
+            </div>
+        )
+    }
 
     if (loading) {
         return (
