@@ -78,15 +78,17 @@ export function HotelDetails({ hotelList }: HotelDetailsProps = {}) {
               <div className="w-12 h-1 bg-[#FFE500] mb-4 rounded-full" />
 
               {/* Star Rating */}
-              <div className="flex items-center gap-1 mb-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                          key={i}
-                          className={`w-4 h-4 ${i < hotel.rating ? 'fill-[#FFE500] text-[#FFE500]' : 'fill-[#E5E7EB] text-[#E5E7EB]'}`}
-                      />
-                  ))}
-                  <span className="font-sans text-[9px] font-black text-[#6B7280] uppercase tracking-widest ml-1">{hotel.rating}-Star</span>
-              </div>
+              {hotel.rating && (
+                <div className="flex items-center gap-1 mb-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                            key={i}
+                            className={`w-4 h-4 ${i < hotel.rating ? 'fill-[#FFE500] text-[#FFE500]' : 'fill-[#E5E7EB] text-[#E5E7EB]'}`}
+                        />
+                    ))}
+                    <span className="font-sans text-[9px] font-black text-[#6B7280] uppercase tracking-widest ml-1">{hotel.rating}-Star</span>
+                </div>
+              )}
 
               {/* Meal Plan if available */}
               {hotel.mealPlan && (

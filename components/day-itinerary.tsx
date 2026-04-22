@@ -148,18 +148,20 @@ export function DayItinerary({ dayPlans, destination, totalDays, startDate }: Da
                           </div>
                       )}
 
-                      {/* Overnight Stay */}
-                      <div className="bg-[#051F10] rounded-[20px] p-5 flex items-center gap-4 shadow-xl border border-white/5">
-                          <div className="w-12 h-12 rounded-[16px] bg-[#FFE500]/10 flex items-center justify-center flex-shrink-0 border border-[#FFE500]/20">
-                              <Moon className="w-6 h-6 text-[#FFE500]" />
-                          </div>
-                          <div>
-                              <p className="font-sans font-black uppercase tracking-[0.25em] block mb-1 overnight-stay-label" style={{ color: '#FFD700', fontSize: '12px' }} data-pdf-color="yellow">Overnight Stay</p>
-                              <h3 className="font-sans text-base font-black uppercase tracking-tight overnight-stay-value" style={{ color: '#FFFFFF', fontWeight: '600' }} data-pdf-color="white">
-                                  {day.overnightStay || day.subDestination || dest}
-                              </h3>
-                          </div>
-                      </div>
+                      {/* Overnight Stay - Hidden for last day */}
+                      {idx < days.length - 1 && (
+                        <div className="bg-[#051F10] rounded-[20px] p-5 flex items-center gap-4 shadow-xl border border-white/5">
+                            <div className="w-12 h-12 rounded-[16px] bg-[#FFE500]/10 flex items-center justify-center flex-shrink-0 border border-[#FFE500]/20">
+                                <Moon className="w-6 h-6 text-[#FFE500]" />
+                            </div>
+                            <div>
+                                <p className="font-sans font-black uppercase tracking-[0.25em] block mb-1 overnight-stay-label" style={{ color: '#FFD700', fontSize: '12px' }} data-pdf-color="yellow">Overnight Stay</p>
+                                <h3 className="font-sans text-base font-black uppercase tracking-tight overnight-stay-value" style={{ color: '#FFFFFF', fontWeight: '600' }} data-pdf-color="white">
+                                    {day.overnightStay || day.subDestination || dest}
+                                </h3>
+                            </div>
+                        </div>
+                      )}
                   </div>
               </div>
             </div>

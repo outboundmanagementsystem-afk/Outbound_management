@@ -1,68 +1,77 @@
 "use client"
 
 import { useAuth, UserRole } from "@/lib/auth-context"
-import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useRouter, usePathname } from "next/navigation"
+import { useEffect, useRef, useMemo } from "react"
+import { getRoleDashboard, isRoleAllowed } from "@/lib/role-utils"
 
 export function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode; allowedRoles: UserRole[] }) {
-    const { userProfile, loading } = useAuth()
+    const { userProfile, loading, authError, retryAuth } = useAuth()
     const router = useRouter()
-    const hasRedirected = useRef(false)
-    const [timeoutError, setTimeoutError] = useState(false)
+    const pathname = usePathname()
+    const hasNavigated = useRef(false)
 
-    // 10s timeout fallback
+    // Memoize the roles string so it doesn't trigger useEffect on every render
+    const rolesKey = useMemo(() => allowedRoles.sort().join(","), [allowedRoles])
+
+    // Reset navigation flag when pathname changes (user navigated somewhere else)
     useEffect(() => {
-        const timer = setTimeout(() => {
-            if (loading) {
-                setTimeoutError(true)
-            }
-        }, 10000)
-        return () => clearTimeout(timer)
-    }, [loading])
+        hasNavigated.current = false
+    }, [pathname])
 
     useEffect(() => {
-        if (loading || hasRedirected.current) return;
+        if (loading) return
+        if (hasNavigated.current) return
 
         if (!userProfile) {
-            hasRedirected.current = true;
-            console.log("ProtectedRoute: No userProfile, redirecting to /login...");
-            router.push("/login")
-        } else {
-            // Owner can access admin pages
-            const effectiveRoles = [...allowedRoles]
-            if (effectiveRoles.includes("admin") && !effectiveRoles.includes("owner")) {
-                effectiveRoles.push("owner")
-            }
-            if (!effectiveRoles.includes(userProfile.role)) {
-                hasRedirected.current = true;
-                console.log(`ProtectedRoute: Role ${userProfile.role} not in [${effectiveRoles.join(",")}]. Redirecting...`);
-                // Redirect to appropriate dashboard
-                if (userProfile.role === "admin" || userProfile.role === "owner") router.push("/admin")
-                else if (userProfile.role === "sales_lead" || userProfile.role === "sales") router.push("/sales")
-                else if (userProfile.role === "pre_ops_lead" || userProfile.role === "pre_ops") router.push("/ops")
-                else if (userProfile.role === "post_ops" || userProfile.role === "post_ops_lead") router.push("/post-ops")
-                else router.push("/login")
+            hasNavigated.current = true
+            router.replace("/login")
+            return
+        }
+
+        const allowed = isRoleAllowed(userProfile.role, rolesKey.split(","))
+        if (!allowed) {
+            const target = getRoleDashboard(userProfile.role)
+            if (target !== pathname) {
+                hasNavigated.current = true
+                console.log(`ProtectedRoute: Role "${userProfile.role}" not allowed. Redirecting to "${target}"`)
+                router.replace(target)
             }
         }
-    }, [userProfile, loading, router]) // Removed allowedRoles from deps to prevent re-triggering if passed inline
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userProfile, loading, rolesKey, pathname])
 
-    if (timeoutError && loading) {
+    // Auth error — show retry UI
+    if (authError && !loading) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center" style={{ background: '#031A0C' }}>
-                <p className="font-sans text-sm tracking-widest uppercase mb-4" style={{ color: '#ef4444' }}>
-                    Something went wrong. Please refresh.
+                <p className="font-sans text-sm tracking-widest uppercase mb-2" style={{ color: '#ef4444' }}>
+                    Authentication Error
                 </p>
-                <button 
-                    onClick={() => window.location.reload()}
-                    className="px-6 py-2 rounded-lg text-white font-sans text-xs tracking-widest uppercase transition-all hover:bg-white/10"
-                    style={{ border: '1px solid rgba(212,175,55,0.5)', color: '#D4AF37' }}
-                >
-                    Refresh Page
-                </button>
+                <p className="font-sans text-xs mb-6 max-w-md" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    {authError}
+                </p>
+                <div className="flex gap-3">
+                    <button
+                        onClick={retryAuth}
+                        className="px-6 py-2 rounded-lg font-sans text-xs tracking-widest uppercase transition-all hover:bg-white/10"
+                        style={{ border: '1px solid rgba(212,175,55,0.5)', color: '#D4AF37' }}
+                    >
+                        Retry
+                    </button>
+                    <button
+                        onClick={() => { hasNavigated.current = true; router.replace("/login") }}
+                        className="px-6 py-2 rounded-lg font-sans text-xs tracking-widest uppercase transition-all hover:bg-white/10"
+                        style={{ border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.5)' }}
+                    >
+                        Back to Login
+                    </button>
+                </div>
             </div>
         )
     }
 
+    // Loading state
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center" style={{ background: '#031A0C' }}>
@@ -74,12 +83,8 @@ export function ProtectedRoute({ children, allowedRoles }: { children: React.Rea
         )
     }
 
-    const effectiveAllowed = [...allowedRoles]
-    if (effectiveAllowed.includes("admin" as UserRole) && !effectiveAllowed.includes("owner" as UserRole)) {
-        effectiveAllowed.push("owner" as UserRole)
-    }
-
-    if (!userProfile || !effectiveAllowed.includes(userProfile.role)) {
+    // Not authenticated or wrong role — render nothing while redirect happens
+    if (!userProfile || !isRoleAllowed(userProfile.role, allowedRoles)) {
         return null
     }
 

@@ -12,7 +12,7 @@ import {
 } from "@/lib/firestore"
 import {
     User, MapPin, Calendar, Users, Hotel, Car, Sun, DollarSign,
-    ChevronRight, ChevronLeft, Check, Plus, Trash2, Eye, Plane, Upload, Loader2, Sparkles, Map, PackageSearch, ChevronDown, X, Search
+    ChevronRight, ChevronLeft, Check, Plus, Trash2, Eye, Plane, Upload, Loader2, Sparkles, Map, PackageSearch, ChevronDown, X, Search, Star
 } from "lucide-react"
 import { createWorker } from "tesseract.js"
 import { preprocessImageForOCR } from "@/lib/image-processing"
@@ -56,7 +56,6 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
 
     // Step 1: Customer & Trip
     const [customerName, setCustomerName] = useState("")
-    const [packageDescription, setPackageDescription] = useState("")
     const [customerPhone, setCustomerPhone] = useState("")
     const [customerEmail, setCustomerEmail] = useState("")
     const [destinationId, setDestinationId] = useState("")
@@ -179,7 +178,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
         { label: "AP (All Meals)", value: "AP" }
     ]
 
-    const TIER_NAMES = ["BUDGET", "DELUXE", "LUXURY", "PREMIUM", "STANDARD"]
+    const TIER_NAMES = ["BUDGET", "STANDARD", "DELUXE", "SUPER DELUXE", "LUXURY", "PREMIUM"]
 
     // Sync tierPlans to selectedHotels for backward compatibility with pricing/saving logic
     useEffect(() => {
@@ -203,7 +202,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                         mealPlan: stop.mealPlan,
                         roomType: stop.roomType || hotel.roomType || "Standard",
                         ratePerNight: stop.ratePerNight || 0,
-                        location: stop.location || hotel.location || ""
+                        location: stop.location || hotel.location || "",
+                        starRating: stop.starRating || hotel.starRating || 3
                     })
                 }
             })
@@ -378,7 +378,6 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     setConsultantName(it.consultantName || "")
                     setConsultantPhone(it.consultantPhone || "")
                     setMargin(it.margin || 15)
-                    setPackageDescription(it.description || "")
                 }
 
                 if (p && p.length > 0) {
@@ -402,7 +401,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                             nights: hotel.selectedNights || 1,
                             mealPlan: hotel.mealPlan || "CP (Breakfast)",
                             roomType: hotel.roomType || "",
-                            ratePerNight: hotel.ratePerNight || 0
+                            ratePerNight: hotel.ratePerNight || 0,
+                            starRating: hotel.starRating || 3
                         }))
                     }))
                     setTierPlans(reconstructed.length > 0 ? reconstructed : [{ name: "BUDGET", stops: [{ location: "", hotelId: "", hotelName: "", nights: 2, mealPlan: "CP (Breakfast)", roomType: "", ratePerNight: 0 }] }])
@@ -507,8 +507,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
             const marginAmt = netCost * (margin / 100)
             const total = netCost + marginAmt + optionalCost
             setTotalPrice(Math.round(total))
-            setPerPersonPrice(pax > 0 ? Math.round(total / pax) : 0)
-            setPlans([{ hotelName: "No Hotel Selected", total, perPersonPrice: pax > 0 ? Math.round(total / pax) : 0, hotelCost }])
+            setPerPersonPrice(adults > 0 ? Math.round(total / adults) : Math.round(total))
+            setPlans([{ hotelName: "No Hotel Selected", total, perPersonPrice: adults > 0 ? Math.round(total / adults) : Math.round(total), hotelCost }])
         } else {
             // Group hotels by category (to support multi-hotel sequential stays in the same package option)
             const categories = Array.from(new Set(selectedHotels.map(h => h.category || "Uncategorized")))
@@ -529,7 +529,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     category: cat,
                     hotelCost,
                     total: Math.round(total),
-                    perPersonPrice: pax > 0 ? Math.round(total / pax) : 0
+                    perPersonPrice: adults > 0 ? Math.round(total / adults) : Math.round(total)
                 }
             })
             // For legacy fields, just use the first plan
@@ -579,7 +579,6 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 const packageData = {
                     ...baseData,
                     packageName: customerName,
-                    description: packageDescription,
                 }
                 if (editId) {
                     await updatePackage(editId, packageData)
@@ -852,19 +851,6 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                     {errors.customerEmail && <p className="text-[10px] text-red-500 mt-1 ml-1 font-semibold">{errors.customerEmail}</p>}
                                 </div>
                             </div>
-                            {mode === "package" && (
-                                <div className="mt-4">
-                                    <label className={labelClass} style={labelStyle}>Description</label>
-                                    <textarea 
-                                        className={inputClass} 
-                                        style={{ ...inputStyle, minHeight: '100px' }} 
-                                        value={packageDescription} 
-                                        onChange={e => setPackageDescription(e.target.value)} 
-                                        placeholder="Enter package description..." 
-                                        rows={3}
-                                    />
-                                </div>
-                            )}
                         </div>
 
                         <div className="h-px" style={{ background: '#f3f4f6' }} />
@@ -1138,24 +1124,38 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                             <MapPin className="w-3 h-3" /> Location
                                                         </label>
                                                         <div className="relative group/dropdown">
-                                                            <div 
-                                                                className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200 text-sm font-sans cursor-pointer hover:border-emerald-300 transition-all shadow-sm"
-                                                                onClick={() => setOpenTierLocDropdown(openTierLocDropdown?.planIdx === planIdx && openTierLocDropdown?.stopIdx === stopIdx ? null : { planIdx, stopIdx })}
-                                                            >
-                                                                <span className={stop.location ? "text-gray-900 font-medium" : "text-gray-400"}>
-                                                                    {stop.location || "Select Location"}
-                                                                </span>
-                                                                <ChevronDown className={`w-4 h-4 text-emerald-600 transition-transform ${openTierLocDropdown?.planIdx === planIdx && openTierLocDropdown?.stopIdx === stopIdx ? 'rotate-180' : ''}`} />
+                                                            <div className="relative">
+                                                                <input 
+                                                                    className={`${inputClass} pr-10`} 
+                                                                    style={inputStyle} 
+                                                                    placeholder="Select or Type Location"
+                                                                    value={openTierLocDropdown?.planIdx === planIdx && openTierLocDropdown?.stopIdx === stopIdx ? localLocSearch : (stop.location || "")}
+                                                                    onFocus={() => {
+                                                                        setOpenTierLocDropdown({ planIdx, stopIdx });
+                                                                        setLocalLocSearch(stop.location || "");
+                                                                    }}
+                                                                    onBlur={() => setTimeout(() => setOpenTierLocDropdown(null), 200)}
+                                                                    onChange={(e) => {
+                                                                        setLocalLocSearch(e.target.value);
+                                                                        const newPlans = [...tierPlans];
+                                                                        newPlans[planIdx].stops[stopIdx].location = e.target.value;
+                                                                        setTierPlans(newPlans);
+                                                                    }}
+                                                                />
+                                                                <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 transition-transform ${openTierLocDropdown?.planIdx === planIdx && openTierLocDropdown?.stopIdx === stopIdx ? 'rotate-180' : ''}`} />
                                                             </div>
                                                             {openTierLocDropdown?.planIdx === planIdx && openTierLocDropdown?.stopIdx === stopIdx && (
                                                                 <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-48 overflow-auto py-2 animate-in fade-in slide-in-from-top-2">
-                                                                    {(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).map((loc: string) => (
+                                                                    {(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || [])
+                                                                        .filter((loc: string) => !localLocSearch || loc.toLowerCase().includes(localLocSearch.toLowerCase()))
+                                                                        .map((loc: string) => (
                                                                         <div 
                                                                             key={loc} 
-                                                                            className="px-4 py-3 hover:bg-emerald-50 text-sm font-sans font-medium cursor-pointer transition-colors"
+                                                                            className="px-4 py-3 hover:bg-emerald-50 text-sm font-sans font-medium cursor-pointer transition-colors flex items-center justify-between group"
                                                                             onClick={() => {
                                                                                 const newPlans = [...tierPlans];
                                                                                 newPlans[planIdx].stops[stopIdx].location = loc;
+                                                                                setLocalLocSearch(loc);
                                                                                 
                                                                                 // Aggressive match: Try to find any hotel matching this location field
                                                                                 let firstMatch = destHotels.find((h: any) => {
@@ -1182,6 +1182,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                                     // Get first room category or default
                                                                                     const room = firstMatch.roomCategories?.[0];
                                                                                     newPlans[planIdx].stops[stopIdx].roomType = room?.roomType || "Standard";
+                                                                                    newPlans[planIdx].stops[stopIdx].starRating = room?.starRating || 3;
                                                                                     
                                                                                     const mp = newPlans[planIdx].stops[stopIdx].mealPlan || "CP (Breakfast)";
                                                                                     const source = room || firstMatch;
@@ -1200,9 +1201,24 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                                 setOpenTierLocDropdown(null);
                                                                             }}
                                                                         >
-                                                                            {loc}
+                                                                            <span>{loc}</span>
+                                                                            {stop.location === loc && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                                                                         </div>
                                                                     ))}
+                                                                    {localLocSearch && !(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).some(l => l.toLowerCase() === localLocSearch.toLowerCase()) && (
+                                                                        <div 
+                                                                            className="px-4 py-3 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-t border-gray-50"
+                                                                            onClick={() => {
+                                                                                const newPlans = [...tierPlans];
+                                                                                newPlans[planIdx].stops[stopIdx].location = localLocSearch;
+                                                                                setTierPlans(newPlans);
+                                                                                setOpenTierLocDropdown(null);
+                                                                            }}
+                                                                        >
+                                                                            ➕ Add "{localLocSearch}"
+                                                                            <Plus className="w-3.5 h-3.5" />
+                                                                        </div>
+                                                                    )}
                                                                     {(!(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).length) && (
                                                                         <div className="px-4 py-3 text-xs text-gray-400 italic">No locations found. Add them in Destinations.</div>
                                                                     )}
@@ -1216,33 +1232,29 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                         <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-1">
                                                             <Hotel className="w-3 h-3" /> Hotel
                                                         </label>
-                                                        <div className="relative">
-                                                            <div 
-                                                                className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-gray-200 text-sm font-sans cursor-pointer hover:border-emerald-300 transition-all shadow-sm"
-                                                                onClick={() => {
-                                                                    setOpenTierHotelDropdown(openTierHotelDropdown?.planIdx === planIdx && openTierHotelDropdown?.stopIdx === stopIdx ? null : { planIdx, stopIdx });
-                                                                    setLocalHotelSearch("");
-                                                                }}
-                                                            >
-                                                                <span className={stop.hotelName ? "text-gray-900 font-medium truncate pr-4" : "text-gray-400"}>
-                                                                    {stop.hotelName || "Select Hotel"}
-                                                                </span>
-                                                                <ChevronDown className={`w-4 h-4 text-emerald-600 transition-transform ${openTierHotelDropdown?.planIdx === planIdx && openTierHotelDropdown?.stopIdx === stopIdx ? 'rotate-180' : ''}`} />
+                                                        <div className="relative group/dropdown">
+                                                            <div className="relative">
+                                                                <input 
+                                                                    className={`${inputClass} pr-10`} 
+                                                                    style={inputStyle} 
+                                                                    placeholder="Select or Type Hotel"
+                                                                    value={openTierHotelDropdown?.planIdx === planIdx && openTierHotelDropdown?.stopIdx === stopIdx ? localHotelSearch : (stop.hotelName || "")}
+                                                                    onFocus={() => {
+                                                                        setOpenTierHotelDropdown({ planIdx, stopIdx });
+                                                                        setLocalHotelSearch(stop.hotelName || "");
+                                                                    }}
+                                                                    onBlur={() => setTimeout(() => setOpenTierHotelDropdown(null), 200)}
+                                                                    onChange={(e) => {
+                                                                        setLocalHotelSearch(e.target.value);
+                                                                        const newPlans = [...tierPlans];
+                                                                        newPlans[planIdx].stops[stopIdx].hotelName = e.target.value;
+                                                                        setTierPlans(newPlans);
+                                                                    }}
+                                                                />
+                                                                <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-600 transition-transform ${openTierHotelDropdown?.planIdx === planIdx && openTierHotelDropdown?.stopIdx === stopIdx ? 'rotate-180' : ''}`} />
                                                             </div>
                                                             {openTierHotelDropdown?.planIdx === planIdx && openTierHotelDropdown?.stopIdx === stopIdx && (
                                                                 <div className="absolute z-[100] w-[200%] sm:w-[150%] right-0 sm:left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2">
-                                                                    <div className="p-2 border-b">
-                                                                        <div className="relative">
-                                                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                                                                            <input 
-                                                                                className="w-full pl-9 pr-4 py-2 bg-gray-50 border-none rounded-lg text-xs outline-none focus:ring-1 focus:ring-emerald-500" 
-                                                                                placeholder="Search hotel name..."
-                                                                                value={localHotelSearch}
-                                                                                onChange={(e) => setLocalHotelSearch(e.target.value)}
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                            />
-                                                                        </div>
-                                                                    </div>
                                                                     <div className="max-h-60 overflow-auto py-2">
                                                                         {destHotels
                                                                             .filter((h: any) => {
@@ -1263,8 +1275,10 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                                             newPlans[planIdx].stops[stopIdx].hotelId = hotel.id;
                                                                                             newPlans[planIdx].stops[stopIdx].hotelName = hotel.hotelName || hotel.name;
                                                                                             // Auto-set initial rate based on default CP meal plan if available
+                                                                                            const selectedRoom = hotel.roomCategories?.[0];
                                                                                             newPlans[planIdx].stops[stopIdx].ratePerNight = hotel.cpPrice || basePrice;
                                                                                             newPlans[planIdx].stops[stopIdx].location = hotel.address || hotel.location || newPlans[planIdx].stops[stopIdx].location;
+                                                                                            newPlans[planIdx].stops[stopIdx].starRating = selectedRoom?.starRating || 3;
                                                                                             setTierPlans(newPlans);
                                                                                             setOpenTierHotelDropdown(null);
                                                                                         }}
@@ -1277,9 +1291,9 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                                     </div>
                                                                                 )
                                                                             })}
-                                                                        {localHotelSearch && (
+                                                                        {localHotelSearch && !destHotels.some(h => (h.hotelName || h.name || "").toLowerCase() === localHotelSearch.toLowerCase()) && (
                                                                             <div 
-                                                                                className="px-4 py-3 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between"
+                                                                                className="px-4 py-3 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-t border-gray-50"
                                                                                 onClick={() => {
                                                                                     const newPlans = [...tierPlans];
                                                                                     newPlans[planIdx].stops[stopIdx].hotelId = `custom-${Date.now()}`;
@@ -1289,8 +1303,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                                     setOpenTierHotelDropdown(null);
                                                                                 }}
                                                                             >
-                                                                                Add Custom: "{localHotelSearch}"
-                                                                                <Plus className="w-3 h-3" />
+                                                                                ➕ Add "{localHotelSearch}"
+                                                                                <Plus className="w-3.5 h-3.5" />
                                                                             </div>
                                                                         )}
                                                                         {(!destHotels.length) && <div className="px-4 py-3 text-xs text-gray-400 italic">No hotels found.</div>}
@@ -1390,6 +1404,9 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                             else if (mp.startsWith("CP")) newPlans[planIdx].stops[stopIdx].ratePerNight = room.cpPrice || 0;
                                                                             else if (mp.startsWith("MAP")) newPlans[planIdx].stops[stopIdx].ratePerNight = room.mapPrice || 0;
                                                                             else if (mp.startsWith("AP")) newPlans[planIdx].stops[stopIdx].ratePerNight = room.apPrice || 0;
+                                                                            
+                                                                            // Set star rating from room category default
+                                                                            newPlans[planIdx].stops[stopIdx].starRating = room.starRating || 3;
                                                                         }
                                                                         setTierPlans(newPlans);
                                                                     }}
@@ -1403,6 +1420,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none" />
                                                             </div>
                                                         </div>
+
+
                                                         <div className="space-y-1.5 px-1">
                                                             <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400">Rate per Night (₹)</label>
                                                             <div className="relative">
@@ -1640,33 +1659,41 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                 <span className="font-sans text-[10px] px-2.5 py-1 rounded-md font-medium" style={{ background: '#f3f4f6', color: '#6b7280' }}>{day.date}</span>
                                             </div>
                                             <div className="w-full relative">
-                                                <div className="relative group">
-                                                    <div 
-                                                        className="w-full flex items-center justify-between px-3 py-2.5 text-xs rounded-lg font-sans font-semibold tracking-wide cursor-pointer transition-all border"
-                                                        style={{ 
-                                                            background: destPresetDays.length > 0 ? '#ecfdf5' : '#f9fafb', 
-                                                            color: destPresetDays.length > 0 ? '#059669' : '#9ca3af', 
-                                                            borderColor: destPresetDays.length > 0 ? '#a7f3d0' : '#e5e7eb', 
-                                                        }}
-                                                        onClick={() => {
-                                                            if (destPresetDays.length > 0) {
-                                                                setOpenPresetDropdown(openPresetDropdown === idx ? null : idx);
-                                                                setLocalPresetSearch("");
-                                                            }
-                                                        }}
-                                                    >
-                                                        <span className="truncate pr-4">{destPresetDays.length > 0 ? "Load Preset Day..." : "No preset days found"}</span>
-                                                        <ChevronDown className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${openPresetDropdown === idx ? 'rotate-180' : ''}`} />
+                                                <div className="relative group/dropdown">
+                                                    <div className="relative">
+                                                        <input 
+                                                            className="w-full px-3 py-2.5 text-xs rounded-lg font-sans font-semibold tracking-wide outline-none transition-all border pr-10"
+                                                            style={{ 
+                                                                background: '#FFFFFF', 
+                                                                color: '#052210', 
+                                                                borderColor: '#e5e7eb', 
+                                                            }}
+                                                            placeholder={destPresetDays.length > 0 ? "Search or Type Preset Day..." : "No preset days found"}
+                                                            value={openPresetDropdown === idx ? localPresetSearch : ""}
+                                                            onFocus={() => {
+                                                                if (destPresetDays.length > 0) {
+                                                                    setOpenPresetDropdown(idx);
+                                                                    setLocalPresetSearch("");
+                                                                }
+                                                            }}
+                                                            onBlur={() => setTimeout(() => setOpenPresetDropdown(null), 200)}
+                                                            onChange={(e) => setLocalPresetSearch(e.target.value)}
+                                                            disabled={destPresetDays.length === 0}
+                                                        />
+                                                        <ChevronDown className={`absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-emerald-600 transition-transform duration-200 ${openPresetDropdown === idx ? 'rotate-180' : ''}`} />
                                                     </div>
 
                                                     {openPresetDropdown === idx && (
                                                         <div className="absolute z-[110] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] max-h-80 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
                                                             <div className="overflow-y-auto py-1 custom-scrollbar max-h-80">
-                                                                {destPresetDays.map((p) => (
+                                                                {destPresetDays
+                                                                    .filter(p => !localPresetSearch || (p.title || "").toLowerCase().includes(localPresetSearch.toLowerCase()))
+                                                                    .map((p) => (
                                                                         <div 
                                                                             key={p.id} 
                                                                             className="px-4 py-3.5 hover:bg-emerald-50/50 text-xs font-sans cursor-pointer transition-colors border-b border-gray-50 last:border-0 group/item"
-                                                                            onClick={() => { 
+                                                                            onMouseDown={(e) => { 
+                                                                                e.preventDefault();
                                                                                 const d = [...dayPlans];
                                                                                 d[idx].title = p.title || "";
                                                                                 d[idx].description = p.description || "";
@@ -1692,6 +1719,21 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                             </div>
                                                                         </div>
                                                                     ))}
+                                                                {localPresetSearch && !destPresetDays.some(p => (p.title || "").toLowerCase() === localPresetSearch.toLowerCase()) && (
+                                                                    <div 
+                                                                        className="px-4 py-3.5 hover:bg-emerald-50/50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-t border-gray-50"
+                                                                        onMouseDown={(e) => {
+                                                                            e.preventDefault();
+                                                                            const d = [...dayPlans];
+                                                                            d[idx].title = localPresetSearch;
+                                                                            setDayPlans(d);
+                                                                            setOpenPresetDropdown(null);
+                                                                        }}
+                                                                    >
+                                                                        ➕ Add Custom Day: "{localPresetSearch}"
+                                                                        <Plus className="w-3.5 h-3.5" />
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </div>
                                                     )}
@@ -1704,123 +1746,67 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                             <input className={inputClass} style={{ ...inputStyle, fontWeight: 600 }} placeholder="Day Title (e.g. Arrival / Srinagar)" value={day.title} onChange={e => { const d = [...dayPlans]; d[idx].title = e.target.value; setDayPlans(d) }} />
                                             <textarea className={`${inputClass} resize-none`} style={{ ...inputStyle, minHeight: '72px' }} placeholder="Day description..." value={day.description} onChange={e => { const d = [...dayPlans]; d[idx].description = e.target.value; setDayPlans(d) }} />
                                         </div>
-                                        
-                                        {/* Location - Custom Searchable Dropdowns */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fade-in mb-3">
-                                            <div className="relative">
-                                                <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold text-[#059669]">Sub Destination</label>
-                                                <div className="relative group">
-                                                    <input 
-                                                        className={`${inputClass} pr-10`} 
-                                                        style={inputStyle} 
-                                                        placeholder="e.g. Havelock"
-                                                        value={day.subDestination || ""} 
-                                                        onFocus={() => { setOpenLocDropdown(idx); setLocalLocSearch(""); }}
-                                                        onBlur={() => setTimeout(() => setOpenLocDropdown(null), 200)}
-                                                        onChange={e => { 
-                                                            const d = [...dayPlans]; d[idx].subDestination = e.target.value; setDayPlans(d);
-                                                            setLocalLocSearch(e.target.value);
-                                                        }}
-                                                    />
-                                                    <button 
-                                                        type="button" 
-                                                        className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80 transition-opacity"
-                                                        onClick={() => setOpenLocDropdown(openLocDropdown === idx ? null : idx)}
-                                                    >
-                                                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openLocDropdown === idx ? 'rotate-180' : ''}`} />
-                                                    </button>
-                                                    
-                                                    {openLocDropdown === idx && (
-                                                        <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-56 overflow-auto py-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                                                            {(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || [])
-                                                                .filter((loc: string) => !localLocSearch || loc.toLowerCase().includes(localLocSearch.toLowerCase()))
-                                                                .map((loc: string) => (
+                                          {/* Location - Custom Searchable Dropdowns - Hidden for last day */}
+                                        {idx < dayPlans.length - 1 && (
+                                            <div className="animate-fade-in mb-3">
+                                                <div className="relative">
+                                                    <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold text-[#059669]">Overnight Stay Location</label>
+                                                    <div className="relative group">
+                                                        <input 
+                                                            className={`${inputClass} pr-10`} 
+                                                            style={inputStyle} 
+                                                            placeholder="e.g. Havelock"
+                                                            value={day.overnightStay || ""} 
+                                                            onFocus={() => { setOpenHotelDropdown(idx); setLocalHotelSearch(""); }}
+                                                            onBlur={() => setTimeout(() => setOpenHotelDropdown(null), 200)}
+                                                            onChange={e => { 
+                                                                const d = [...dayPlans]; d[idx].overnightStay = e.target.value; setDayPlans(d);
+                                                                setLocalHotelSearch(e.target.value);
+                                                            }}
+                                                        />
+                                                        <button 
+                                                            type="button" 
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80 transition-opacity"
+                                                            onClick={() => setOpenHotelDropdown(openHotelDropdown === idx ? null : idx)}
+                                                        >
+                                                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openHotelDropdown === idx ? 'rotate-180' : ''}`} />
+                                                        </button>
+                                                        
+                                                        {openHotelDropdown === idx && (
+                                                            <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-56 overflow-auto py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                                {(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || [])
+                                                                    .filter((loc: string) => !localHotelSearch || loc.toLowerCase().includes(localHotelSearch.toLowerCase()))
+                                                                    .map((loc: string) => (
+                                                                        <div 
+                                                                           key={loc} 
+                                                                           className="px-4 py-2.5 hover:bg-emerald-50 text-sm font-sans cursor-pointer transition-colors flex items-center justify-between"
+                                                                           onMouseDown={(e) => {
+                                                                               e.preventDefault();
+                                                                               const d = [...dayPlans]; d[idx].overnightStay = loc; setDayPlans(d); setOpenHotelDropdown(null);
+                                                                           }}
+                                                                        >
+                                                                            <span style={{ color: '#052210' }}>{loc}</span>
+                                                                            {day.overnightStay === loc && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                                                        </div>
+                                                                    ))}
+                                                                {localHotelSearch && !(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).includes(localHotelSearch) && (
                                                                     <div 
-                                                                        key={loc} 
-                                                                        className="px-4 py-2.5 hover:bg-emerald-50 text-sm font-sans cursor-pointer transition-colors flex items-center justify-between"
+                                                                        className="px-4 py-2.5 hover:bg-emerald-50 text-sm font-sans cursor-pointer italic text-emerald-600 flex items-center justify-between"
                                                                         onMouseDown={(e) => {
                                                                             e.preventDefault();
-                                                                            const d = [...dayPlans]; d[idx].subDestination = loc; setDayPlans(d); setOpenLocDropdown(null);
+                                                                            const d = [...dayPlans]; d[idx].overnightStay = localHotelSearch; setDayPlans(d); setOpenHotelDropdown(null);
                                                                         }}
                                                                     >
-                                                                        <span style={{ color: '#052210' }}>{loc}</span>
-                                                                        {day.subDestination === loc && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                                                        Add "{localHotelSearch}"
+                                                                        <Plus className="w-3.5 h-3.5" />
                                                                     </div>
-                                                                ))}
-                                                            {localLocSearch && !(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).includes(localLocSearch) && (
-                                                                <div 
-                                                                    className="px-4 py-2.5 hover:bg-emerald-50 text-sm font-sans cursor-pointer italic text-emerald-600 flex items-center justify-between"
-                                                                    onMouseDown={(e) => {
-                                                                        e.preventDefault();
-                                                                        const d = [...dayPlans]; d[idx].subDestination = localLocSearch; setDayPlans(d); setOpenLocDropdown(null);
-                                                                    }}
-                                                                >
-                                                                    Add "{localLocSearch}"
-                                                                    <Plus className="w-3.5 h-3.5" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-
-                                            <div className="relative">
-                                                <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold text-[#059669]">Overnight Stay Location</label>
-                                                <div className="relative group">
-                                                    <input 
-                                                        className={`${inputClass} pr-10`} 
-                                                        style={inputStyle} 
-                                                        placeholder="e.g. Havelock"
-                                                        value={day.overnightStay || ""} 
-                                                        onFocus={() => { setOpenHotelDropdown(idx); setLocalHotelSearch(""); }}
-                                                        onBlur={() => setTimeout(() => setOpenHotelDropdown(null), 200)}
-                                                        onChange={e => { 
-                                                            const d = [...dayPlans]; d[idx].overnightStay = e.target.value; setDayPlans(d);
-                                                            setLocalHotelSearch(e.target.value);
-                                                        }}
-                                                    />
-                                                    <button 
-                                                        type="button" 
-                                                        className="absolute right-3 top-1/2 -translate-y-1/2 opacity-40 hover:opacity-80 transition-opacity"
-                                                        onClick={() => setOpenHotelDropdown(openHotelDropdown === idx ? null : idx)}
-                                                    >
-                                                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${openHotelDropdown === idx ? 'rotate-180' : ''}`} />
-                                                    </button>
-                                                    
-                                                    {openHotelDropdown === idx && (
-                                                        <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-56 overflow-auto py-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                                                            {(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || [])
-                                                                .filter((loc: string) => !localHotelSearch || loc.toLowerCase().includes(localHotelSearch.toLowerCase()))
-                                                                .map((loc: string) => (
-                                                                    <div 
-                                                                       key={loc} 
-                                                                       className="px-4 py-2.5 hover:bg-emerald-50 text-sm font-sans cursor-pointer transition-colors flex items-center justify-between"
-                                                                       onMouseDown={(e) => {
-                                                                           e.preventDefault();
-                                                                           const d = [...dayPlans]; d[idx].overnightStay = loc; setDayPlans(d); setOpenHotelDropdown(null);
-                                                                       }}
-                                                                    >
-                                                                        <span style={{ color: '#052210' }}>{loc}</span>
-                                                                        {day.overnightStay === loc && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                                                                    </div>
-                                                                ))}
-                                                            {localHotelSearch && !(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).includes(localHotelSearch) && (
-                                                                <div 
-                                                                    className="px-4 py-2.5 hover:bg-emerald-50 text-sm font-sans cursor-pointer italic text-emerald-600 flex items-center justify-between"
-                                                                    onMouseDown={(e) => {
-                                                                        e.preventDefault();
-                                                                        const d = [...dayPlans]; d[idx].overnightStay = localHotelSearch; setDayPlans(d); setOpenHotelDropdown(null);
-                                                                    }}
-                                                                >
-                                                                    Add "{localHotelSearch}"
-                                                                    <Plus className="w-3.5 h-3.5" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
+                                        )}
 
                                         <div className="pt-2">
                                             <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold" style={{ color: '#059669' }}>Highlights</label>
@@ -1833,7 +1819,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                                 <div>
                                                     <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold" style={{ color: 'rgba(5,34,16,0.4)' }}>Optional Cost (₹)</label>
-                                                    <input type="number" className={`${inputClass} pr-10`} style={inputStyle} placeholder="e.g. 1500" value={day.optionalPrice === 0 ? "" : day.optionalPrice} onFocus={e => { if (day.optionalPrice === 0) e.target.value = "" }} onChange={e => { let val = e.target.value.replace(/^0+/, ''); const d = [...dayPlans]; if (val === "") d[idx].optionalPrice = 0; else d[idx].optionalPrice = Math.max(0, parseInt(val) || 0); setDayPlans(d); }} onBlur={e => { if (e.target.value === "") { const d = [...dayPlans]; d[idx].optionalPrice = 0; setDayPlans(d); } }} />
+                                                    <input type="number" className={`${inputClass} pr-10`} style={inputStyle} placeholder="e.g. 1500" value={day.optionalPrice || ""} onFocus={e => { if (!day.optionalPrice) e.target.value = "" }} onChange={e => { let val = e.target.value.replace(/^0+/, ''); const d = [...dayPlans]; if (val === "") d[idx].optionalPrice = 0; else d[idx].optionalPrice = Math.max(0, parseInt(val) || 0); setDayPlans(d); }} onBlur={e => { if (e.target.value === "") { const d = [...dayPlans]; d[idx].optionalPrice = 0; setDayPlans(d); } }} />
                                                 </div>
                                                 <div className="sm:col-span-2">
                                                     <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold" style={{ color: 'rgba(5,34,16,0.4)' }}>Optional Item Description</label>
@@ -1940,7 +1926,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                     const newPlans = [...plans];
                                                     const pax = adults + children;
                                                     newPlans[idx].total = newTotal;
-                                                    newPlans[idx].perPersonPrice = pax > 0 ? Math.round(newTotal / pax) : 0;
+                                                    newPlans[idx].perPersonPrice = adults > 0 ? Math.round(newTotal / adults) : Math.round(newTotal);
                                                     setPlans(newPlans);
 
                                                     if (idx === 0) {
@@ -2004,7 +1990,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                     return `${h.name || h.hotelName}${details ? ` (${details})` : ""}`;
                                 }).join(", ") : "No hotel selected" },
                                 { l: "Activities", v: selectedActivities.map((a: any) => a.name || a.activityName).join(", ") || "None" },
-                                { l: "Plans", v: plans.map(p => `${p.hotelName} (₹${p.total.toLocaleString()})`).join(" | ") || "None" }
+                                { l: "Plans", v: plans.filter(p => p.total > 0).map(p => `${p.hotelName} (₹${p.total.toLocaleString()})`).join(" | ") || "None" }
                             ].map(item => (
                                 <div key={item.l} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0 px-4 py-3 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                                     <span className="font-sans text-[11px] font-semibold uppercase tracking-wider sm:w-36 flex-shrink-0" style={{ color: '#059669' }}>{item.l}</span>

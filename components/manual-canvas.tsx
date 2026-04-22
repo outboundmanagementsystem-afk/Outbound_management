@@ -5,7 +5,7 @@ import {
     Plus, Trash2, ArrowUp, ArrowDown, Type, Calendar, FileText,
     Download, LayoutTemplate, Settings, X, Loader2, DollarSign,
     Hotel, Plane, Car, CheckCircle2, Scale,
-    Sparkles, Eye, EyeOff, ZoomIn, ZoomOut
+    Sparkles, Eye, EyeOff, ZoomIn, ZoomOut, Star
 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth-context"
@@ -242,9 +242,19 @@ export function ManualCanvas() {
     const getDefaultData = (type: BlockType) => {
         switch (type) {
             case 'HERO': return { customerName: 'Mr. Wasim', destination: 'Kashmir', nights: 4, days: 5, startDate: 'Dec 23', endDate: 'Dec 27' }
-            case 'TRIP_SUMMARY': return { fields: [{ label: 'Name', value: 'Mr. Wasim', icon: '✦' }, { label: 'Trip To', value: 'Kashmir', icon: '📍' }, { label: 'No. of Nights', value: '4N / 5D', icon: '🌙' }] }
+            case 'TRIP_SUMMARY': return { fields: [
+                { label: 'Consultant Name', value: 'Pon Divya', icon: '👤' }, 
+                { label: 'Consultant Phone', value: '6369910492', icon: '📞' }, 
+                { label: 'Name', value: 'Mr. Wasim', icon: '👤' },
+                { label: 'Phone', value: '+91 9087687987', icon: '📞' },
+                { label: 'Email', value: 'gcg@gmail.com', icon: '✉️' },
+                { label: 'Trip To', value: 'Kashmir', icon: '📍' }, 
+                { label: 'Dates', value: 'Dec 23, 2024 – Dec 27, 2024', icon: '📅' },
+                { label: 'Duration', value: '4N / 5D', icon: '🌙' },
+                { label: 'Total Adults', value: '2', icon: '👥' }
+            ] }
             case 'FLIGHT_DETAILS': return { segments: [{ flightNumber: '6E 2131', airline: 'IndiGo', origin: 'DEL', destination: 'SXR', originTime: '10:00 AM', destinationTime: '11:30 AM', duration: '1h 30m', departureDate: 'Dec 23, 2024', originType: 'non-stop' }] }
-            case 'HOTEL_DETAILS': return { hotelList: [{ name: 'Srinagar Premium Hotel', subtitle: 'Or Similar Property', location: 'Srinagar', rating: 4, nights: '2 Nights', amenities: 'Breakfast, Dinner, Heater' }] }
+            case 'HOTEL_DETAILS': return { hotelList: [{ name: 'Srinagar Premium Hotel', subtitle: 'Or Similar Property', location: 'Srinagar', rating: 4, nights: '2 Nights', amenities: ['Breakfast', 'Dinner', 'Heater'] }] }
             case 'TRANSFER_DETAILS': return { transfers: [{ type: 'Private Sedan', date: 'Dec 23, 2024', time: '12:00 PM', pickup: 'Srinagar Airport', drop: 'Srinagar Hotel', vehicle: 'Etios / Dzire' }] }
             case 'DAY_ITINERARY': return { destination: 'Kashmir', totalDays: 5, dayPlans: [{ day: 'Day 01', date: 'Dec 23', title: 'Arrival in Srinagar', description: 'Arrive at Srinagar airport, transfer to hotel and relax.', highlights: ['Shikara Ride'], overnightStay: 'Srinagar' }] }
             case 'PRICING_SECTION': return { price: '₹140,000', inclusions: '2 Adults, Per Person', gstNote: '5% GST applicable' }
@@ -936,10 +946,7 @@ export function ManualCanvas() {
                                         <InputEl placeholder="Hotel Name" value={h.name} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].name = e.target.value; updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
                                         <InputEl placeholder="Subtitle (e.g. Or Similar)" value={h.subtitle || ''} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].subtitle = e.target.value; updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
                                         <InputEl placeholder="Location / City" value={h.location} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].location = e.target.value; updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <InputEl type="number" placeholder="Rating (1–5)" value={h.rating} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].rating = Number(e.target.value); updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
-                                            <InputEl placeholder="Nights (e.g. 2 Nights)" value={h.nights} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].nights = e.target.value; updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
-                                        </div>
+                                        <InputEl placeholder="Nights (e.g. 2 Nights)" value={h.nights} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].nights = e.target.value; updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
                                         <InputEl placeholder="Amenities (comma separated)" value={Array.isArray(h.amenities) ? h.amenities.join(', ') : (h.amenities || '')} onChange={e => { const arr = [...selectedBlock.data.hotelList]; arr[i].amenities = e.target.value; updateBlockData(selectedBlock.id, 'hotelList', arr) }} />
                                         <div className="flex flex-wrap gap-2 mt-2">
                                             {(typeof h.amenities === 'string' ? h.amenities.split(',') : (h.amenities || [])).map((item: string, idx: number) => {
@@ -1058,9 +1065,11 @@ export function ManualCanvas() {
                                             </div>
                                             <InputEl placeholder="Day Title" value={d.title} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].title = e.target.value; updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
                                             <TextAreaEl rows={3} placeholder="Description..." value={d.description} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].description = e.target.value; updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
-                                            <div className="grid grid-cols-2 gap-2 mt-1">
+                                            <div className={i < selectedBlock.data.dayPlans.length - 1 ? "grid grid-cols-2 gap-2 mt-1" : "mt-1"}>
                                                 <InputEl placeholder="Highlights (csv)" value={(d.highlights || []).join(', ')} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].highlights = e.target.value.split(',').map((x: string) => x.trim()); updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
-                                                <InputEl placeholder="Overnight Stay" value={d.overnightStay || ''} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].overnightStay = e.target.value; updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
+                                                {i < selectedBlock.data.dayPlans.length - 1 && (
+                                                    <InputEl placeholder="Overnight Stay" value={d.overnightStay || ''} onChange={e => { const arr = [...selectedBlock.data.dayPlans]; arr[i].overnightStay = e.target.value; updateBlockData(selectedBlock.id, 'dayPlans', arr) }} />
+                                                )}
                                             </div>
                                         </FieldCard>
                                     ))}

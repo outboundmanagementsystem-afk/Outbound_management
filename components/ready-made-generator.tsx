@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/lib/auth-context"
 import {
-    getDestinations, getPackages, getPackage, getPackageDays, getPackageHotels, getPackageTransfers, getPackageActivities, getPackageFlights, getPackagePricing, getDestination,
+    getDestinations, getPackages, getPackage, getPackageDays, getPackageHotels, getPackageTransfers, getPackageActivities, getPackageFlights, getPackagePricing, getDestination, getHotels,
     createItinerary, addItineraryDay, addItineraryHotel, addItineraryTransfer, addItineraryActivity, addItineraryFlight, addItineraryPricing, getCustomers,
-    createPackage, updatePackage, addPackageDay, addPackageHotel, addPackagePricing, getPresetDays, getHotels, deletePackage, clearPackageSubcollections
+    createPackage, updatePackage, addPackageDay, addPackageHotel, addPackagePricing, getPresetDays, deletePackage, clearPackageSubcollections
 } from "@/lib/firestore"
 import { PackageSearch, Loader2, Plus, ArrowLeft, Trash2, ChevronDown, Check, X, Eye } from "lucide-react"
 import { SuccessModal } from "./success-modal"
@@ -68,7 +68,6 @@ export function ReadyMadeGenerator() {
     const [newPkgTier, setNewPkgTier] = useState("Deluxe")
     const [newPkgNights, setNewPkgNights] = useState(3)
     const [newPkgDays, setNewPkgDays] = useState(4)
-    const [newPkgDescription, setNewPkgDescription] = useState("")
 
     const [dayPlans, setDayPlans] = useState<string[]>([]) // Array of day plan IDs or names
     const [hotelStops, setHotelStops] = useState<any[]>([{ location: "", hotelId: "", mealPlan: "CP", nights: 2 }])
@@ -80,6 +79,8 @@ export function ReadyMadeGenerator() {
         { id: "no", label: "No bed", desc: "CNB / without mattress", net: 0, margin: 20 },
     ])
     const [openStopIdx, setOpenStopIdx] = useState<number | null>(null)
+    const [openHotelDropdownIdx, setOpenHotelDropdownIdx] = useState<number | null>(null)
+    const [localHotelSearch, setLocalHotelSearch] = useState("")
     const [isDeleting, setIsDeleting] = useState<string | null>(null)
     const [editingPkgId, setEditingPkgId] = useState<string | null>(null)
     const [fetchingPkgDetails, setFetchingPkgDetails] = useState(false)
@@ -202,10 +203,19 @@ export function ReadyMadeGenerator() {
                 getPackageFlights(selectedPkg.id),
                 getPackageHotels(selectedPkg.id),
                 getPackageActivities(selectedPkg.id),
-                getPackageDays(selectedPkg.id)
-            ]).then(([flights, hotels, activities, days]) => {
+                getPackageDays(selectedPkg.id),
+                getHotels(selectedPkg.destinationId)
+            ]).then(([flights, hotels, activities, days, masterHotels]) => {
+                const enrichedHotels = hotels.map(h => {
+                    const master = masterHotels.find(m => m.id === h.hotelId || m.hotelName === (h.hotelName || h.name) || m.name === (h.hotelName || h.name));
+                    if (master) {
+                        const rating = master.rating || master.starRating || (master.roomCategories && master.roomCategories[0]?.starRating) || 3;
+                        return { ...h, rating };
+                    }
+                    return h;
+                });
                 setPreviewFlights(flights);
-                setPreviewHotels(hotels);
+                setPreviewHotels(enrichedHotels);
                 setPreviewActivities(activities);
                 setPreviewDays(days);
             }).catch(err => {
@@ -377,7 +387,7 @@ export function ReadyMadeGenerator() {
             setNewPkgTier(pkg.tier || "Deluxe")
             setNewPkgNights(pkg.nights || 3)
             setNewPkgDays(pkg.days || 4)
-            setNewPkgDescription(pkg.description || "")
+
 
             // Map days
             const sortedDays = days.sort((a: any, b: any) => (a.dayNumber || 0) - (b.dayNumber || 0))
@@ -432,7 +442,6 @@ export function ReadyMadeGenerator() {
                 tier: newPkgTier,
                 nights: newPkgNights,
                 days: newPkgDays,
-                description: newPkgDescription,
                 status: "active"
             }
 
@@ -537,6 +546,7 @@ export function ReadyMadeGenerator() {
         const t = tier.toLowerCase();
         if (t.includes('budget')) return { bg: '#EAF3DE', color: '#3B6D11', border: '#C0DD97' };
         if (t.includes('deluxe')) return { bg: '#E6F1FB', color: '#185FA5', border: '#B5D4F4' };
+        if (t.includes('super deluxe')) return { bg: '#F0E7FF', color: '#5B21B6', border: '#C4B5FD' };
         if (t.includes('premium')) return { bg: '#FAEEDA', color: '#854F0B', border: '#FAC775' };
         if (t.includes('luxury') || t.includes('royal')) return { bg: '#FAECE7', color: '#993C1D', border: '#F4C8BA' };
         return { bg: '#f3f4f6', color: '#374151', border: '#e5e7eb' };
@@ -563,7 +573,6 @@ export function ReadyMadeGenerator() {
                                 setNewPkgTier("Deluxe")
                                 setNewPkgNights(3)
                                 setNewPkgDays(4)
-                                setNewPkgDescription("")
                                 setDayPlans(Array(4).fill(""))
                                 setHotelStops([{ location: "", hotelId: "", mealPlan: "CP", nights: 2 }])
                                 setPaxPricing([
@@ -618,10 +627,11 @@ export function ReadyMadeGenerator() {
                                     <label className="text-[10px] font-semibold tracking-wider uppercase text-gray-500 mb-1">Tier</label>
                                     <select className="px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none" value={newPkgTier} onChange={e => setNewPkgTier(e.target.value)}>
                                         <option>Budget</option>
+                                        <option>Standard</option>
                                         <option>Deluxe</option>
                                         <option>Super Deluxe</option>
-                                        <option>Premium</option>
                                         <option>Luxury</option>
+                                        <option>Premium</option>
                                         <option>Royal</option>
                                     </select>
                                 </div>
@@ -633,16 +643,6 @@ export function ReadyMadeGenerator() {
                                     <label className="text-[10px] font-semibold tracking-wider uppercase text-gray-500 mb-1">Days</label>
                                     <input type="number" min="1" className="px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none" value={newPkgDays} onChange={e => setNewPkgDays(Number(e.target.value))} />
                                 </div>
-                            </div>
-                            <div className="flex flex-col mt-3">
-                                <label className="text-[10px] font-semibold tracking-wider uppercase text-gray-500 mb-1">Description</label>
-                                <textarea 
-                                    className="px-3 py-2 bg-white border border-gray-200 rounded-md text-xs outline-none focus:border-emerald-400 transition-all font-sans min-h-[80px]" 
-                                    placeholder="Enter package description..." 
-                                    value={newPkgDescription} 
-                                    onChange={e => setNewPkgDescription(e.target.value)}
-                                    rows={3}
-                                />
                             </div>
                             <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mt-3">
                                 <label className="flex items-center gap-2 text-[10px] font-semibold tracking-wider uppercase text-gray-500 mb-1">
@@ -730,58 +730,108 @@ export function ReadyMadeGenerator() {
                                                 <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none transition-transform duration-200 ${openStopIdx === idx ? 'rotate-180' : ''}`} />
                                             </div>
 
-                                            {openStopIdx === idx && (
+                                                    {openStopIdx === idx && (
+                                                        <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-auto py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                            {subDestinations
+                                                                .filter((loc: string) => !stop.location || loc.toLowerCase().includes(stop.location.toLowerCase()))
+                                                                .map((loc: string) => (
+                                                                    <div
+                                                                        key={loc}
+                                                                        className="px-3 py-2 hover:bg-emerald-50 text-xs font-sans cursor-pointer flex items-center justify-between group transition-colors"
+                                                                        onMouseDown={(e) => {
+                                                                            e.preventDefault();
+                                                                            const newStops = [...hotelStops];
+                                                                            newStops[idx].location = loc;
+                                                                            setHotelStops(newStops);
+                                                                            setOpenStopIdx(null);
+                                                                        }}
+                                                                    >
+                                                                        <span className={stop.location === loc ? "text-emerald-700 font-bold" : "text-gray-700"}>{loc}</span>
+                                                                        {stop.location === loc && <Check className="w-3 h-3 text-emerald-600" />}
+                                                                    </div>
+                                                                ))}
+                                                            {stop.location && !subDestinations.some((loc: string) => loc.toLowerCase() === stop.location.toLowerCase()) && (
+                                                                <div
+                                                                    className="px-3 py-2 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-t border-gray-50"
+                                                                    onMouseDown={(e) => {
+                                                                        e.preventDefault();
+                                                                        setOpenStopIdx(null);
+                                                                    }}
+                                                                >
+                                                                    ➕ Add "{stop.location}"
+                                                                    <Plus className="w-2.5 h-2.5" />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                        </div>
+                                        <div className="relative">
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    className="w-full pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none focus:border-emerald-400 transition-all font-medium"
+                                                    placeholder="Hotel Name"
+                                                    value={openHotelDropdownIdx === idx ? localHotelSearch : (stop.hotelName || "")}
+                                                    onFocus={() => {
+                                                        setOpenHotelDropdownIdx(idx);
+                                                        setLocalHotelSearch(stop.hotelName || "");
+                                                    }}
+                                                    onBlur={() => setTimeout(() => setOpenHotelDropdownIdx(null), 200)}
+                                                    onChange={e => {
+                                                        setLocalHotelSearch(e.target.value);
+                                                        const newStops = [...hotelStops];
+                                                        newStops[idx].hotelName = e.target.value;
+                                                        setHotelStops(newStops);
+                                                    }}
+                                                />
+                                                <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none transition-transform duration-200 ${openHotelDropdownIdx === idx ? 'rotate-180' : ''}`} />
+                                            </div>
+
+                                            {openHotelDropdownIdx === idx && (
                                                 <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-auto py-1 animate-in fade-in slide-in-from-top-2 duration-200">
-                                                    {subDestinations
-                                                        .filter((loc: string) => !stop.location || loc.toLowerCase().includes(stop.location.toLowerCase()))
-                                                        .map((loc: string) => (
+                                                    {filteredPresetHotels
+                                                        .filter((h: any) => {
+                                                            const locMatch = !stop.location || (h.subDestination || "").toLowerCase().includes(stop.location.toLowerCase());
+                                                            const searchMatch = !localHotelSearch || (h.hotelName || h.name || "").toLowerCase().includes(localHotelSearch.toLowerCase());
+                                                            return locMatch && searchMatch;
+                                                        })
+                                                        .map((h: any) => (
                                                             <div
-                                                                key={loc}
+                                                                key={h.id}
                                                                 className="px-3 py-2 hover:bg-emerald-50 text-xs font-sans cursor-pointer flex items-center justify-between group transition-colors"
                                                                 onMouseDown={(e) => {
                                                                     e.preventDefault();
                                                                     const newStops = [...hotelStops];
-                                                                    newStops[idx].location = loc;
+                                                                    newStops[idx].hotelId = h.id;
+                                                                    newStops[idx].hotelName = h.hotelName || h.name;
                                                                     setHotelStops(newStops);
-                                                                    setOpenStopIdx(null);
+                                                                    setOpenHotelDropdownIdx(null);
                                                                 }}
                                                             >
-                                                                <span className={stop.location === loc ? "text-emerald-700 font-bold" : "text-gray-700"}>{loc}</span>
-                                                                {stop.location === loc && <Check className="w-3 h-3 text-emerald-600" />}
+                                                                <span className={stop.hotelId === h.id ? "text-emerald-700 font-bold" : "text-gray-700"}>{h.hotelName || h.name}</span>
+                                                                {stop.hotelId === h.id && <Check className="w-3 h-3 text-emerald-600" />}
                                                             </div>
-                                                        ))}
-                                                    {stop.location && !subDestinations.some((loc: string) => loc.toLowerCase() === stop.location.toLowerCase()) && (
+                                                        ))
+                                                    }
+                                                    {localHotelSearch && !filteredPresetHotels.some(h => (h.hotelName || h.name || "").toLowerCase() === localHotelSearch.toLowerCase()) && (
                                                         <div
-                                                            className="px-3 py-2 hover:bg-emerald-50 text-xs font-sans cursor-pointer italic text-emerald-600 flex items-center justify-between"
+                                                            className="px-3 py-2 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-t border-gray-50"
                                                             onMouseDown={(e) => {
                                                                 e.preventDefault();
-                                                                setOpenStopIdx(null);
+                                                                const newStops = [...hotelStops];
+                                                                newStops[idx].hotelId = `custom-${Date.now()}`;
+                                                                newStops[idx].hotelName = localHotelSearch;
+                                                                setHotelStops(newStops);
+                                                                setOpenHotelDropdownIdx(null);
                                                             }}
                                                         >
-                                                            Use "{stop.location}"
+                                                            ➕ Add "{localHotelSearch}"
                                                             <Plus className="w-2.5 h-2.5" />
                                                         </div>
                                                     )}
                                                 </div>
                                             )}
                                         </div>
-                                        <select
-                                            className="px-3 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none truncate"
-                                            value={stop.hotelId}
-                                            onChange={e => {
-                                                const newStops = [...hotelStops];
-                                                newStops[idx].hotelId = e.target.value;
-                                                setHotelStops(newStops);
-                                            }}
-                                        >
-                                            <option value="">Select Hotel...</option>
-                                            {filteredPresetHotels
-                                                .filter((h: any) => !stop.location || (h.subDestination || "").toLowerCase().includes(stop.location.toLowerCase()))
-                                                .map((h: any) => (
-                                                    <option key={h.id} value={h.id}>{h.hotelName || h.name}</option>
-                                                ))
-                                            }
-                                        </select>
                                         <select
                                             className="px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none"
                                             value={stop.mealPlan}
@@ -1323,10 +1373,14 @@ export function ReadyMadeGenerator() {
                             { 
                                 l: "Plans", 
                                 v: activePricing.length > 0 
-                                    ? activePricing.map(p => {
-                                        const total = (Number(p.net) || 0) + ((Number(p.net) || 0) * (Number(p.margin) || 0) / 100);
-                                        return `${p.label}: ₹${Math.round(total).toLocaleString()}`;
-                                      }).join(" | ")
+                                    ? activePricing
+                                        .map(p => {
+                                            const total = (Number(p.net) || 0) + ((Number(p.net) || 0) * (Number(p.margin) || 0) / 100);
+                                            return { label: p.label, total: Math.round(total) };
+                                        })
+                                        .filter(p => p.total > 0)
+                                        .map(p => `${p.label}: ₹${p.total.toLocaleString()}`)
+                                        .join(" | ") || "None"
                                     : "None" 
                             }
                         ].map(item => (

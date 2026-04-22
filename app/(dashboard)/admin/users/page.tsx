@@ -56,6 +56,25 @@ function UsersContent() {
     const [formLeadId, setFormLeadId] = useState("")
     const [formCode, setFormCode] = useState("")
     const [codeLoading, setCodeLoading] = useState(false)
+    const [errors, setErrors] = useState({ name: "", email: "", phone: "" })
+
+    const validateName = (val: string) => {
+        if (!val.trim()) return "Enter a valid name (only letters, min 2 characters)"
+        if (!/^[A-Za-z ]{2,}$/.test(val)) return "Enter a valid name (only letters, min 2 characters)"
+        return ""
+    }
+
+    const validateEmail = (val: string) => {
+        if (!val.trim()) return "Enter a valid email address"
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return "Enter a valid email address"
+        return ""
+    }
+
+    const validatePhone = (val: string) => {
+        if (!val.trim()) return "Enter a valid phone number"
+        if (!/^(\+91)?[6-9]\d{9}$/.test(val)) return "Enter a valid phone number"
+        return ""
+    }
 
     useEffect(() => { loadUsers() }, [])
 
@@ -76,6 +95,7 @@ function UsersContent() {
         setEditUser(null)
         setFormName(""); setFormEmail(""); setFormPhone("")
         setFormRole("sales"); setFormLeadId(""); setFormCode("")
+        setErrors({ name: "", email: "", phone: "" })
         setShowModal(true)
     }
 
@@ -83,6 +103,7 @@ function UsersContent() {
         setEditUser(u)
         setFormName(u.name || ""); setFormEmail(u.email || ""); setFormPhone(u.phone || "")
         setFormRole(u.role || "sales"); setFormLeadId(u.leadId || ""); setFormCode(u.employeeCode || "")
+        setErrors({ name: "", email: "", phone: "" })
         setShowModal(true)
     }
 
@@ -96,8 +117,29 @@ function UsersContent() {
         }
     }
 
+    const handleNameChange = (e: any) => {
+        const val = e.target.value
+        setFormName(val)
+        if (errors.name) setErrors(prev => ({ ...prev, name: validateName(val) }))
+    }
+
+    const handleEmailChange = (e: any) => {
+        const val = e.target.value.toLowerCase()
+        setFormEmail(val)
+        if (errors.email) setErrors(prev => ({ ...prev, email: validateEmail(val) }))
+    }
+
+    const handlePhoneChange = (e: any) => {
+        const val = e.target.value
+        setFormPhone(val)
+        if (errors.phone) setErrors(prev => ({ ...prev, phone: validatePhone(val) }))
+    }
+
     const handleNameBlur = async () => {
-        if (formName.trim() && !editUser) {
+        const nameErr = validateName(formName)
+        setErrors(prev => ({ ...prev, name: nameErr }))
+
+        if (formName.trim() && !nameErr && !editUser) {
             setCodeLoading(true)
             const code = await generateEmployeeCode(formRole, formName)
             setFormCode(code)
@@ -105,8 +147,23 @@ function UsersContent() {
         }
     }
 
+    const handleEmailBlur = () => {
+        setErrors(prev => ({ ...prev, email: validateEmail(formEmail) }))
+    }
+
+    const handlePhoneBlur = () => {
+        setErrors(prev => ({ ...prev, phone: validatePhone(formPhone) }))
+    }
+
     const handleSave = async () => {
-        if (!formName.trim() || !formEmail.trim()) return
+        const nameErr = validateName(formName)
+        const emailErr = validateEmail(formEmail)
+        const phoneErr = validatePhone(formPhone)
+
+        if (nameErr || emailErr || phoneErr) {
+            setErrors({ name: nameErr, email: emailErr, phone: phoneErr })
+            return
+        }
 
         const department = getDepartment(formRole)
 
@@ -360,15 +417,18 @@ function UsersContent() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="col-span-2">
                                 <label className="font-sans text-[10px] font-semibold tracking-wider uppercase mb-1.5 block" style={{ color: 'rgba(5,34,16,0.5)' }}>Full Name *</label>
-                                <input className="w-full px-4 py-3 rounded-xl font-sans text-sm" style={inputStyle} placeholder="e.g. Ahamed Shafeek" value={formName} onChange={e => setFormName(e.target.value)} onBlur={handleNameBlur} />
+                                <input className="w-full px-4 py-3 rounded-xl font-sans text-sm" style={errors.name ? { ...inputStyle, border: '1px solid #ef4444', background: 'rgba(239,68,68,0.05)' } : inputStyle} placeholder="e.g. Ahamed Shafeek" value={formName} onChange={handleNameChange} onBlur={handleNameBlur} />
+                                {errors.name && <p className="text-red-500 text-xs mt-1 font-sans">{errors.name}</p>}
                             </div>
                             <div>
                                 <label className="font-sans text-[10px] font-semibold tracking-wider uppercase mb-1.5 block" style={{ color: 'rgba(5,34,16,0.5)' }}>Email *</label>
-                                <input className="w-full px-4 py-3 rounded-xl font-sans text-sm" style={inputStyle} placeholder="user@email.com" value={formEmail} onChange={e => setFormEmail(e.target.value)} disabled={!!editUser} />
+                                <input className="w-full px-4 py-3 rounded-xl font-sans text-sm" style={errors.email ? { ...inputStyle, border: '1px solid #ef4444', background: 'rgba(239,68,68,0.05)' } : inputStyle} placeholder="user@email.com" value={formEmail} onChange={handleEmailChange} onBlur={handleEmailBlur} disabled={!!editUser} />
+                                {errors.email && <p className="text-red-500 text-xs mt-1 font-sans">{errors.email}</p>}
                             </div>
                             <div>
-                                <label className="font-sans text-[10px] font-semibold tracking-wider uppercase mb-1.5 block" style={{ color: 'rgba(5,34,16,0.5)' }}>Phone</label>
-                                <input className="w-full px-4 py-3 rounded-xl font-sans text-sm" style={inputStyle} placeholder="+91 9876543210" value={formPhone} onChange={e => setFormPhone(e.target.value)} />
+                                <label className="font-sans text-[10px] font-semibold tracking-wider uppercase mb-1.5 block" style={{ color: 'rgba(5,34,16,0.5)' }}>Phone *</label>
+                                <input className="w-full px-4 py-3 rounded-xl font-sans text-sm" style={errors.phone ? { ...inputStyle, border: '1px solid #ef4444', background: 'rgba(239,68,68,0.05)' } : inputStyle} placeholder="+91 9876543210" value={formPhone} onChange={handlePhoneChange} onBlur={handlePhoneBlur} />
+                                {errors.phone && <p className="text-red-500 text-xs mt-1 font-sans">{errors.phone}</p>}
                             </div>
                             <div>
                                 <label className="font-sans text-[10px] font-semibold tracking-wider uppercase mb-1.5 block" style={{ color: 'rgba(5,34,16,0.5)' }}>Role *</label>

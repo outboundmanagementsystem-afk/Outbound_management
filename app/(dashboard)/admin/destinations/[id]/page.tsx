@@ -12,7 +12,7 @@ import {
     getTransfers, addTransfer, deleteTransfer, updateTransfer,
     getPresetDays, addPresetDay, deletePresetDay, updatePresetDay,
 } from "@/lib/firestore"
-import { Hotel, Landmark, Bike, Car, Plus, Trash2, ArrowLeft, Globe, MapPin, FileText, Save, FileEdit, Calendar, Eye, X, Phone, MapPinned, ChevronDown, ChevronUp, Check } from "lucide-react"
+import { Hotel, Landmark, Bike, Car, Plus, Trash2, ArrowLeft, Globe, MapPin, FileText, Save, FileEdit, Calendar, Eye, X, Phone, MapPinned, ChevronDown, ChevronUp, Check, Star } from "lucide-react"
 import Link from "next/link"
 import { SuccessModal } from "@/components/success-modal"
 
@@ -271,6 +271,7 @@ function DestinationEditor() {
                         cwbPrice: 0,
                         cnbPrice: 0,
                         extraBedPrice: 0,
+                        starRating: 3,
                     }]
                 })
             }
@@ -384,9 +385,29 @@ function DestinationEditor() {
                                         >
                                             <Trash2 className="w-4 h-4" />
                                         </button>
-                                        <div className="pr-10 mb-4">
-                                            <label className="font-sans text-[10px] tracking-wider uppercase mb-1 block font-semibold" style={{ color: '#06a15c' }}>Room Type *</label>
-                                            <input className={inputClass} style={inputStyle} placeholder="e.g. Deluxe, Suite, Standard" value={room.roomType || ""} onChange={e => updateRoomCategory(idx, 'roomType', e.target.value)} />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            <div className="space-y-1">
+                                                <label className="font-sans text-[10px] tracking-wider uppercase mb-1 block font-semibold" style={{ color: '#06a15c' }}>Room Type *</label>
+                                                <input className={inputClass} style={inputStyle} placeholder="e.g. Deluxe, Suite, Standard" value={room.roomType || ""} onChange={e => updateRoomCategory(idx, 'roomType', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="font-sans text-[10px] tracking-wider uppercase mb-1 block font-semibold" style={{ color: '#06a15c' }}>Star Rating</label>
+                                                <div className="flex items-center gap-1 bg-white/50 p-2.5 rounded-xl border border-gray-200 h-[46px]">
+                                                    {[1, 2, 3, 4, 5].map((star) => (
+                                                        <button
+                                                            key={star}
+                                                            type="button"
+                                                            onClick={() => updateRoomCategory(idx, 'starRating', star)}
+                                                            className="transition-transform hover:scale-110"
+                                                        >
+                                                            <Star 
+                                                                className={`w-5 h-5 ${star <= (room.starRating || 3) ? 'fill-[#FFE500] text-[#FFE500]' : 'text-gray-300'}`} 
+                                                            />
+                                                        </button>
+                                                    ))}
+                                                    <span className="ml-2 font-sans text-[10px] font-bold text-gray-400 uppercase tracking-widest">{room.starRating || 3} Stars</span>
+                                                </div>
+                                            </div>
                                         </div>
                                         <p className="font-sans text-[10px] tracking-wider uppercase mb-3 font-medium" style={{ color: 'rgba(5,34,16,0.4)' }}>Pricing (per night)</p>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

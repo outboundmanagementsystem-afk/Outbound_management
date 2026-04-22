@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
-import { getItinerary, getItineraryDays, getItineraryHotels, getItineraryTransfers, getItineraryPricing, getItineraryFlights, getItineraryActivities } from "@/lib/firestore"
+import { getItinerary, getItineraryDays, getItineraryHotels, getItineraryTransfers, getItineraryPricing, getItineraryFlights, getItineraryActivities, getHotels } from "@/lib/firestore"
 import { HeroSection } from "@/components/hero-section"
 import { TripSummary } from "@/components/trip-summary"
+import { toTitleCase } from "@/lib/utils"
 import { FlightDetails } from "@/components/flight-details"
 import { HotelDetails } from "@/components/hotel-details"
 import { TransferDetails } from "@/components/transfer-details"
@@ -38,7 +39,27 @@ export default function PDFPrintPage() {
                 getItineraryTransfers(itinId), getItineraryPricing(itinId),
                 getItineraryFlights(itinId), getItineraryActivities(itinId),
             ])
-            setItin(it); setDays(d); setHotels(h); setTransfers(t); setPricing(p); setFlights(f); setActivities(a)
+
+            // Enrich hotel ratings from master destination database for dynamic accuracy
+            let enrichedHotels = h;
+            if (it?.destinationId) {
+                try {
+                    const masterHotels = await getHotels(it.destinationId);
+                    enrichedHotels = h.map(itinHotel => {
+                        const master = masterHotels.find(m => m.id === itinHotel.hotelId || m.hotelName === (itinHotel.hotelName || itinHotel.name) || m.name === (itinHotel.hotelName || itinHotel.name));
+                        if (master) {
+                            // Fetch rating from master hotel or its first room category
+                            const masterRating = master.rating || master.starRating || (master.roomCategories && master.roomCategories[0]?.starRating) || itinHotel.rating || itinHotel.starRating || 3;
+                            return { ...itinHotel, rating: masterRating, starRating: masterRating };
+                        }
+                        return itinHotel;
+                    });
+                } catch (e) {
+                    console.warn("Could not enrich hotel ratings:", e);
+                }
+            }
+
+            setItin(it); setDays(d); setHotels(enrichedHotels); setTransfers(t); setPricing(p); setFlights(f); setActivities(a)
         } catch (err) { console.error(err) }
         finally { setLoading(false) }
     }
@@ -196,26 +217,26 @@ export default function PDFPrintPage() {
     if (!itin) return <div className="min-h-screen flex items-center bg-[#031A0C]"><p className="text-white">Not found</p></div>
 
     const summaryFields = [
-        { label: "Consultant", value: `${itin.consultantName || "—"}${itin.consultantPhone ? `, ${itin.consultantPhone}` : ""}`, icon: "👤" },
-        { label: "Name", value: itin.customerName || "—", icon: "👤" },
+        { label: "Consultant Name", value: toTitleCase(itin.consultantName || "—"), icon: "👤" },
+        { label: "Consultant Phone", value: itin.consultantPhone || "—", icon: "📞" },
+        { label: "Name", value: toTitleCase(itin.customerName || "—"), icon: "👤" },
         ...(itin.customerPhone ? [{ label: "Phone", value: itin.customerPhone, icon: "📞" }] : []),
-        ...(itin.customerEmail ? [{ label: "Email", value: itin.customerEmail, icon: "✉️" }] : []),
-        { label: "Trip To", value: itin.destination || "—", icon: "📍" },
-        { label: "No. of Nights", value: `${itin.nights || 0}N / ${itin.days || 0}D`, icon: "🌙" },
-        { label: "Start Date", value: formatDate(itin.startDate), icon: "📅" },
-        { label: "End Date", value: formatDate(itin.endDate), icon: "📅" },
+        ...(itin.customerEmail ? [{ label: "Email", value: itin.customerEmail?.toLowerCase(), icon: "✉️" }] : []),
+        { label: "Trip To", value: toTitleCase(itin.destination || "—"), icon: "📍" },
+        { label: "Dates", value: `${formatDate(itin.startDate)} – ${formatDate(itin.endDate)}`, icon: "📅" },
+        { label: "Duration", value: `${itin.nights || 0}N / ${itin.days || 0}D`, icon: "🌙" },
         { label: "Total Adults", value: String(itin.adults || 0), icon: "👥" },
         ...(itin.cwb ? [{ label: "CWB (Child With Bed)", value: String(itin.cwb), icon: "🛏️" }] : []),
         ...(itin.cnb ? [{ label: "CNB (Child No Bed)", value: String(itin.cnb), icon: "👶" }] : []),
         ...(itin.childAge ? [{ label: "Kid's Age", value: itin.childAge, icon: "✦" }] : []),
-        ...(activities && activities.length > 0 ? [{ label: "Experiences", value: activities.map(a => a.name || a.activityName).join(" · "), icon: "🎟️" }] : []),
+        ...(activities && activities.length > 0 ? [{ label: "Experiences", value: activities.map(a => toTitleCase(a.name || a.activityName)).join(" · "), icon: "🎟️" }] : []),
     ]
 
     const hotelList = hotels.map((h: any) => ({
         name: h.hotelName || h.name || "Hotel",
         subtitle: h.subtitle || "Or Similar Property",
         location: h.location || `${h.subDestination || itin.destination || "—"}`,
-        rating: h.rating || h.starRating || 3,
+        rating: h.rating || h.starRating || null,
         tag: h.tag || null,
         nights: `${h.nights || itin.nights || 0} Nights`,
         amenities: h.amenities ? (typeof h.amenities === "string" ? h.amenities.split(",").map((a: string) => a.trim()) : h.amenities) : ["Breakfast Included"],

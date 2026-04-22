@@ -124,12 +124,25 @@ const roleLabel: Record<string, string> = {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { userProfile, signOut } = useAuth()
+    const { userProfile, loading, signOut } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
     const [sidebarOpen, setSidebarOpen] = useState(false)
     const [isCollapsed, setIsCollapsed] = useState(false)
 
+    // Show loading spinner while auth is resolving
+    if (loading) {
+        return (
+            <div className="h-screen flex items-center justify-center" style={{ background: '#F2F4F3' }}>
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-10 h-10 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#06a15c', borderTopColor: 'transparent' }} />
+                    <p className="font-sans text-sm tracking-widest uppercase" style={{ color: 'rgba(5,34,16,0.4)' }}>Loading...</p>
+                </div>
+            </div>
+        )
+    }
+
+    // Auth loaded but no profile — ProtectedRoute will handle the redirect
     if (!userProfile) return null
 
     const role = userProfile.role
@@ -137,7 +150,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const handleSignOut = async () => {
         await signOut()
-        router.push("/login")
+        router.replace("/login")
     }
 
     return (

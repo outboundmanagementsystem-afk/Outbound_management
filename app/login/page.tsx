@@ -2,71 +2,42 @@
 
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import Image from "next/image"
 import { Plane } from "lucide-react"
+import { getRoleDashboard, isValidRole } from "@/lib/role-utils"
 
 export default function LoginPage() {
-    const { user, userProfile, loading, signInWithGoogle } = useAuth()
+    const { user, userProfile, loading, authError, signInWithGoogle, retryAuth } = useAuth()
     const router = useRouter()
-
-    const hasRedirected = useRef(false)
-    const [timeoutError, setTimeoutError] = useState(false)
-
-    // 10s timeout fallback to prevent infinite loading
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            if (loading) {
-                setTimeoutError(true)
-            }
-        }, 10000)
-        return () => clearTimeout(timer)
-    }, [loading])
+    const [signingIn, setSigningIn] = useState(false)
+    const hasNavigated = useRef(false)
 
     useEffect(() => {
-        if (loading || !userProfile || hasRedirected.current) return;
+        if (loading) return
+        if (!userProfile) return
+        if (hasNavigated.current) return
 
-        const handleRedirect = async () => {
-            try {
-                hasRedirected.current = true;
-                console.log("LoginPage: Before navigation...");
-                
-                if (userProfile.role === "admin" || userProfile.role === "owner") router.push("/admin")
-                else if (userProfile.role === "sales_lead" || userProfile.role === "sales") router.push("/sales")
-                else if (userProfile.role === "pre_ops_lead" || userProfile.role === "pre_ops") router.push("/ops")
-                else if (userProfile.role === "post_ops" || userProfile.role === "post_ops_lead") router.push("/post-ops")
-                else if (userProfile.role === "finance" || userProfile.role === "finance_lead") router.push("/finance")
-                else {
-                    hasRedirected.current = false; // reset if no route matched to allow retry if needed
-                    console.error("LoginPage: Unhandled role", userProfile.role)
-                }
-
-                console.log("LoginPage: After navigation...");
-            } catch (error) {
-                console.error("Redirect error:", error)
-                setTimeoutError(true)
-            }
+        // User is authenticated — redirect to their dashboard
+        const target = getRoleDashboard(userProfile.role)
+        if (target !== "/login") {
+            hasNavigated.current = true
+            router.replace(target)
         }
-        
-        handleRedirect();
-    }, [userProfile, loading, router])
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userProfile, loading])
 
-    if (timeoutError && loading) {
-        return (
-            <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center" style={{ background: '#031A0C' }}>
-                <p className="font-sans text-sm tracking-widest uppercase mb-4" style={{ color: '#ef4444' }}>
-                    Something went wrong. Please refresh.
-                </p>
-                <button 
-                    onClick={() => window.location.reload()}
-                    className="px-6 py-2 rounded-lg text-white font-sans text-xs tracking-widest uppercase transition-all hover:bg-white/10"
-                    style={{ border: '1px solid rgba(212,175,55,0.5)', color: '#D4AF37' }}
-                >
-                    Refresh Page
-                </button>
-            </div>
-        )
+    const handleSignIn = async () => {
+        setSigningIn(true)
+        try {
+            await signInWithGoogle()
+        } finally {
+            setSigningIn(false)
+        }
     }
+
+    // User is authenticated but has an unrecognized role
+    const hasInvalidRole = !loading && userProfile && !isValidRole(userProfile.role)
 
     return (
         <div className="min-h-screen relative overflow-hidden flex items-center justify-center grain-overlay" style={{ background: 'linear-gradient(180deg, #031A0C 0%, #052210 45%, #0B2E2B 100%)' }}>
@@ -119,13 +90,36 @@ export default function LoginPage() {
 
                     {/* Body */}
                     <div className="px-8 py-10" style={{ background: '#FAF9F6' }}>
+                        {/* Auth error message */}
+                        {authError && (
+                            <div className="mb-6 p-4 rounded-xl text-center" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                                <p className="font-sans text-xs" style={{ color: '#ef4444' }}>{authError}</p>
+                                <button
+                                    onClick={retryAuth}
+                                    className="mt-2 font-sans text-[10px] tracking-wider uppercase font-bold underline"
+                                    style={{ color: '#ef4444' }}
+                                >
+                                    Try Again
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Invalid role message */}
+                        {hasInvalidRole && (
+                            <div className="mb-6 p-4 rounded-xl text-center" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)' }}>
+                                <p className="font-sans text-xs" style={{ color: '#f59e0b' }}>
+                                    Your account role &quot;{userProfile?.role}&quot; is not recognized. Please contact your admin.
+                                </p>
+                            </div>
+                        )}
+
                         <p className="font-sans text-sm text-center mb-8" style={{ color: '#6B6B6B' }}>
                             Sign in with your Google account to access your dashboard
                         </p>
 
                         <button
-                            onClick={signInWithGoogle}
-                            disabled={loading}
+                            onClick={handleSignIn}
+                            disabled={signingIn || loading}
                             className="w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-sans font-bold text-sm tracking-wider uppercase transition-all duration-300 hover:scale-[1.02] hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                             style={{
                                 background: 'linear-gradient(135deg, #031A0C, #052210)',
@@ -140,7 +134,7 @@ export default function LoginPage() {
                                 <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                                 <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                             </svg>
-                            {loading ? "Signing in..." : "Sign in with Google"}
+                            {signingIn || loading ? "Signing in..." : "Sign in with Google"}
                         </button>
 
                         <p className="font-sans text-xs text-center mt-6" style={{ color: '#9B8B6E' }}>

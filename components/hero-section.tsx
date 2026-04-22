@@ -20,6 +20,35 @@ export function HeroSection({ customerName, destination, nights, days, startDate
   const displayStartDate = startDate || "TBA"
   const displayEndDate = endDate || "TBA"
 
+  let formattedDates = `${displayStartDate} – ${displayEndDate}`
+  if (startDate && endDate && startDate !== "TBA" && endDate !== "TBA") {
+    try {
+      const d1 = new Date(startDate)
+      const d2 = new Date(endDate)
+      if (!isNaN(d1.getTime()) && !isNaN(d2.getTime())) {
+        const m1 = d1.toLocaleDateString('en-US', { month: 'short' })
+        const day1 = d1.getDate()
+        const y1 = d1.getFullYear()
+        
+        const m2 = d2.toLocaleDateString('en-US', { month: 'short' })
+        const day2 = d2.getDate()
+        const y2 = d2.getFullYear()
+        
+        if (y1 === y2) {
+          if (m1 === m2) {
+            formattedDates = `${m1} ${day1} – ${day2}, ${y1}`
+          } else {
+            formattedDates = `${m1} ${day1} – ${m2} ${day2}, ${y1}`
+          }
+        } else {
+          formattedDates = `${m1} ${day1}, ${y1} – ${m2} ${day2}, ${y2}`
+        }
+      }
+    } catch (e) {
+      // Keep fallback
+    }
+  }
+
   return (
     <section className="relative w-full overflow-hidden bg-[#031A0C] avoid-break flex flex-col items-center py-10 px-6 text-center pdf-section" style={{ minHeight: 'auto' }}>
       {/* Background with texture */}
@@ -92,7 +121,7 @@ export function HeroSection({ customerName, destination, nights, days, startDate
           </div>
         </div>
 
-        {/* Trip Metadata - Subtle but present for functional reasons */}
+        {/* Trip Metadata */}
         <div className="w-full max-w-[400px] grid grid-cols-2 gap-3 mb-8">
           <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
             <div className="flex items-center gap-2 mb-1">
@@ -102,10 +131,13 @@ export function HeroSection({ customerName, destination, nights, days, startDate
             <span className="font-sans text-lg font-black text-white">{displayNights}N / {displayDays}D</span>
           </div>
 
-          <div className="bg-[#FFE500]/95 backdrop-blur-md rounded-2xl p-4 flex flex-col items-center justify-center gap-1 shadow-lg">
-            <Calendar className="w-4 h-4 text-[#1A211D]" />
-            <span className="font-sans text-xs font-black text-[#1A211D] tracking-tighter uppercase text-center leading-tight">
-              {displayStartDate}<br/>– {displayEndDate}
+          <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 flex flex-col items-center justify-center gap-1">
+            <div className="flex items-center gap-1.5 mb-1 opacity-60">
+              <Calendar className="w-3.5 h-3.5 text-white" />
+              <span className="font-sans text-[9px] font-bold uppercase tracking-[0.15em] text-white">Travel Dates</span>
+            </div>
+            <span className="font-sans text-[15px] font-black text-white tracking-tight text-center leading-none mt-0.5">
+              {formattedDates}
             </span>
           </div>
         </div>
