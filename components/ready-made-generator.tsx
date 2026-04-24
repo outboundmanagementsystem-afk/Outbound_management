@@ -10,6 +10,7 @@ import {
     createPackage, updatePackage, addPackageDay, addPackageHotel, addPackagePricing, getPresetDays, deletePackage, clearPackageSubcollections
 } from "@/lib/firestore"
 import { PackageSearch, Loader2, Plus, ArrowLeft, Trash2, ChevronDown, Check, X, Eye } from "lucide-react"
+import { HOTEL_CATEGORIES } from "@/lib/constants"
 import { SuccessModal } from "./success-modal"
 
 export function ReadyMadeGenerator() {
@@ -626,13 +627,7 @@ export function ReadyMadeGenerator() {
                                 <div className="flex flex-col">
                                     <label className="text-[10px] font-semibold tracking-wider uppercase text-gray-500 mb-1">Tier</label>
                                     <select className="px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none" value={newPkgTier} onChange={e => setNewPkgTier(e.target.value)}>
-                                        <option>Budget</option>
-                                        <option>Standard</option>
-                                        <option>Deluxe</option>
-                                        <option>Super Deluxe</option>
-                                        <option>Luxury</option>
-                                        <option>Premium</option>
-                                        <option>Royal</option>
+                                        {HOTEL_CATEGORIES.map(cat => <option key={cat}>{cat}</option>)}
                                     </select>
                                 </div>
                                 <div className="flex flex-col">
@@ -692,9 +687,9 @@ export function ReadyMadeGenerator() {
 
                         <hr className="border-gray-200" />
 
-                        {/* STEP 3 */}
+                        {/* STEP 3: HOTEL STOPS */}
                         <div>
-                            <div className="flex items-start gap-3 mb-4">
+                            <div className="flex items-start gap-3 mb-6 pb-4 border-b border-gray-100">
                                 <div className="w-6 h-6 rounded-full bg-[#EAF3DE] border border-[#C0DD97] flex items-center justify-center text-[11px] font-bold text-[#3B6D11] flex-shrink-0">3</div>
                                 <div>
                                     <h3 className="text-[13px] font-semibold text-gray-900">Hotel stops</h3>
@@ -702,38 +697,56 @@ export function ReadyMadeGenerator() {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <div className="grid grid-cols-[minmax(100px,3fr)_minmax(100px,3fr)_minmax(80px,1.5fr)_minmax(60px,1fr)_80px] gap-2 mb-1 px-1">
-                                    <div className="text-[10px] font-semibold tracking-wider uppercase text-gray-500">Location / Stop</div>
-                                    <div className="text-[10px] font-semibold tracking-wider uppercase text-gray-500">Hotel Name</div>
-                                    <div className="text-[10px] font-semibold tracking-wider uppercase text-gray-500">Meal Plan</div>
-                                    <div className="text-[10px] font-semibold tracking-wider uppercase text-gray-500">Nights</div>
-                                    <div></div>
-                                </div>
+                            <div className="space-y-4">
                                 {hotelStops.map((stop, idx) => (
                                     <div key={idx} className="grid grid-cols-[minmax(100px,3fr)_minmax(100px,3fr)_minmax(80px,1.5fr)_minmax(60px,1fr)_80px] gap-2 items-center">
-                                        <div className="relative">
                                             <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    className="w-full pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none focus:border-emerald-400 transition-all font-medium"
-                                                    placeholder="Location (e.g. Port Blair)"
-                                                    value={stop.location}
-                                                    onFocus={() => setOpenStopIdx(idx)}
-                                                    onBlur={() => setTimeout(() => setOpenStopIdx(null), 200)}
-                                                    onChange={e => {
-                                                        const newStops = [...hotelStops];
-                                                        newStops[idx].location = e.target.value;
-                                                        setHotelStops(newStops);
-                                                    }}
-                                                />
-                                                <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none transition-transform duration-200 ${openStopIdx === idx ? 'rotate-180' : ''}`} />
-                                            </div>
+                                                <label className="block text-[9px] font-bold text-gray-400 uppercase mb-1">Location</label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="text"
+                                                        className="w-full pl-3 pr-8 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none focus:border-emerald-400 transition-all font-medium"
+                                                        placeholder="Location"
+                                                        value={stop.location}
+                                                        onFocus={() => setOpenStopIdx(idx)}
+                                                        onBlur={() => setTimeout(() => setOpenStopIdx(null), 200)}
+                                                        onChange={e => {
+                                                            const newStops = [...hotelStops];
+                                                            newStops[idx].location = e.target.value;
+                                                            setHotelStops(newStops);
+                                                        }}
+                                                    />
+                                                    <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400 pointer-events-none transition-transform duration-200 ${openStopIdx === idx ? 'rotate-180' : ''}`} />
+                                                </div>
 
                                                     {openStopIdx === idx && (
                                                         <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-100 rounded-lg shadow-xl max-h-48 overflow-auto py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                            {stop.location && !subDestinations.some((loc: string) => loc.toLowerCase() === stop.location.toLowerCase()) && (
+                                                                <div
+                                                                    className="px-3 py-2 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-b border-gray-50"
+                                                                    onMouseDown={(e) => {
+                                                                        e.preventDefault();
+                                                                        const newStops = [...hotelStops];
+                                                                        newStops[idx].location = stop.location;
+                                                                        setHotelStops(newStops);
+                                                                        setOpenStopIdx(null);
+                                                                    }}
+                                                                >
+                                                                    ➕ Add "{stop.location}"
+                                                                    <Plus className="w-2.5 h-2.5" />
+                                                                </div>
+                                                            )}
                                                             {subDestinations
-                                                                .filter((loc: string) => !stop.location || loc.toLowerCase().includes(stop.location.toLowerCase()))
+                                                                .slice()
+                                                                .sort((a, b) => {
+                                                                    const s = (stop.location || "").toLowerCase().trim();
+                                                                    if (!s) return a.localeCompare(b);
+                                                                    const aMatch = a.toLowerCase().includes(s);
+                                                                    const bMatch = b.toLowerCase().includes(s);
+                                                                    if (aMatch && !bMatch) return -1;
+                                                                    if (!aMatch && bMatch) return 1;
+                                                                    return a.localeCompare(b);
+                                                                })
                                                                 .map((loc: string) => (
                                                                     <div
                                                                         key={loc}
@@ -750,18 +763,6 @@ export function ReadyMadeGenerator() {
                                                                         {stop.location === loc && <Check className="w-3 h-3 text-emerald-600" />}
                                                                     </div>
                                                                 ))}
-                                                            {stop.location && !subDestinations.some((loc: string) => loc.toLowerCase() === stop.location.toLowerCase()) && (
-                                                                <div
-                                                                    className="px-3 py-2 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-t border-gray-50"
-                                                                    onMouseDown={(e) => {
-                                                                        e.preventDefault();
-                                                                        setOpenStopIdx(null);
-                                                                    }}
-                                                                >
-                                                                    ➕ Add "{stop.location}"
-                                                                    <Plus className="w-2.5 h-2.5" />
-                                                                </div>
-                                                            )}
                                                         </div>
                                                     )}
                                         </div>
@@ -795,9 +796,9 @@ export function ReadyMadeGenerator() {
                                                             const searchMatch = !localHotelSearch || (h.hotelName || h.name || "").toLowerCase().includes(localHotelSearch.toLowerCase());
                                                             return locMatch && searchMatch;
                                                         })
-                                                        .map((h: any) => (
+                                                        .map((h: any, hIdx: number) => (
                                                             <div
-                                                                key={h.id}
+                                                                key={`${h.id}-${hIdx}`}
                                                                 className="px-3 py-2 hover:bg-emerald-50 text-xs font-sans cursor-pointer flex items-center justify-between group transition-colors"
                                                                 onMouseDown={(e) => {
                                                                     e.preventDefault();

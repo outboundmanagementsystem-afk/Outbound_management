@@ -15,6 +15,7 @@ import {
 import { Hotel, Landmark, Bike, Car, Plus, Trash2, ArrowLeft, Globe, MapPin, FileText, Save, FileEdit, Calendar, Eye, X, Phone, MapPinned, ChevronDown, ChevronUp, Check, Star } from "lucide-react"
 import Link from "next/link"
 import { SuccessModal } from "@/components/success-modal"
+import { HOTEL_CATEGORIES } from "@/lib/constants"
 
 const TABS = [
     { key: "overview", label: "Overview", icon: Globe },
@@ -25,7 +26,7 @@ const TABS = [
     { key: "dayPlans", label: "Day Plans", icon: Calendar },
 ]
 
-const DEFAULT_HOTEL_CATEGORIES = ["5 Star", "4 Star", "3 Star", "Deluxe", "Super Deluxe", "Budget", "Heritage", "Boutique"]
+const DEFAULT_HOTEL_CATEGORIES = HOTEL_CATEGORIES
 const ATTRACTION_CATEGORIES = ["Sightseeing", "Temple", "Garden", "Lake", "Adventure", "Shopping", "Historical", "Beach", "Other"]
 const TRANSFER_TYPES = ["Pickup", "Drop", "Both"]
 
@@ -206,6 +207,14 @@ function DestinationEditor() {
         // Clean up any leftover custom category fields
         delete payload.customCategory;
 
+        if (activeTab === "hotels") {
+            // Strip starRating from room categories for new data structure
+            payload.roomCategories = (payload.roomCategories || []).map((r: any) => {
+                const { starRating, ...rest } = r;
+                return rest;
+            });
+        }
+
         if (editingId) {
             if (activeTab === "hotels") await updateHotel(destId, editingId, payload)
             else if (activeTab === "attractions") await updateAttraction(destId, editingId, payload)
@@ -232,6 +241,7 @@ function DestinationEditor() {
     const handleEdit = (item: any) => {
         setFormData({
             ...item,
+            starRating: item.starRating || item.roomCategories?.[0]?.starRating || 3,
             activities: item.activities ? JSON.parse(JSON.stringify(item.activities)) : [],
             roomCategories: item.roomCategories ? JSON.parse(JSON.stringify(item.roomCategories)) : []
         })
@@ -271,7 +281,6 @@ function DestinationEditor() {
                         cwbPrice: 0,
                         cnbPrice: 0,
                         extraBedPrice: 0,
-                        starRating: 3,
                     }]
                 })
             }
@@ -354,6 +363,24 @@ function DestinationEditor() {
                             </div>
                             <div><label className={labelClass} style={labelStyle}>Hotel Address</label><input className={inputClass} style={inputStyle} placeholder="e.g. 123 Main Street, City" value={formData.hotelAddress || ""} onChange={e => setFormData({ ...formData, hotelAddress: e.target.value })} /></div>
                             <div><label className={labelClass} style={labelStyle}>Vendor Contact</label><input className={inputClass} style={inputStyle} placeholder="Phone number" value={formData.vendorContact || ""} onChange={e => setFormData({ ...formData, vendorContact: e.target.value })} /></div>
+                            <div>
+                                <label className={labelClass} style={labelStyle}>Star Rating *</label>
+                                <div className="flex items-center gap-1 bg-white p-2.5 rounded-xl border border-gray-200 h-[46px]">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, starRating: star })}
+                                            className="transition-transform hover:scale-110"
+                                        >
+                                            <Star 
+                                                className={`w-5 h-5 ${star <= (formData.starRating || 3) ? 'fill-[#FFE500] text-[#FFE500]' : 'text-gray-300'}`} 
+                                            />
+                                        </button>
+                                    ))}
+                                    <span className="ml-2 font-sans text-[10px] font-bold text-gray-400 uppercase tracking-widest">{formData.starRating || 3} Stars</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -389,24 +416,6 @@ function DestinationEditor() {
                                             <div className="space-y-1">
                                                 <label className="font-sans text-[10px] tracking-wider uppercase mb-1 block font-semibold" style={{ color: '#06a15c' }}>Room Type *</label>
                                                 <input className={inputClass} style={inputStyle} placeholder="e.g. Deluxe, Suite, Standard" value={room.roomType || ""} onChange={e => updateRoomCategory(idx, 'roomType', e.target.value)} />
-                                            </div>
-                                            <div className="space-y-1">
-                                                <label className="font-sans text-[10px] tracking-wider uppercase mb-1 block font-semibold" style={{ color: '#06a15c' }}>Star Rating</label>
-                                                <div className="flex items-center gap-1 bg-white/50 p-2.5 rounded-xl border border-gray-200 h-[46px]">
-                                                    {[1, 2, 3, 4, 5].map((star) => (
-                                                        <button
-                                                            key={star}
-                                                            type="button"
-                                                            onClick={() => updateRoomCategory(idx, 'starRating', star)}
-                                                            className="transition-transform hover:scale-110"
-                                                        >
-                                                            <Star 
-                                                                className={`w-5 h-5 ${star <= (room.starRating || 3) ? 'fill-[#FFE500] text-[#FFE500]' : 'text-gray-300'}`} 
-                                                            />
-                                                        </button>
-                                                    ))}
-                                                    <span className="ml-2 font-sans text-[10px] font-bold text-gray-400 uppercase tracking-widest">{room.starRating || 3} Stars</span>
-                                                </div>
                                             </div>
                                         </div>
                                         <p className="font-sans text-[10px] tracking-wider uppercase mb-3 font-medium" style={{ color: 'rgba(5,34,16,0.4)' }}>Pricing (per night)</p>
@@ -843,7 +852,7 @@ function DestinationEditor() {
                 <>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                         <button
-                            onClick={() => { setShowForm(!showForm); setFormData({}); setEditingId(null); }}
+                            onClick={() => { setShowForm(!showForm); setFormData({ starRating: 3 }); setEditingId(null); }}
                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-sans text-xs tracking-wider uppercase shrink-0"
                             style={{ background: '#06a15c', color: '#FFFFFF' }}
                         >

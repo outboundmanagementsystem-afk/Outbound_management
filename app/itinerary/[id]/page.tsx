@@ -403,10 +403,11 @@ export default function PublicItineraryPage() {
         location: h.location || `${h.subDestination || itin.destination || "—"}`,
         rating: h.rating || h.starRating || 3,
         tag: h.tag || null,
-        nights: `${h.nights || itin.nights || 0} Nights`,
+        nights: `${h.selectedNights || h.nights || 1} ${Number(h.selectedNights || h.nights || 1) === 1 ? 'Night' : 'Nights'}`,
         amenities: h.amenities ? (typeof h.amenities === "string" ? h.amenities.split(",").map((a: string) => a.trim()) : h.amenities) : ["Breakfast Included"],
         mealPlan: h.mealPlan || "",
         roomCategory: h.roomCategory || h.roomType || "",
+        category: h.category || "STANDARD"
     }))
 
     // Build day plans for the component with sequential dates

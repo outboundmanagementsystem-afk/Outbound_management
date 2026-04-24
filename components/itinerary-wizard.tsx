@@ -17,6 +17,7 @@ import {
 import { createWorker } from "tesseract.js"
 import { preprocessImageForOCR } from "@/lib/image-processing"
 import { extractFlightDetailsFromText } from "@/lib/flight-parser"
+import { HOTEL_CATEGORIES } from "@/lib/constants"
 
 const STEPS = [
     { label: "Customer & Trip", icon: User },
@@ -168,7 +169,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
     // New Multi-Plan Architecture
     const [plans, setPlans] = useState<any[]>([])
     const [tierPlans, setTierPlans] = useState<any[]>([
-        { name: "BUDGET", stops: [{ location: "", hotelId: "", hotelName: "", nights: 2, mealPlan: "CP (Breakfast)", roomType: "", ratePerNight: 0 }] }
+        { name: "Budget", stops: [{ location: "", hotelId: "", hotelName: "", nights: 2, mealPlan: "CP (Breakfast)", roomType: "", ratePerNight: 0 }] }
     ])
 
     const MEAL_PLANS = [
@@ -178,7 +179,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
         { label: "AP (All Meals)", value: "AP" }
     ]
 
-    const TIER_NAMES = ["BUDGET", "STANDARD", "DELUXE", "SUPER DELUXE", "LUXURY", "PREMIUM"]
+    const TIER_NAMES = HOTEL_CATEGORIES
 
     // Sync tierPlans to selectedHotels for backward compatibility with pricing/saving logic
     useEffect(() => {
@@ -405,7 +406,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                             starRating: hotel.starRating || 3
                         }))
                     }))
-                    setTierPlans(reconstructed.length > 0 ? reconstructed : [{ name: "BUDGET", stops: [{ location: "", hotelId: "", hotelName: "", nights: 2, mealPlan: "CP (Breakfast)", roomType: "", ratePerNight: 0 }] }])
+                    setTierPlans(reconstructed.length > 0 ? reconstructed : [{ name: "Budget", stops: [{ location: "", hotelId: "", hotelName: "", nights: 2, mealPlan: "CP (Breakfast)", roomType: "", ratePerNight: 0 }] }])
                 }
                 if (t && t.length > 0) setTransfers(t)
                 if (a && a.length > 0) setSelectedActivities(a)
@@ -519,10 +520,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 const marginAmt = netCost * (margin / 100)
                 const total = netCost + marginAmt + optionalCost
                 
-                // Construct a descriptive name for the multi-hotel plan
-                const hotelsDisplay = hotelsInCat.length > 1 
-                    ? `${hotelsInCat.length} Hotels (${cat})`
-                    : `${hotelsInCat[0].hotelName || hotelsInCat[0].name} - ${hotelsInCat[0].roomType || "Standard"}`
+                // Construct a descriptive name for the multi-hotel plan - now focused on Tier
+                const hotelsDisplay = `PLAN ${categories.indexOf(cat) + 1} - ${cat}`
 
                 return {
                     hotelName: hotelsDisplay,
@@ -1057,22 +1056,36 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                         </div>
 
                         <div className="space-y-6">
-                            {tierPlans.map((plan, planIdx) => (
-                                <div key={planIdx} className="rounded-2xl border-2 border-emerald-50 bg-white overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.03)] group transition-all hover:shadow-[0_8px_30px_rgba(5,150,105,0.08)]">
+                             {tierPlans.map((plan, planIdx) => (
+                                <div key={planIdx} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group transition-all" style={{ marginBottom: '24px' }}>
                                     {/* Plan Header */}
-                                    <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ background: 'linear-gradient(90deg, #ecfdf5 0%, #ffffff 100%)' }}>
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-sans text-[10px] font-bold tracking-widest uppercase py-1 px-2 rounded-md bg-emerald-600 text-white shadow-sm">Plan {planIdx + 1}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="relative">
+                                    <div className="px-8 py-6 bg-gray-50/50 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                        <div className="flex items-center gap-6">
+                                            <div className="flex items-center gap-4">
+                                                {/* PLAN BADGE */}
+                                                <div className="bg-[#052210] px-4 py-2 rounded-xl shadow-sm flex items-center justify-center">
+                                                    <span className="font-sans text-sm font-black text-white uppercase tracking-wider">
+                                                        Plan {planIdx + 1}
+                                                    </span>
+                                                </div>
+
+                                                <div className="h-8 w-px bg-gray-200 hidden sm:block mx-1" />
+
+                                                {/* TIER SELECTOR */}
+                                                <div className="relative group">
                                                     <select
-                                                        className="pl-4 pr-10 py-2.5 rounded-xl font-serif text-lg font-bold bg-white border border-emerald-100 shadow-sm appearance-none cursor-pointer focus:border-emerald-500 outline-none transition-all"
+                                                        className="pl-4 pr-10 py-2.5 rounded-xl font-serif text-xl font-black bg-white border border-gray-200 text-[#052210] appearance-none cursor-pointer focus:border-emerald-500 outline-none transition-all uppercase"
                                                         value={plan.name}
                                                         onChange={(e) => {
                                                             const newPlans = [...tierPlans];
                                                             newPlans[planIdx].name = e.target.value;
+                                                            // Reset hotels in this plan when tier changes
+                                                            newPlans[planIdx].stops = newPlans[planIdx].stops.map(stop => ({
+                                                                ...stop,
+                                                                hotelId: "",
+                                                                hotelName: "",
+                                                                ratePerNight: 0
+                                                            }));
                                                             setTierPlans(newPlans);
                                                         }}
                                                     >
@@ -1087,22 +1100,20 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                         {tierPlans.length > 1 && (
                                             <button 
                                                 onClick={() => setTierPlans(tierPlans.filter((_, i) => i !== planIdx))}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-sans text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 hover:bg-red-100 transition-colors uppercase tracking-wider"
+                                                className="flex items-center gap-2 px-4 py-2 rounded-xl font-sans text-xs font-bold text-red-500 bg-white border border-red-100 hover:bg-red-500 hover:text-white transition-all uppercase tracking-widest shadow-sm"
                                             >
-                                                <Trash2 className="w-3 h-3" /> Remove Plan
+                                                <Trash2 className="w-4 h-4" /> Remove
                                             </button>
                                         )}
                                     </div>
 
                                     {/* Stops Builder */}
-                                    <div className="p-6 space-y-6">
+                                    <div className="p-8 space-y-10">
                                         {plan.stops.map((stop: any, stopIdx: number) => (
                                             <div key={stopIdx} className="relative group/stop animate-in fade-in slide-in-from-left-4 duration-300">
-                                                <div className="flex items-center gap-3 mb-3">
-                                                    <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700">
-                                                        {stopIdx + 1}
-                                                    </div>
-                                                    <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-[#059669]">Stop {stopIdx + 1}</span>
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <span className="font-sans text-[11px] font-black uppercase tracking-[0.25em] text-gray-400">Hotel {stopIdx + 1}</span>
+                                                    <div className="h-px flex-1 bg-gray-100" />
                                                     {plan.stops.length > 1 && (
                                                         <button 
                                                             onClick={() => {
@@ -1110,14 +1121,14 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                 newPlans[planIdx].stops = newPlans[planIdx].stops.filter((_: any, i: number) => i !== stopIdx);
                                                                 setTierPlans(newPlans);
                                                             }}
-                                                            className="ml-auto p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                                                            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-300 hover:text-red-500 transition-colors"
                                                         >
-                                                            <Trash2 className="w-4 h-4" />
+                                                            <Trash2 className="w-3.5 h-3.5" />
                                                         </button>
                                                     )}
                                                 </div>
 
-                                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 p-5 rounded-2xl bg-gray-50/50 border border-gray-100 shadow-inner">
+                                                <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 p-6 bg-gray-50/30 rounded-2xl border border-gray-100 transition-all group-hover/stop:bg-white group-hover/stop:border-emerald-100 group-hover/stop:shadow-md">
                                                     {/* Location */}
                                                     <div className="sm:col-span-3 space-y-1.5 relative">
                                                         <label className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-1">
@@ -1146,69 +1157,11 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                             </div>
                                                             {openTierLocDropdown?.planIdx === planIdx && openTierLocDropdown?.stopIdx === stopIdx && (
                                                                 <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-48 overflow-auto py-2 animate-in fade-in slide-in-from-top-2">
-                                                                    {(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || [])
-                                                                        .filter((loc: string) => !localLocSearch || loc.toLowerCase().includes(localLocSearch.toLowerCase()))
-                                                                        .map((loc: string) => (
-                                                                        <div 
-                                                                            key={loc} 
-                                                                            className="px-4 py-3 hover:bg-emerald-50 text-sm font-sans font-medium cursor-pointer transition-colors flex items-center justify-between group"
-                                                                            onClick={() => {
-                                                                                const newPlans = [...tierPlans];
-                                                                                newPlans[planIdx].stops[stopIdx].location = loc;
-                                                                                setLocalLocSearch(loc);
-                                                                                
-                                                                                // Aggressive match: Try to find any hotel matching this location field
-                                                                                let firstMatch = destHotels.find((h: any) => {
-                                                                                    const hLoc = (h.destination || h.subDestination || h.location || "").toLowerCase().trim();
-                                                                                    const sLoc = loc.toLowerCase().trim();
-                                                                                    const hCat = (h.category || "").toLowerCase().trim();
-                                                                                    const pCat = plan.name.toLowerCase().trim();
-                                                                                    return hLoc === sLoc && hCat === pCat;
-                                                                                });
-
-                                                                                // Fallback: Match by location name only
-                                                                                if (!firstMatch) {
-                                                                                    firstMatch = destHotels.find((h: any) => {
-                                                                                        const hLoc = (h.destination || h.subDestination || h.location || "").toLowerCase().trim();
-                                                                                        const sLoc = loc.toLowerCase().trim();
-                                                                                        return hLoc === sLoc;
-                                                                                    });
-                                                                                }
-
-                                                                                if (firstMatch) {
-                                                                                    newPlans[planIdx].stops[stopIdx].hotelId = firstMatch.id;
-                                                                                    newPlans[planIdx].stops[stopIdx].hotelName = firstMatch.hotelName || firstMatch.name;
-                                                                                    
-                                                                                    // Get first room category or default
-                                                                                    const room = firstMatch.roomCategories?.[0];
-                                                                                    newPlans[planIdx].stops[stopIdx].roomType = room?.roomType || "Standard";
-                                                                                    newPlans[planIdx].stops[stopIdx].starRating = room?.starRating || 3;
-                                                                                    
-                                                                                    const mp = newPlans[planIdx].stops[stopIdx].mealPlan || "CP (Breakfast)";
-                                                                                    const source = room || firstMatch;
-                                                                                    
-                                                                                    if (mp.startsWith("EP")) newPlans[planIdx].stops[stopIdx].ratePerNight = source.epPrice || 0;
-                                                                                    else if (mp.startsWith("CP")) newPlans[planIdx].stops[stopIdx].ratePerNight = source.cpPrice || 0;
-                                                                                    else if (mp.startsWith("MAP")) newPlans[planIdx].stops[stopIdx].ratePerNight = source.mapPrice || 0;
-                                                                                    else if (mp.startsWith("AP")) newPlans[planIdx].stops[stopIdx].ratePerNight = source.apPrice || 0;
-                                                                                } else {
-                                                                                    newPlans[planIdx].stops[stopIdx].hotelId = "";
-                                                                                    newPlans[planIdx].stops[stopIdx].hotelName = "";
-                                                                                    newPlans[planIdx].stops[stopIdx].ratePerNight = 0;
-                                                                                }
-
-                                                                                setTierPlans(newPlans);
-                                                                                setOpenTierLocDropdown(null);
-                                                                            }}
-                                                                        >
-                                                                            <span>{loc}</span>
-                                                                            {stop.location === loc && <Check className="w-3.5 h-3.5 text-emerald-600" />}
-                                                                        </div>
-                                                                    ))}
                                                                     {localLocSearch && !(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).some(l => l.toLowerCase() === localLocSearch.toLowerCase()) && (
                                                                         <div 
-                                                                            className="px-4 py-3 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-t border-gray-50"
-                                                                            onClick={() => {
+                                                                            className="px-4 py-3 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-b border-gray-50"
+                                                                            onMouseDown={(e) => {
+                                                                                e.preventDefault();
                                                                                 const newPlans = [...tierPlans];
                                                                                 newPlans[planIdx].stops[stopIdx].location = localLocSearch;
                                                                                 setTierPlans(newPlans);
@@ -1219,6 +1172,42 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                             <Plus className="w-3.5 h-3.5" />
                                                                         </div>
                                                                     )}
+                                                                    {(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || [])
+                                                                        .slice()
+                                                                        .sort((a, b) => {
+                                                                            const s = localLocSearch.toLowerCase().trim();
+                                                                            if (!s) return a.localeCompare(b);
+                                                                            const aMatch = a.toLowerCase().includes(s);
+                                                                            const bMatch = b.toLowerCase().includes(s);
+                                                                            if (aMatch && !bMatch) return -1;
+                                                                            if (!aMatch && bMatch) return 1;
+                                                                            return a.localeCompare(b);
+                                                                        })
+                                                                        .map((loc: string) => (
+                                                                        <div 
+                                                                            key={loc} 
+                                                                            className="px-4 py-3 hover:bg-emerald-50 text-sm font-sans font-medium cursor-pointer transition-colors flex items-center justify-between group"
+                                                                            onMouseDown={(e) => {
+                                                                                e.preventDefault();
+                                                                                const newPlans = [...tierPlans];
+                                                                                newPlans[planIdx].stops[stopIdx].location = loc;
+                                                                                setLocalLocSearch(loc);
+                                                                                
+                                                                                // Reset hotel and pricing fields when location changes to prevent auto-selection
+                                                                                newPlans[planIdx].stops[stopIdx].hotelId = "";
+                                                                                newPlans[planIdx].stops[stopIdx].hotelName = "";
+                                                                                newPlans[planIdx].stops[stopIdx].ratePerNight = 0;
+                                                                                newPlans[planIdx].stops[stopIdx].roomType = "Standard";
+                                                                                newPlans[planIdx].stops[stopIdx].starRating = 3;
+
+                                                                                setTierPlans(newPlans);
+                                                                                setOpenTierLocDropdown(null);
+                                                                            }}
+                                                                        >
+                                                                            <span>{loc}</span>
+                                                                            {stop.location === loc && <Check className="w-3.5 h-3.5 text-emerald-600" />}
+                                                                        </div>
+                                                                    ))}
                                                                     {(!(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).length) && (
                                                                         <div className="px-4 py-3 text-xs text-gray-400 italic">No locations found. Add them in Destinations.</div>
                                                                     )}
@@ -1261,8 +1250,14 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                                 const hLoc = (h.destination || h.subDestination || h.address || h.location || "").toLowerCase().trim();
                                                                                 const sLoc = (stop.location || "").toLowerCase().trim();
                                                                                 const locMatch = !stop.location || hLoc.includes(sLoc);
+                                                                                
+                                                                                // Filter by Tier (Category)
+                                                                                const hCat = (h.category || "").toLowerCase().trim();
+                                                                                const pTier = (plan.name || "").toLowerCase().trim();
+                                                                                const tierMatch = pTier === "custom" || hCat === pTier;
+
                                                                                 const searchMatch = !localHotelSearch || (h.hotelName || h.name || "").toLowerCase().includes(localHotelSearch.toLowerCase());
-                                                                                return locMatch && searchMatch;
+                                                                                return locMatch && tierMatch && searchMatch;
                                                                             })
                                                                             .map((hotel: any) => {
                                                                                 const basePrice = hotel.cpPrice || hotel.epPrice || hotel.mapPrice || hotel.apPrice || hotel.ratePerNight || 0;
@@ -1270,7 +1265,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                                     <div 
                                                                                         key={hotel.id} 
                                                                                         className="px-4 py-3 hover:bg-emerald-50 cursor-pointer transition-colors border-b border-gray-50 last:border-0"
-                                                                                        onClick={() => {
+                                                                                        onMouseDown={(e) => {
+                                                                                            e.preventDefault();
                                                                                             const newPlans = [...tierPlans];
                                                                                             newPlans[planIdx].stops[stopIdx].hotelId = hotel.id;
                                                                                             newPlans[planIdx].stops[stopIdx].hotelName = hotel.hotelName || hotel.name;
@@ -1278,15 +1274,14 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                                             const selectedRoom = hotel.roomCategories?.[0];
                                                                                             newPlans[planIdx].stops[stopIdx].ratePerNight = hotel.cpPrice || basePrice;
                                                                                             newPlans[planIdx].stops[stopIdx].location = hotel.address || hotel.location || newPlans[planIdx].stops[stopIdx].location;
-                                                                                            newPlans[planIdx].stops[stopIdx].starRating = selectedRoom?.starRating || 3;
+                                                                                            newPlans[planIdx].stops[stopIdx].starRating = hotel.starRating || selectedRoom?.starRating || 3;
                                                                                             setTierPlans(newPlans);
                                                                                             setOpenTierHotelDropdown(null);
                                                                                         }}
                                                                                     >
                                                                                         <div className="font-bold text-gray-900 text-xs">{hotel.hotelName || hotel.name}</div>
                                                                                         <div className="flex items-center gap-2 mt-1">
-                                                                                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 font-bold uppercase">{hotel.category || "Standard"}</span>
-                                                                                            <span className="text-[9px] text-emerald-600 font-bold">CP: ₹{hotel.cpPrice || 0}</span>
+                                                                                            <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider">Starting from ₹{hotel.cpPrice || 0}</span>
                                                                                         </div>
                                                                                     </div>
                                                                                 )
@@ -1294,7 +1289,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                         {localHotelSearch && !destHotels.some(h => (h.hotelName || h.name || "").toLowerCase() === localHotelSearch.toLowerCase()) && (
                                                                             <div 
                                                                                 className="px-4 py-3 hover:bg-emerald-50 text-xs font-bold text-emerald-600 italic cursor-pointer flex items-center justify-between border-t border-gray-50"
-                                                                                onClick={() => {
+                                                                                onMouseDown={(e) => {
+                                                                                    e.preventDefault();
                                                                                     const newPlans = [...tierPlans];
                                                                                     newPlans[planIdx].stops[stopIdx].hotelId = `custom-${Date.now()}`;
                                                                                     newPlans[planIdx].stops[stopIdx].hotelName = localHotelSearch;
@@ -1307,7 +1303,23 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                                 <Plus className="w-3.5 h-3.5" />
                                                                             </div>
                                                                         )}
-                                                                        {(!destHotels.length) && <div className="px-4 py-3 text-xs text-gray-400 italic">No hotels found.</div>}
+                                                                        {(() => {
+                                                                            const filteredCount = destHotels.filter((h: any) => {
+                                                                                const hLoc = (h.destination || h.subDestination || h.address || h.location || "").toLowerCase().trim();
+                                                                                const sLoc = (stop.location || "").toLowerCase().trim();
+                                                                                const locMatch = !stop.location || hLoc.includes(sLoc);
+                                                                                const hCat = (h.category || "").toLowerCase().trim();
+                                                                                const pTier = (plan.name || "").toLowerCase().trim();
+                                                                                const tierMatch = pTier === "custom" || hCat === pTier;
+                                                                                const searchMatch = !localHotelSearch || (h.hotelName || h.name || "").toLowerCase().includes(localHotelSearch.toLowerCase());
+                                                                                return locMatch && tierMatch && searchMatch;
+                                                                            }).length;
+
+                                                                            if (filteredCount === 0) {
+                                                                                return <div className="px-4 py-3 text-xs text-gray-400 italic">No hotels available for selected location and category.</div>;
+                                                                            }
+                                                                            return null;
+                                                                        })()}
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -1406,7 +1418,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                             else if (mp.startsWith("AP")) newPlans[planIdx].stops[stopIdx].ratePerNight = room.apPrice || 0;
                                                                             
                                                                             // Set star rating from room category default
-                                                                            newPlans[planIdx].stops[stopIdx].starRating = room.starRating || 3;
+                                                                            newPlans[planIdx].stops[stopIdx].starRating = hotel?.starRating || room.starRating || 3;
                                                                         }
                                                                         setTierPlans(newPlans);
                                                                     }}
@@ -1774,8 +1786,29 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                         
                                                         {openHotelDropdown === idx && (
                                                             <div className="absolute z-[100] w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-2xl max-h-56 overflow-auto py-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                                                                {localHotelSearch && !(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).includes(localHotelSearch) && (
+                                                                    <div 
+                                                                        className="px-4 py-2.5 hover:bg-emerald-50 text-sm font-sans cursor-pointer italic text-emerald-600 flex items-center justify-between border-b border-gray-50"
+                                                                        onMouseDown={(e) => {
+                                                                            e.preventDefault();
+                                                                            const d = [...dayPlans]; d[idx].overnightStay = localHotelSearch; setDayPlans(d); setOpenHotelDropdown(null);
+                                                                        }}
+                                                                    >
+                                                                        Add "{localHotelSearch}"
+                                                                        <Plus className="w-3.5 h-3.5" />
+                                                                    </div>
+                                                                )}
                                                                 {(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || [])
-                                                                    .filter((loc: string) => !localHotelSearch || loc.toLowerCase().includes(localHotelSearch.toLowerCase()))
+                                                                    .slice()
+                                                                    .sort((a, b) => {
+                                                                        const s = (localHotelSearch || "").toLowerCase().trim();
+                                                                        if (!s) return a.localeCompare(b);
+                                                                        const aMatch = a.toLowerCase().includes(s);
+                                                                        const bMatch = b.toLowerCase().includes(s);
+                                                                        if (aMatch && !bMatch) return -1;
+                                                                        if (!aMatch && bMatch) return 1;
+                                                                        return a.localeCompare(b);
+                                                                    })
                                                                     .map((loc: string) => (
                                                                         <div 
                                                                            key={loc} 
@@ -1789,18 +1822,6 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                                             {day.overnightStay === loc && <Check className="w-3.5 h-3.5 text-emerald-600" />}
                                                                         </div>
                                                                     ))}
-                                                                {localHotelSearch && !(destinations?.find((d: any) => d.id === destinationId)?.subDestinations || []).includes(localHotelSearch) && (
-                                                                    <div 
-                                                                        className="px-4 py-2.5 hover:bg-emerald-50 text-sm font-sans cursor-pointer italic text-emerald-600 flex items-center justify-between"
-                                                                        onMouseDown={(e) => {
-                                                                            e.preventDefault();
-                                                                            const d = [...dayPlans]; d[idx].overnightStay = localHotelSearch; setDayPlans(d); setOpenHotelDropdown(null);
-                                                                        }}
-                                                                    >
-                                                                        Add "{localHotelSearch}"
-                                                                        <Plus className="w-3.5 h-3.5" />
-                                                                    </div>
-                                                                )}
                                                             </div>
                                                         )}
                                                     </div>
@@ -1904,9 +1925,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                 <div key={idx} className="flex flex-col justify-between p-5 rounded-2xl relative overflow-hidden" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
                                     {/* Plan Header */}
                                     <div className="mb-4">
-                                        <p className="font-sans text-[11px] font-bold tracking-wider uppercase mb-1" style={{ color: '#059669' }}>Plan {idx + 1}</p>
-                                        <p className="font-serif text-lg tracking-wide leading-tight" style={{ color: '#052210' }}>{plan.hotelName}</p>
-                                        <p className="font-sans text-[10px] mt-1 uppercase tracking-wider" style={{ color: '#6b7280' }}>{plan.category}</p>
+                                        <p className="font-sans text-[11px] font-bold tracking-widest uppercase mb-1" style={{ color: '#059669' }}>PLAN {idx + 1}</p>
+                                        <p className="font-serif text-xl font-black tracking-wide leading-tight uppercase" style={{ color: '#052210' }}>{plan.category}</p>
                                     </div>
 
                                     {mode === "package" && (

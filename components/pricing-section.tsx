@@ -41,6 +41,22 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
   const displayGst = gstNote || (applyGST ? '5% GST applicable on total package cost' : applyTCS ? 'TCS applicable for international trips' : '5% GST applicable on total package cost')
   const hasOptions = plans && plans.filter(p => p.total > 0).length > 0
 
+  const getTierImage = (category: string) => {
+    if (!category) return defaultImages[0]
+    
+    const normalized = category.toLowerCase().trim()
+    
+    // Formatting rules: 
+    // "3 Star" -> "3star.png"
+    // "Super Deluxe" -> "super deluxe.png"
+    let fileName = normalized
+    if (normalized.includes("star")) {
+      fileName = normalized.replace(/\s+/g, "")
+    }
+    
+    return `/images/hotel_tiers/${fileName}.png`
+  }
+
   return (
     <>
       {/* HEADER SECTION - Only for Built Packages with options */}
@@ -88,9 +104,12 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
                   {/* Top Image */}
                   <div className="w-full h-44 relative">
                     <img
-                      src={plan.image || defaultImages[idx % defaultImages.length]}
+                      src={plan.image || getTierImage(plan.category)}
                       alt={plan.hotelName}
                       className="absolute inset-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = defaultImages[idx % defaultImages.length]
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                     

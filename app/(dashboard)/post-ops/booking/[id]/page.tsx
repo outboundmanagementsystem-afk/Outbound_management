@@ -225,8 +225,8 @@ function PostOpsBookingDetail() {
                 {/* Hotels */}
                 <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                     <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels ({hotels.length})</h3>
-                    {hotels.map((h: any) => (
-                        <div key={h.id} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                    {hotels.map((h: any, idx: number) => (
+                        <div key={`${h.id}-${idx}`} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
                             <span className="font-sans text-sm" style={{ color: '#052210' }}>{h.name || h.hotelName || "Unnamed Hotel"}</span>
                             <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>{h.category}{h.rating ? ` · ${h.rating}★` : ''}</span>
                         </div>
@@ -237,8 +237,8 @@ function PostOpsBookingDetail() {
                 {flights.length > 0 && (
                     <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                         <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Flights ({flights.length})</h3>
-                        {flights.map((f: any) => (
-                            <div key={f.id} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                        {flights.map((f: any, idx: number) => (
+                            <div key={`${f.id}-${idx}`} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
                                 <div>
                                     <span className="font-sans text-sm block" style={{ color: '#052210' }}>{f.airline} {f.flightNo ? `(${f.flightNo})` : ""}</span>
                                     <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.5)' }}>{f.fromCode} → {f.toCode} · {f.departure} - {f.arrival}</span>
