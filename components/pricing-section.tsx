@@ -62,7 +62,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
       {/* HEADER SECTION - Only for Built Packages with options */}
       {hasOptions && (
         <section
-          className="relative py-8 px-4 overflow-hidden page-break-before pdf-section bg-[#051F10]"
+          className="relative pt-6 pb-8 px-4 overflow-hidden page-break-before pdf-section bg-[#051F10]"
           style={{
             backgroundImage: "url('/images/bg/page_008.png')",
             backgroundSize: 'cover',
@@ -72,9 +72,6 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
         >
           <div className="absolute inset-0 bg-[#00000088] pointer-events-none" />
           <div className="relative z-10 w-full text-center px-2">
-            <p className="font-sans text-[9px] tracking-[0.35em] uppercase mb-3 font-black text-[#FFE500]">
-              Investment Details
-            </p>
             <h2 className="font-serif text-[2.2rem] tracking-tight font-black uppercase leading-none text-white drop-shadow-2xl">
               Select Your<br /><span className="text-[#FFE500]">Package Plan</span>
             </h2>

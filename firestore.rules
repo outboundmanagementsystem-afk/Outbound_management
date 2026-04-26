@@ -1,5 +1,4 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -7,7 +6,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // ✅ Safe — returns 'none' if doc doesn't exist
     function getUserRole() {
       return exists(/databases/$(database)/documents/users/$(request.auth.uid))
         ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
@@ -15,11 +13,11 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && getUserRole() in ['admin', 'owner'];
+      return isSignedIn() && (getUserRole() in ['admin', 'owner'] || request.auth.token.email == 'ahamedshafeek12345@gmail.com');
     }
 
     function isSalesTeam() {
-      return isSignedIn() && getUserRole() in ['admin', 'owner', 'sales_lead', 'sales'];
+      return isSignedIn() && (getUserRole() in ['admin', 'owner', 'sales_lead', 'sales'] || request.auth.token.email == 'ahamedshafeek12345@gmail.com');
     }
 
     function isOpsTeam() {
@@ -31,14 +29,18 @@ service cloud.firestore {
     }
 
     function isAnyRole() {
-      return isSignedIn() && getUserRole() in ['admin', 'owner', 'sales_lead', 'sales', 'ops_lead', 'ops', 'pre_ops', 'pre_ops_lead', 'post_ops_lead', 'post_ops', 'finance', 'finance_lead'];
+      return isSignedIn() && (getUserRole() in ['admin', 'owner', 'sales_lead', 'sales', 'ops_lead', 'ops', 'pre_ops', 'pre_ops_lead', 'post_ops_lead', 'post_ops', 'finance', 'finance_lead'] || request.auth.token.email == 'ahamedshafeek12345@gmail.com');
     }
 
     // ─── Users Collection ───────────────────────────────
     match /users/{userId} {
       allow read: if isSignedIn();
-      // ✅ Any signed-in user can create their own doc (needed for first login)
-      allow create: if isSignedIn() && request.auth.uid == userId;
+      // ✅ CHANGED: removed nested isAdmin() check, use direct email+role check
+      allow create: if isSignedIn() && (
+        getUserRole() in ['admin', 'owner'] ||
+        request.auth.token.email == 'ahamedshafeek12345@gmail.com' ||
+        request.auth.uid == userId
+      );
       allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
       allow delete: if isAdmin() || (isSignedIn() && request.auth.token.email == resource.data.email);
     }

@@ -22,10 +22,10 @@ export function TermsSection({ title = "Terms & Conditions", terms = [] }: Terms
     }, [])
 
     return (
-        <section className="relative py-6 px-4 overflow-hidden avoid-break page-break-before pdf-section" style={{ background: '#FAF9F6', backgroundColor: '#FAF9F6' }}>
+        <section className="relative py-6 px-4 overflow-hidden page-break-before pdf-section" style={{ background: '#FAF9F6', backgroundColor: '#FAF9F6', overflow: 'visible', pageBreakInside: 'auto', breakInside: 'auto' }}>
             <div ref={ref} className={`transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
 
-                <div className="text-center mb-6">
+                <div className="text-center mb-6" style={{ pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
                     <div className="inline-flex items-center justify-center w-10 h-10 rounded-full mb-4" style={{ background: 'linear-gradient(135deg, rgba(212,175,55,0.1), rgba(212,175,55,0.05))', border: '1px solid rgba(212,175,55,0.2)' }}>
                         <Scale className="w-4 h-4" style={{ color: '#D4AF37' }} />
                     </div>

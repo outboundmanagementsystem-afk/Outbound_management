@@ -216,8 +216,9 @@
   }
   
   .avoid-break {
-    page-break-inside: avoid;
-    break-inside: avoid;
+    page-break-inside: auto;
+    break-inside: auto;
+    overflow: visible;
   }
 
   .is-exporting-pdf {

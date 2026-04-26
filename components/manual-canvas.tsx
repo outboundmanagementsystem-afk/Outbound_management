@@ -718,7 +718,27 @@ export function ManualCanvas() {
                                         )}
                                         {block.type === 'TRIP_SUMMARY' && <TripSummary {...block.data} />}
                                         {block.type === 'FLIGHT_DETAILS' && <div className="pb-4"><FlightDetails {...block.data} /></div>}
-                                        {block.type === 'HOTEL_DETAILS' && <div className="pb-4"><HotelDetails {...block.data} /></div>}
+                                        {block.type === 'HOTEL_DETAILS' && (
+                                            <div className="pb-4 hide-hotel-plan-header">
+                                                <style>{`
+                                                    .hide-hotel-plan-header .pdf-section[style*="border: 1.5px solid"],
+                                                    .hide-hotel-plan-header .pdf-section[style*="border: 1.5px"] {
+                                                        background: transparent !important;
+                                                        border: none !important;
+                                                        margin-top: 0 !important;
+                                                        margin-bottom: 24px !important;
+                                                        padding: 0 !important;
+                                                    }
+                                                    .hide-hotel-plan-header .pdf-section > .bg-black.border-b {
+                                                        display: none !important;
+                                                    }
+                                                    .hide-hotel-plan-header .pdf-section > .p-6.space-y-6 {
+                                                        padding: 0 !important;
+                                                    }
+                                                `}</style>
+                                                <HotelDetails {...block.data} />
+                                            </div>
+                                        )}
                                         {block.type === 'TRANSFER_DETAILS' && <div className="pb-4"><TransferDetails {...block.data} /></div>}
                                         {block.type === 'DAY_ITINERARY' && <div className="pb-4"><DayItinerary {...block.data} /></div>}
                                         {block.type === 'PRICING_SECTION' && <div className="pb-4"><PricingSection {...block.data} /></div>}

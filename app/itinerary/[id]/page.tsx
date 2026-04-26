@@ -143,6 +143,12 @@ export default function PublicItineraryPage() {
                     windowWidth: item.chunk.scrollWidth,
                     windowHeight: item.chunk.scrollHeight,
                     onclone: function(clonedDoc) {
+                        const mainEl = clonedDoc.getElementById('itinerary-content')
+                        if (mainEl) {
+                            mainEl.style.overflow = 'visible'
+                            mainEl.style.height = 'auto'
+                            mainEl.style.maxHeight = 'none'
+                        }
                         // --- PHASE 1: Baseline Style Inlining ---
                         // Inline computed styles to ensure they persist in the canvas
                         clonedDoc.querySelectorAll('*').forEach(el => {
@@ -241,6 +247,20 @@ export default function PublicItineraryPage() {
                         // 4. Pricing & Amount Recovery
                         clonedDoc.querySelectorAll('[class*="price-amount"], [class*="amount"]').forEach(el => {
                             (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
+                        });
+
+                        // 5. Hotel Count Badge Fix (Perfect Centering)
+                        clonedDoc.querySelectorAll('.hotel-count-badge').forEach(badge => {
+                            const element = badge as HTMLElement;
+                            element.style.setProperty('display', 'flex', 'important');
+                            element.style.setProperty('align-items', 'center', 'important');
+                            element.style.setProperty('justify-content', 'center', 'important');
+                            element.style.setProperty('height', '32px', 'important');
+                            element.style.setProperty('padding', '0 14px', 'important');
+                            element.style.setProperty('border-radius', '20px', 'important');
+                            element.style.setProperty('background-color', '#FFD700', 'important');
+                            element.style.setProperty('font-weight', '600', 'important');
+                            element.style.setProperty('line-height', '1', 'important');
                         });
 
                         // 4. Footer Recovery
@@ -445,7 +465,15 @@ export default function PublicItineraryPage() {
     const hasHotels = hotelList.length > 0
     const hasTransfers = transfers && transfers.length > 0
     const hasDayPlans = dayPlans.length > 0
-    const hasInclExcl = itin.pdfTemplate?.inclusions?.length > 0 || itin.pdfTemplate?.exclusions?.length > 0
+
+    // Override-first resolution: per-trip overrides take precedence over destination defaults
+    const finalInclusions = itin.override_inclusions ?? itin.pdfTemplate?.inclusions ?? []
+    const finalExclusions = itin.override_exclusions ?? itin.pdfTemplate?.exclusions ?? []
+    const finalImportantNotes = itin.override_important_notes ?? itin.pdfTemplate?.importantNotes ?? []
+    const finalTerms = itin.override_terms_conditions ?? itin.pdfTemplate?.termsAndConditions ?? []
+    const finalPayment = itin.override_payment_policy ?? itin.pdfTemplate?.paymentPolicy ?? []
+    const finalCancellation = itin.override_cancellation_policy ?? itin.pdfTemplate?.cancellationPolicy ?? []
+    const hasInclExcl = finalInclusions.length > 0 || finalExclusions.length > 0
     
     // Debug PDF template data
     console.log("=== ITINERARY PDF DEBUG ===");
@@ -478,7 +506,7 @@ export default function PublicItineraryPage() {
                     </>
                 )}
             </button>
-            <main id="itinerary-content" className="relative bg-[#FDFDFB] shadow-2xl w-full max-w-[480px] mx-auto overflow-hidden border-x border-gray-100/50" style={{ scrollBehavior: 'smooth' }}>
+            <main id="itinerary-content" className="relative bg-[#FDFDFB] shadow-2xl w-full max-w-[480px] mx-auto border-x border-gray-100/50" style={{ scrollBehavior: 'smooth' }}>
                 {/* HERO */}
                 <div className="pdf-chunk w-full">
                     <HeroSection
@@ -488,6 +516,8 @@ export default function PublicItineraryPage() {
                         days={itin.days}
                         startDate={formatDate(itin.startDate)}
                         endDate={formatDate(itin.endDate)}
+                        packageName={itin.packageName}
+                        description={itin.description}
                     />
                 </div>
                 
@@ -510,7 +540,24 @@ export default function PublicItineraryPage() {
 
                 {/* HOTELS - Individual chunk - Always show when hotels exist */}
                 {hasHotels && (
-                    <div className="pdf-chunk pdf-dark-bg w-full">
+                    <div className={`pdf-chunk pdf-dark-bg w-full ${itin?.isReadyMade ? 'hide-hotel-plan-header' : ''}`}>
+                        {itin?.isReadyMade && (
+                            <style>{`
+                                .hide-hotel-plan-header .pdf-section[style*="border: 1.5px solid"] {
+                                    background: transparent !important;
+                                    border: none !important;
+                                    margin-top: 0 !important;
+                                    margin-bottom: 24px !important;
+                                    padding: 0 !important;
+                                }
+                                .hide-hotel-plan-header .pdf-section > .bg-black.border-b {
+                                    display: none !important;
+                                }
+                                .hide-hotel-plan-header .pdf-section > .p-6.space-y-6 {
+                                    padding: 0 !important;
+                                }
+                            `}</style>
+                        )}
                         <HotelDetails hotelList={hotelList} />
                     </div>
                 )}
@@ -542,35 +589,35 @@ export default function PublicItineraryPage() {
                 {/* INCLUSIONS & EXCLUSIONS */}
                 {hasInclExcl && (
                     <div className="pdf-chunk w-full">
-                        <IncExcSection inclusions={itin.pdfTemplate.inclusions || []} exclusions={itin.pdfTemplate.exclusions || []} />
+                        <IncExcSection inclusions={finalInclusions} exclusions={finalExclusions} />
                     </div>
                 )}
 
                 {/* IMPORTANT NOTES */}
-                {itin.pdfTemplate?.importantNotes?.length > 0 && (
+                {finalImportantNotes.length > 0 && (
                     <div className="pdf-chunk w-full">
-                        <TermsSection title="Important Notes" terms={itin.pdfTemplate.importantNotes} />
+                        <TermsSection title="Important Notes" terms={finalImportantNotes} />
                     </div>
                 )}
 
                 {/* TERMS & CONDITIONS */}
-                {itin.pdfTemplate?.termsAndConditions?.length > 0 && (
+                {finalTerms.length > 0 && (
                     <div className="pdf-chunk w-full">
-                        <TermsSection title="Terms & Conditions" terms={itin.pdfTemplate.termsAndConditions} />
+                        <TermsSection title="Terms & Conditions" terms={finalTerms} />
                     </div>
                 )}
 
                 {/* PAYMENT POLICY */}
-                {itin.pdfTemplate?.paymentPolicy?.length > 0 && (
+                {finalPayment.length > 0 && (
                     <div className="pdf-chunk w-full">
-                        <TermsSection title="Payment Policy" terms={itin.pdfTemplate.paymentPolicy} />
+                        <TermsSection title="Payment Policy" terms={finalPayment} />
                     </div>
                 )}
 
                 {/* CANCELLATION POLICY */}
-                {itin.pdfTemplate?.cancellationPolicy?.length > 0 && (
+                {finalCancellation.length > 0 && (
                     <div className="pdf-chunk w-full">
-                        <TermsSection title="Cancellation Policy" terms={itin.pdfTemplate.cancellationPolicy} />
+                        <TermsSection title="Cancellation Policy" terms={finalCancellation} />
                     </div>
                 )}
 

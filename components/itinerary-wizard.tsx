@@ -12,7 +12,7 @@ import {
 } from "@/lib/firestore"
 import {
     User, MapPin, Calendar, Users, Hotel, Car, Sun, DollarSign,
-    ChevronRight, ChevronLeft, Check, Plus, Trash2, Eye, Plane, Upload, Loader2, Sparkles, Map, PackageSearch, ChevronDown, X, Search, Star
+    ChevronRight, ChevronLeft, Check, Plus, Trash2, Eye, Plane, Upload, Loader2, Sparkles, Map, PackageSearch, ChevronDown, X, Search, Star, FileText, RotateCcw
 } from "lucide-react"
 import { createWorker } from "tesseract.js"
 import { preprocessImageForOCR } from "@/lib/image-processing"
@@ -26,6 +26,7 @@ const STEPS = [
     { label: "Transfers", icon: Car },
     { label: "Activities", icon: Map },
     { label: "Day Plan", icon: Sun },
+    { label: "Inclusions", icon: FileText },
     { label: "Pricing", icon: DollarSign },
     { label: "Preview", icon: Eye },
 ]
@@ -156,7 +157,22 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
     // Step 5: Day Plan
     const [dayPlans, setDayPlans] = useState<any[]>([])
 
-    // Step 6: Pricing & Plans
+    // Step 6: Inclusions & Notes
+    const [overrideInclusions, setOverrideInclusions] = useState<string[] | null>(null)
+    const [overrideExclusions, setOverrideExclusions] = useState<string[] | null>(null)
+    const [overrideImportantNotes, setOverrideImportantNotes] = useState<string[] | null>(null)
+    const [overrideTermsConditions, setOverrideTermsConditions] = useState<string[] | null>(null)
+    const [overridePaymentPolicy, setOverridePaymentPolicy] = useState<string[] | null>(null)
+    const [overrideCancellationPolicy, setOverrideCancellationPolicy] = useState<string[] | null>(null)
+    const [inclusionsCustomised, setInclusionsCustomised] = useState(false)
+    const [inclusionsSeeded, setInclusionsSeeded] = useState(false)
+    const [expandedIncSections, setExpandedIncSections] = useState<Record<string, boolean>>({
+        inclusions: true, exclusions: true,
+        importantNotes: false, termsConditions: false,
+        paymentPolicy: false, cancellationPolicy: false,
+    })
+
+    // Step 7: Pricing & Plans
     const [margin, setMargin] = useState(15)
     // Legacy single-price fallbacks
     const [totalPrice, setTotalPrice] = useState(0)
@@ -379,6 +395,18 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     setConsultantName(it.consultantName || "")
                     setConsultantPhone(it.consultantPhone || "")
                     setMargin(it.margin || 15)
+
+                    // Restore Inclusions & Notes overrides
+                    if (it.override_inclusions !== undefined) {
+                        setOverrideInclusions(it.override_inclusions)
+                        setOverrideExclusions(it.override_exclusions || null)
+                        setOverrideImportantNotes(it.override_important_notes || null)
+                        setOverrideTermsConditions(it.override_terms_conditions || null)
+                        setOverridePaymentPolicy(it.override_payment_policy || null)
+                        setOverrideCancellationPolicy(it.override_cancellation_policy || null)
+                        setInclusionsCustomised(it.inclusions_customised || false)
+                        setInclusionsSeeded(true)
+                    }
                 }
 
                 if (p && p.length > 0) {
@@ -568,7 +596,14 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 createdBy: userProfile?.uid || "",
                 createdByName: userProfile?.name || "",
                 pdfTemplate: selectedDest?.pdfTemplate || null,
-                manualHotelCost, manualTransferCost, manualActivityCost
+                manualHotelCost, manualTransferCost, manualActivityCost,
+                override_inclusions: overrideInclusions,
+                override_exclusions: overrideExclusions,
+                override_important_notes: overrideImportantNotes,
+                override_terms_conditions: overrideTermsConditions,
+                override_payment_policy: overridePaymentPolicy,
+                override_cancellation_policy: overrideCancellationPolicy,
+                inclusions_customised: inclusionsCustomised,
             }
 
             let itinId = editId as string
@@ -1856,8 +1891,210 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     </div>
                 )}
 
-                {/* STEP 6: Pricing */}
-                {step === 6 && (
+                {/* STEP 6: Inclusions & Notes */}
+                {step === 6 && (() => {
+                    // Seed from destination defaults on first visit
+                    const selectedDest = destinations.find((d: any) => d.id === destinationId)
+                    const destPdf = selectedDest?.pdfTemplate || {}
+                    if (!inclusionsSeeded && overrideInclusions === null) {
+                        // Use setTimeout to avoid setState during render
+                        setTimeout(() => {
+                            setOverrideInclusions([...(destPdf.inclusions || [])])
+                            setOverrideExclusions([...(destPdf.exclusions || [])])
+                            setOverrideImportantNotes([...(destPdf.importantNotes || [])])
+                            setOverrideTermsConditions([...(destPdf.termsAndConditions || [])])
+                            setOverridePaymentPolicy([...(destPdf.paymentPolicy || [])])
+                            setOverrideCancellationPolicy([...(destPdf.cancellationPolicy || [])])
+                            setInclusionsSeeded(true)
+                        }, 0)
+                    }
+
+                    // Track original defaults for comparison
+                    const defaults: Record<string, string[]> = {
+                        inclusions: destPdf.inclusions || [],
+                        exclusions: destPdf.exclusions || [],
+                        importantNotes: destPdf.importantNotes || [],
+                        termsConditions: destPdf.termsAndConditions || [],
+                        paymentPolicy: destPdf.paymentPolicy || [],
+                        cancellationPolicy: destPdf.cancellationPolicy || [],
+                    }
+
+                    const sections = [
+                        { key: "inclusions", label: "Inclusions", data: overrideInclusions, setter: setOverrideInclusions, icon: "✓", color: "#059669", bgColor: "#ecfdf5", borderColor: "#a7f3d0" },
+                        { key: "exclusions", label: "Exclusions", data: overrideExclusions, setter: setOverrideExclusions, icon: "✕", color: "#dc2626", bgColor: "#fef2f2", borderColor: "#fecaca" },
+                        { key: "importantNotes", label: "Important Notes", data: overrideImportantNotes, setter: setOverrideImportantNotes, icon: "⚠", color: "#d97706", bgColor: "#fffbeb", borderColor: "#fde68a" },
+                        { key: "termsConditions", label: "Terms & Conditions", data: overrideTermsConditions, setter: setOverrideTermsConditions, icon: "§", color: "#4f46e5", bgColor: "#eef2ff", borderColor: "#c7d2fe" },
+                        { key: "paymentPolicy", label: "Payment Policy", data: overridePaymentPolicy, setter: setOverridePaymentPolicy, icon: "₹", color: "#0891b2", bgColor: "#ecfeff", borderColor: "#a5f3fc" },
+                        { key: "cancellationPolicy", label: "Cancellation Policy", data: overrideCancellationPolicy, setter: setOverrideCancellationPolicy, icon: "⊘", color: "#be185d", bgColor: "#fdf2f8", borderColor: "#fbcfe8" },
+                    ]
+
+                    const checkIfCustomised = () => {
+                        const checks = sections.map(s => {
+                            const current = s.data || []
+                            const def = defaults[s.key] || []
+                            if (current.length !== def.length) return true
+                            return current.some((item, i) => item !== def[i])
+                        })
+                        return checks.some(Boolean)
+                    }
+
+                    const handleItemEdit = (section: typeof sections[0], idx: number, value: string) => {
+                        const arr = [...(section.data || [])]
+                        arr[idx] = value
+                        section.setter(arr)
+                        setTimeout(() => setInclusionsCustomised(checkIfCustomised()), 0)
+                    }
+
+                    const handleItemDelete = (section: typeof sections[0], idx: number) => {
+                        const arr = [...(section.data || [])]
+                        arr.splice(idx, 1)
+                        section.setter(arr)
+                        setTimeout(() => setInclusionsCustomised(checkIfCustomised()), 0)
+                    }
+
+                    const handleItemAdd = (section: typeof sections[0]) => {
+                        const arr = [...(section.data || []), ""]
+                        section.setter(arr)
+                        setTimeout(() => setInclusionsCustomised(true), 0)
+                    }
+
+                    const handleResetSection = (section: typeof sections[0]) => {
+                        const def = [...(defaults[section.key] || [])]
+                        section.setter(def)
+                        setTimeout(() => {
+                            // Re-check all sections after this reset
+                            const isCustom = sections.some(s => {
+                                const current = s.key === section.key ? def : (s.data || [])
+                                const d = defaults[s.key] || []
+                                if (current.length !== d.length) return true
+                                return current.some((item, i) => item !== d[i])
+                            })
+                            setInclusionsCustomised(isCustom)
+                        }, 0)
+                    }
+
+                    const getItemStatus = (sectionKey: string, idx: number, value: string) => {
+                        const def = defaults[sectionKey] || []
+                        if (idx >= def.length) return "new"
+                        if (value !== def[idx]) return "edited"
+                        return "unchanged"
+                    }
+
+                    return (
+                        <div className="space-y-5">
+                            <div className="flex items-center gap-2 mb-2">
+                                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#ecfdf5' }}><FileText className="w-3.5 h-3.5" style={{ color: '#059669' }} /></div>
+                                <div className="flex-1">
+                                    <h2 className="font-serif text-lg sm:text-xl tracking-wide" style={{ color: '#052210' }}>Inclusions & Notes</h2>
+                                    <p className="font-sans text-[11px]" style={{ color: '#9ca3af' }}>Customise inclusions, exclusions, terms & policies for this trip</p>
+                                </div>
+                                {/* Source badge */}
+                                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-sans text-[10px] font-bold tracking-wider uppercase ${inclusionsCustomised ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`} style={{ border: '1px solid' }}>
+                                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: inclusionsCustomised ? '#0d9488' : '#d97706' }} />
+                                    {inclusionsCustomised ? "Customised" : "Destination Defaults"}
+                                </div>
+                            </div>
+
+                            {!destinationId && (
+                                <div className="text-center py-10 rounded-xl" style={{ background: '#f9fafb', border: '2px dashed #d1d5db' }}>
+                                    <FileText className="w-10 h-10 mx-auto mb-3" style={{ color: '#d1d5db' }} />
+                                    <p className="font-sans text-sm" style={{ color: '#9ca3af' }}>Select a destination in Step 1 to load default content</p>
+                                </div>
+                            )}
+
+                            {destinationId && sections.map(section => {
+                                const items = section.data || []
+                                const isExpanded = expandedIncSections[section.key]
+                                const editedCount = items.filter((_, i) => getItemStatus(section.key, i, items[i]) !== "unchanged").length
+                                const isDefault = !items.some((item, i) => getItemStatus(section.key, i, item) !== "unchanged") && items.length === (defaults[section.key]?.length || 0)
+
+                                return (
+                                    <div key={section.key} className="rounded-xl overflow-hidden transition-all duration-200" style={{ border: `1px solid ${section.borderColor}` }}>
+                                        {/* Section Header */}
+                                        <button
+                                            onClick={() => setExpandedIncSections(prev => ({ ...prev, [section.key]: !prev[section.key] }))}
+                                            className="w-full flex items-center gap-3 px-5 py-4 transition-colors"
+                                            style={{ background: section.bgColor }}
+                                        >
+                                            <span className="w-7 h-7 rounded-lg flex items-center justify-center text-sm font-bold" style={{ background: '#FFFFFF', color: section.color, border: `1px solid ${section.borderColor}` }}>
+                                                {section.icon}
+                                            </span>
+                                            <span className="font-sans text-sm font-bold tracking-wide flex-1 text-left" style={{ color: '#052210' }}>{section.label}</span>
+                                            <span className="font-sans text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-full" style={{ background: '#FFFFFF', color: isDefault ? '#9ca3af' : section.color, border: `1px solid ${isDefault ? '#e5e7eb' : section.borderColor}` }}>
+                                                {items.length} item{items.length !== 1 ? 's' : ''}{editedCount > 0 ? ` · ${editedCount} edited` : isDefault ? ' · default' : ''}
+                                            </span>
+                                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} style={{ color: section.color }} />
+                                        </button>
+
+                                        {/* Expanded Content */}
+                                        {isExpanded && (
+                                            <div className="px-5 py-4 space-y-2 bg-white">
+                                                {/* Reset Button */}
+                                                {!isDefault && (
+                                                    <div className="flex justify-end mb-2">
+                                                        <button
+                                                            onClick={() => handleResetSection(section)}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-sans text-[10px] font-bold tracking-wider uppercase transition-all hover:bg-gray-100"
+                                                            style={{ color: '#6b7280', border: '1px solid #e5e7eb' }}
+                                                        >
+                                                            <RotateCcw className="w-3 h-3" /> Reset to defaults
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {items.length === 0 && (
+                                                    <p className="font-sans text-xs italic py-3 text-center" style={{ color: '#9ca3af' }}>No items. Click "Add" below to get started.</p>
+                                                )}
+
+                                                {items.map((item, idx) => {
+                                                    const status = getItemStatus(section.key, idx, item)
+                                                    const rowBg = status === "edited" ? '#E1F5EE' : status === "new" ? '#E6F1FB' : '#FFFFFF'
+                                                    return (
+                                                        <div key={idx} className="flex items-center gap-2 group rounded-lg px-3 py-2 transition-colors" style={{ background: rowBg, border: '1px solid #f3f4f6' }}>
+                                                            <span className="font-sans text-[10px] font-bold w-5 text-center flex-shrink-0" style={{ color: '#9ca3af' }}>{idx + 1}</span>
+                                                            <input
+                                                                className="flex-1 font-sans text-sm bg-transparent outline-none px-2 py-1"
+                                                                style={{ color: '#052210' }}
+                                                                value={item}
+                                                                onChange={(e) => handleItemEdit(section, idx, e.target.value)}
+                                                                placeholder={`Enter ${section.label.toLowerCase()} item...`}
+                                                            />
+                                                            {status !== "unchanged" && (
+                                                                <span className="font-sans text-[9px] font-bold tracking-wider uppercase px-1.5 py-0.5 rounded flex-shrink-0" style={{
+                                                                    background: status === "edited" ? '#d1fae5' : '#dbeafe',
+                                                                    color: status === "edited" ? '#065f46' : '#1e40af',
+                                                                }}>
+                                                                    {status}
+                                                                </span>
+                                                            )}
+                                                            <button
+                                                                onClick={() => handleItemDelete(section, idx)}
+                                                                className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all flex-shrink-0"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                                                            </button>
+                                                        </div>
+                                                    )
+                                                })}
+
+                                                <button
+                                                    onClick={() => handleItemAdd(section)}
+                                                    className="w-full py-2.5 rounded-lg border-2 border-dashed font-sans text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 transition-all hover:bg-gray-50"
+                                                    style={{ borderColor: section.borderColor, color: section.color }}
+                                                >
+                                                    <Plus className="w-3.5 h-3.5" /> Add {section.label.replace(/s$/, '').replace(/ & .*/, '')}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )
+                })()}
+
+                {/* STEP 7: Pricing */}
+                {step === 7 && (
                     <div className="space-y-5">
                         <div className="flex items-center gap-2 mb-2">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#ecfdf5' }}><DollarSign className="w-3.5 h-3.5" style={{ color: '#059669' }} /></div>
@@ -1987,8 +2224,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     </div>
                 )}
 
-                {/* STEP 7: Preview */}
-                {step === 7 && (
+                {/* STEP 8: Preview */}
+                {step === 8 && (
                     <div className="space-y-4">
                         <div className="flex items-center gap-2 mb-2">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#ecfdf5' }}><Eye className="w-3.5 h-3.5" style={{ color: '#059669' }} /></div>

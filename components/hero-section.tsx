@@ -10,9 +10,20 @@ interface HeroSectionProps {
   days?: number
   startDate?: string
   endDate?: string
+  packageName?: string
+  description?: string
 }
 
-export function HeroSection({ customerName, destination, nights, days, startDate, endDate }: HeroSectionProps = {}) {
+export function HeroSection({ 
+  customerName, 
+  destination, 
+  nights, 
+  days, 
+  startDate, 
+  endDate,
+  packageName,
+  description
+}: HeroSectionProps = {}) {
   const displayName = customerName || "Guest"
   const displayDest = destination || "Your Destination"
   const displayNights = nights ?? 4
@@ -89,12 +100,28 @@ export function HeroSection({ customerName, destination, nights, days, startDate
         </div>
 
         {/* Hello Guest */}
-        <div className="mb-8">
+        <div className="mb-4">
           <h2 className="font-serif text-4xl text-[#FFE500] italic mb-2">Hello!</h2>
           <h1 className="font-serif text-5xl text-white uppercase font-black leading-tight tracking-[0.05em] break-words max-w-[400px]">
             {displayName}
           </h1>
         </div>
+
+        {/* Package Identity (Package Name + Description) */}
+        {(packageName || description) && (
+          <div className="mb-8 max-w-[400px]">
+            {packageName && (
+              <h2 className="font-sans text-[15px] font-bold text-white/90 uppercase tracking-[0.1em] mb-1">
+                {packageName}
+              </h2>
+            )}
+            {description && (
+              <p className="font-sans text-[12px] text-white/60 leading-relaxed italic">
+                {description}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="w-12 h-1 bg-[#FFE500] rounded-full mb-10 shadow-[0_0_20px_rgba(255,229,0,0.6)]" />
 

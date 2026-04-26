@@ -7,7 +7,7 @@ export function TransferDetails({ transfers }: { transfers: any[] }) {
         <>
             {/* HEADER SECTION */}
             <section
-                className="py-8 px-4 relative flex flex-col justify-center avoid-break page-break-before pdf-section"
+                className="pt-5 pb-8 px-4 relative flex flex-col justify-center avoid-break page-break-before pdf-section"
                 style={{
                     backgroundImage: "url('/images/bg/page_006.png')",
                     backgroundSize: 'cover',
@@ -17,9 +17,6 @@ export function TransferDetails({ transfers }: { transfers: any[] }) {
             >
                 <div className="absolute inset-0 bg-black/30 pointer-events-none" />
                 <div className="relative z-10 w-full text-center px-4">
-                    <p className="font-sans text-[8px] font-black tracking-[0.35em] uppercase mb-3" style={{ color: '#FFE500' }}>
-                        Mobility
-                    </p>
                     <h2 className="font-serif text-[2.5rem] tracking-tighter m-0 leading-none drop-shadow-2xl uppercase w-full font-black text-[#FFE500]">
                         Transfers
                     </h2>

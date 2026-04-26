@@ -22,7 +22,7 @@ export function IncExcSection({ inclusions = [], exclusions = [] }: IncExcSectio
     }, [])
 
     return (
-        <section className="relative py-8 px-4 overflow-hidden avoid-break pdf-section" style={{ background: '#FAF9F6', backgroundColor: '#FAF9F6' }}>
+        <section className="relative py-8 px-4 overflow-hidden pdf-section" style={{ background: '#FAF9F6', backgroundColor: '#FAF9F6', overflow: 'visible', pageBreakInside: 'auto', breakInside: 'auto' }}>
             {/* Subtle decorative background line */}
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-px bg-gradient-to-r from-transparent via-[#D4AF37]/30 to-transparent" />
 
@@ -32,7 +32,7 @@ export function IncExcSection({ inclusions = [], exclusions = [] }: IncExcSectio
                     {/* Inclusions */}
                     {inclusions.length > 0 && (
                     <div className="relative">
-                        <div className="flex items-center gap-3 mb-4">
+                        <div className="flex items-center gap-3 mb-4" style={{ pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
                             <div className="w-8 h-8 rounded-full flex items-center justify-center bg-emerald-50 border border-emerald-100 shadow-sm">
                                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                             </div>
@@ -57,7 +57,7 @@ export function IncExcSection({ inclusions = [], exclusions = [] }: IncExcSectio
                     {/* Exclusions */}
                     {exclusions.length > 0 && (
                     <div className="relative">
-                        <div className="flex items-center gap-3 mb-4">
+                        <div className="flex items-center gap-3 mb-4" style={{ pageBreakAfter: 'avoid', breakAfter: 'avoid' }}>
                             <div className="w-8 h-8 rounded-full flex items-center justify-center bg-red-50 border border-red-100 shadow-sm">
                                 <XCircle className="w-4 h-4 text-red-500" />
                             </div>

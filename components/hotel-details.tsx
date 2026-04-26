@@ -61,17 +61,21 @@ export function HotelDetails({ hotelList }: HotelDetailsProps = {}) {
         const tierHotels = hotels.filter(h => (h.category || "STANDARD") === cat)
         
         return (
-          <div key={cat} className="pdf-section mb-12 overflow-hidden" style={{ background: '#000000', border: '1.5px solid #000000', borderRadius: '16px' }}>
+          <div 
+            key={cat} 
+            className={`pdf-section overflow-hidden ${pIdx === 0 ? 'mt-4' : 'mt-5'} mb-8`} 
+            style={{ background: '#000000', border: '1.5px solid #000000', borderRadius: '16px' }}
+          >
             {/* Plan Header */}
             <div className="relative py-6 px-8 bg-black border-b border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2">
-               <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-[#FFE500]" />
+
                <div className="flex items-center gap-4 relative z-10">
                  <span className="font-sans text-[18px] font-black text-white uppercase tracking-[0.2em]">Plan {pIdx + 1}</span>
                  <div className="h-4 w-px bg-white/20 hidden sm:block" />
                  <h3 className="font-serif text-2xl font-black text-white uppercase tracking-widest">{cat}</h3>
                </div>
                <div className="relative z-10">
-                 <span className="font-sans text-[9px] font-black text-black uppercase tracking-widest bg-[#FFE500] px-3 py-1 rounded-full">
+                 <span className="hotel-count-badge font-sans text-[9px] font-black text-black uppercase tracking-widest bg-[#FFE500] px-3 py-1 rounded-full">
                    {tierHotels.length} {tierHotels.length === 1 ? 'Hotel' : 'Hotels'}
                  </span>
                </div>

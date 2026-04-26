@@ -13,14 +13,19 @@ export async function getUsers() {
 
 export async function preRegisterUser(
     email: string, role: UserRole, name: string, employeeCode: string,
-    department?: "sales" | "operations", leadId?: string, phone?: string
+    department?: "sales" | "operations" | "finance", leadId?: string, phone?: string
 ) {
-    const docRef = doc(db, "users", email.replace(/[^a-zA-Z0-9]/g, "_"))
-    await setDoc(docRef, {
-        name, email, role, employeeCode, department: department || "",
-        leadId: leadId || "", phone: phone || "",
+    const docRef = await addDoc(collection(db, "users"), {
+        name,
+        email,
+        role,
+        employeeCode,
+        department: department || "",
+        leadId: leadId || "",
+        phone: phone || "",
         createdAt: new Date().toISOString()
     })
+    return docRef.id
 }
 
 export async function updateUser(uid: string, data: Record<string, any>) {
@@ -312,7 +317,7 @@ export async function initSopChecklist(itinId: string) {
     const q = query(collection(db, "sops"), where("department", "==", "pre_ops"))
     const snap = await getDocs(q)
     const sops = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))
-    
+
     // Sort by creation time or rely on order, then add items
     let orderIndex = 0;
     for (const sop of sops) {
@@ -328,14 +333,14 @@ export async function initSopChecklist(itinId: string) {
             const extraInfo = isObj ? (item.extraInfo || '') : ''
             const dependsOn = isObj ? (item.dependsOn || '') : ''
             const originalId = isObj ? (item.id || '') : ''
-            
-            await addItinSub(itinId, "sopChecklist", { 
-                name, 
-                checked: false, 
+
+            await addItinSub(itinId, "sopChecklist", {
+                name,
+                checked: false,
                 acknowledged: false,
                 fileUrl: "",
-                type, 
-                isRequired, 
+                type,
+                isRequired,
                 requiresAcknowledgement,
                 notes,
                 points,
@@ -344,7 +349,7 @@ export async function initSopChecklist(itinId: string) {
                 originalId,
                 options: isObj ? (item.options || []) : [],
                 order: orderIndex++,
-                updatedAt: "" 
+                updatedAt: ""
             })
         }
     }
@@ -354,7 +359,7 @@ export async function initPostOpsChecklist(itinId: string) {
     const q = query(collection(db, "sops"), where("department", "==", "post_ops"))
     const snap = await getDocs(q)
     const sops = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))
-    
+
     let orderIndex = 0;
     for (const sop of sops) {
         if (!sop.items) continue
@@ -369,14 +374,14 @@ export async function initPostOpsChecklist(itinId: string) {
             const extraInfo = isObj ? (item.extraInfo || '') : ''
             const dependsOn = isObj ? (item.dependsOn || '') : ''
             const originalId = isObj ? (item.id || '') : ''
-            
-            await addItinSub(itinId, "postOpsChecklist", { 
-                name, 
-                checked: false, 
+
+            await addItinSub(itinId, "postOpsChecklist", {
+                name,
+                checked: false,
                 acknowledged: false,
                 fileUrl: "",
-                type, 
-                isRequired, 
+                type,
+                isRequired,
                 requiresAcknowledgement,
                 notes,
                 points,
@@ -385,7 +390,7 @@ export async function initPostOpsChecklist(itinId: string) {
                 originalId,
                 options: isObj ? (item.options || []) : [],
                 order: orderIndex++,
-                updatedAt: "" 
+                updatedAt: ""
             })
         }
     }
@@ -395,7 +400,7 @@ export async function initSalesChecklist(itinId: string) {
     const q = query(collection(db, "sops"), where("department", "==", "sales"))
     const snap = await getDocs(q)
     const sops = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))
-    
+
     let orderIndex = 0;
     for (const sop of sops) {
         if (!sop.items) continue
@@ -410,14 +415,14 @@ export async function initSalesChecklist(itinId: string) {
             const extraInfo = isObj ? (item.extraInfo || '') : ''
             const dependsOn = isObj ? (item.dependsOn || '') : ''
             const originalId = isObj ? (item.id || '') : ''
-            
-            await addItinSub(itinId, "salesChecklist", { 
-                name, 
-                checked: false, 
+
+            await addItinSub(itinId, "salesChecklist", {
+                name,
+                checked: false,
                 acknowledged: false,
                 fileUrl: "",
-                type, 
-                isRequired, 
+                type,
+                isRequired,
                 requiresAcknowledgement,
                 notes,
                 points,
@@ -426,7 +431,7 @@ export async function initSalesChecklist(itinId: string) {
                 originalId,
                 options: isObj ? (item.options || []) : [],
                 order: orderIndex++,
-                updatedAt: "" 
+                updatedAt: ""
             })
         }
     }
@@ -434,11 +439,11 @@ export async function initSalesChecklist(itinId: string) {
 
 export async function syncChecklist(itinId: string, department: string, subName: string) {
     const existing = await getItinSub(itinId, subName);
-    
+
     const q = query(collection(db, "sops"), where("department", "==", department));
     const snap = await getDocs(q);
     const sops = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-    
+
     const expectedItems: any[] = [];
     let orderIndex = 0;
     for (const sop of sops) {
@@ -456,16 +461,16 @@ export async function syncChecklist(itinId: string, department: string, subName:
             const originalId = isObj ? (item.id || "") : "";
             const options = isObj ? (item.options || []) : [];
             const order = orderIndex++;
-            
+
             expectedItems.push({
                 name, type, isRequired, requiresAcknowledgement, notes, points, extraInfo, dependsOn, originalId, options, order
             });
         }
     }
-    
+
     let hasChanges = false;
     const activeDocIds = new Set<string>();
-    
+
     for (const exp of expectedItems) {
         let match = null;
         if (exp.originalId) {
@@ -474,10 +479,10 @@ export async function syncChecklist(itinId: string, department: string, subName:
         if (!match) {
             match = existing.find(e => e.name === exp.name && !activeDocIds.has(e.id));
         }
-        
+
         if (match) {
             activeDocIds.add(match.id);
-            const needsUpdate = 
+            const needsUpdate =
                 match.name !== exp.name ||
                 match.type !== exp.type ||
                 match.isRequired !== exp.isRequired ||
@@ -489,7 +494,7 @@ export async function syncChecklist(itinId: string, department: string, subName:
                 match.originalId !== exp.originalId ||
                 JSON.stringify(match.options || []) !== JSON.stringify(exp.options || []) ||
                 match.order !== exp.order;
-                
+
             if (needsUpdate) {
                 await updateItinSub(itinId, subName, match.id, exp);
                 hasChanges = true;
@@ -497,22 +502,22 @@ export async function syncChecklist(itinId: string, department: string, subName:
         } else {
             await addItinSub(itinId, subName, {
                 ...exp,
-                checked: false, 
+                checked: false,
                 acknowledged: false,
                 fileUrl: "",
-                updatedAt: "" 
+                updatedAt: ""
             });
             hasChanges = true;
         }
     }
-    
+
     for (const ex of existing) {
         if (!activeDocIds.has(ex.id)) {
             await deleteItinSub(itinId, subName, ex.id);
             hasChanges = true;
         }
     }
-    
+
     return hasChanges;
 }
 
@@ -573,14 +578,14 @@ export async function deletePackage(id: string) {
 export async function clearPackageSubcollections(pkgId: string) {
     const subs = ["days", "hotels", "flights", "transfers", "pricing", "activities"]
     const promises: Promise<void>[] = []
-    
+
     for (const sub of subs) {
         const snap = await getDocs(collection(db, "packages", pkgId, sub))
         snap.forEach(d => {
             promises.push(deleteDoc(doc(db, "packages", pkgId, sub, d.id)))
         })
     }
-    
+
     await Promise.all(promises)
 }
 

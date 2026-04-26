@@ -69,6 +69,7 @@ export function ReadyMadeGenerator() {
     const [newPkgTier, setNewPkgTier] = useState("Deluxe")
     const [newPkgNights, setNewPkgNights] = useState(3)
     const [newPkgDays, setNewPkgDays] = useState(4)
+    const [newPkgDescription, setNewPkgDescription] = useState("")
 
     const [dayPlans, setDayPlans] = useState<string[]>([]) // Array of day plan IDs or names
     const [hotelStops, setHotelStops] = useState<any[]>([{ location: "", hotelId: "", mealPlan: "CP", nights: 2 }])
@@ -318,6 +319,7 @@ export function ReadyMadeGenerator() {
                 consultantName: userProfile?.name || "",
                 consultantPhone: userProfile?.phone || "",
                 status: "draft",
+                isReadyMade: true,
                 // Add destination-based fields in pdfTemplate structure
                 pdfTemplate: {
                     inclusions: normalizeField((selectedDestinationData as any)?.pdfTemplate?.inclusions || (selectedDestinationData as any)?.inclusions),
@@ -331,7 +333,6 @@ export function ReadyMadeGenerator() {
             
             console.log("Itinerary pdfTemplate data:", itinData.pdfTemplate);
             delete itinData.id
-            delete itinData.packageName
 
             const itinId = await createItinerary(itinData)
 
@@ -388,6 +389,7 @@ export function ReadyMadeGenerator() {
             setNewPkgTier(pkg.tier || "Deluxe")
             setNewPkgNights(pkg.nights || 3)
             setNewPkgDays(pkg.days || 4)
+            setNewPkgDescription(pkg.description || "")
 
 
             // Map days
@@ -443,6 +445,7 @@ export function ReadyMadeGenerator() {
                 tier: newPkgTier,
                 nights: newPkgNights,
                 days: newPkgDays,
+                description: newPkgDescription,
                 status: "active"
             }
 
@@ -574,6 +577,7 @@ export function ReadyMadeGenerator() {
                                 setNewPkgTier("Deluxe")
                                 setNewPkgNights(3)
                                 setNewPkgDays(4)
+                                setNewPkgDescription("")
                                 setDayPlans(Array(4).fill(""))
                                 setHotelStops([{ location: "", hotelId: "", mealPlan: "CP", nights: 2 }])
                                 setPaxPricing([
@@ -645,6 +649,18 @@ export function ReadyMadeGenerator() {
                                 </label>
                                 <div className="text-sm font-semibold text-gray-900">{autoPackageName}</div>
                                 <p className="text-[10px] text-gray-500 mt-1">Generated from your selections above</p>
+                            </div>
+                            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mt-3">
+                                <label className="flex items-center gap-2 text-[10px] font-semibold tracking-wider uppercase text-gray-500 mb-1">
+                                    Description
+                                </label>
+                                <textarea 
+                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-md text-xs outline-none focus:border-[#3B6D11] min-h-[80px]"
+                                    placeholder="Enter package description..."
+                                    value={newPkgDescription}
+                                    onChange={e => setNewPkgDescription(e.target.value)}
+                                />
+                                <p className="text-[10px] text-gray-500 mt-1">Briefly describe this package (visible in selection list and PDF)</p>
                             </div>
                         </div>
 
@@ -1312,6 +1328,7 @@ export function ReadyMadeGenerator() {
                     {/* Content */}
                     <div className="p-6 overflow-y-auto max-h-[70vh] space-y-3">
                         {[
+                            { l: "Description", v: selectedPkg?.description || "No description" },
                             { l: "Customer", v: customerName || "None" },
                             { l: "Destination", v: selectedPkg?.destination || "None" },
                             { l: "Duration", v: selectedPkg ? `${selectedPkg.nights}N / ${selectedPkg.days}D` : "None" },

@@ -126,6 +126,12 @@ export default function PDFPrintPage() {
                     backgroundColor: bgColor,
                     logging: false,
                     onclone: function(clonedDoc) {
+                        const pdfRoot = clonedDoc.getElementById('pdf-root')
+                        if (pdfRoot) {
+                            pdfRoot.style.overflow = 'visible'
+                            pdfRoot.style.height = 'auto'
+                            pdfRoot.style.maxHeight = 'none'
+                        }
                         // 1. Force black text on white backgrounds (Safety baseline)
                         clonedDoc.querySelectorAll('[class*="bg-white"] *, [class*="bg-gray-50"] *').forEach(el => {
                             (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
@@ -164,6 +170,20 @@ export default function PDFPrintPage() {
                              } else if (element.classList.contains('per-person-label')) {
                                 element.style.setProperty('color', '#ffffff', 'important');
                              }
+                        });
+
+                        // 5. Hotel Count Badge Fix (Perfect Centering)
+                        clonedDoc.querySelectorAll('.hotel-count-badge').forEach(badge => {
+                            const element = badge as HTMLElement;
+                            element.style.setProperty('display', 'flex', 'important');
+                            element.style.setProperty('align-items', 'center', 'important');
+                            element.style.setProperty('justify-content', 'center', 'important');
+                            element.style.setProperty('height', '32px', 'important');
+                            element.style.setProperty('padding', '0 14px', 'important');
+                            element.style.setProperty('border-radius', '20px', 'important');
+                            element.style.setProperty('background-color', '#FFD700', 'important');
+                            element.style.setProperty('font-weight', '600', 'important');
+                            element.style.setProperty('line-height', '1', 'important');
                         });
 
                         clonedDoc.querySelectorAll('[data-pdf-logo]').forEach(el => {
@@ -281,6 +301,14 @@ export default function PDFPrintPage() {
     const hasTransfers = transfers && transfers.length > 0
     const hasDayPlans = dayPlans.length > 0
 
+    // Override-first resolution: per-trip overrides take precedence over destination defaults
+    const finalInclusions = itin.override_inclusions ?? itin.pdfTemplate?.inclusions ?? []
+    const finalExclusions = itin.override_exclusions ?? itin.pdfTemplate?.exclusions ?? []
+    const finalImportantNotes = itin.override_important_notes ?? itin.pdfTemplate?.importantNotes ?? []
+    const finalTerms = itin.override_terms_conditions ?? itin.pdfTemplate?.termsAndConditions ?? []
+    const finalPayment = itin.override_payment_policy ?? itin.pdfTemplate?.paymentPolicy ?? []
+    const finalCancellation = itin.override_cancellation_policy ?? itin.pdfTemplate?.cancellationPolicy ?? []
+
     return (
         <div style={{ background: "#e5e7eb", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", '--font-sans': 'var(--font-poppins), sans-serif', '--font-serif': 'var(--font-charmonman), serif' } as React.CSSProperties}>
             <style jsx global>{`
@@ -299,7 +327,7 @@ export default function PDFPrintPage() {
             </div>
 
             <div style={{ paddingTop: 60 }} className="no-print-pad">
-                <main id="pdf-root" className="relative bg-white shadow-2xl w-full max-w-[480px] mx-auto overflow-hidden">
+                <main id="pdf-root" className="relative bg-white shadow-2xl w-full max-w-[480px] mx-auto">
                     <div className="pdf-chunk w-full">
                         <HeroSection customerName={itin.customerName} destination={itin.destination} nights={itin.nights} days={itin.days} startDate={formatDate(itin.startDate)} endDate={formatDate(itin.endDate)} />
                     </div>
@@ -319,7 +347,24 @@ export default function PDFPrintPage() {
                     )}
 
                     {hasHotels && (
-                        <div className="pdf-chunk pdf-dark-bg w-full">
+                        <div className={`pdf-chunk pdf-dark-bg w-full ${itin?.isReadyMade ? 'hide-hotel-plan-header' : ''}`}>
+                            {itin?.isReadyMade && (
+                                <style>{`
+                                    .hide-hotel-plan-header .pdf-section[style*="border: 1.5px solid"] {
+                                        background: transparent !important;
+                                        border: none !important;
+                                        margin-top: 0 !important;
+                                        margin-bottom: 24px !important;
+                                        padding: 0 !important;
+                                    }
+                                    .hide-hotel-plan-header .pdf-section > .bg-black.border-b {
+                                        display: none !important;
+                                    }
+                                    .hide-hotel-plan-header .pdf-section > .p-6.space-y-6 {
+                                        padding: 0 !important;
+                                    }
+                                `}</style>
+                            )}
                             <HotelDetails hotelList={hotelList} />
                         </div>
                     )}
@@ -345,22 +390,22 @@ export default function PDFPrintPage() {
                         />
                     </div>
 
-                    {/* Inclusions & Exclusions from destination */}
-                    {(itin.pdfTemplate?.inclusions?.length > 0 || itin.pdfTemplate?.exclusions?.length > 0) && (
+                    {/* Inclusions & Exclusions (override-first) */}
+                    {(finalInclusions.length > 0 || finalExclusions.length > 0) && (
                         <div className="pdf-chunk w-full">
-                            <IncExcSection inclusions={itin.pdfTemplate.inclusions || []} exclusions={itin.pdfTemplate.exclusions || []} />
+                            <IncExcSection inclusions={finalInclusions} exclusions={finalExclusions} />
                         </div>
                     )}
 
-                    {/* Important Notes from destination */}
-                    {itin.pdfTemplate?.importantNotes?.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Important Notes" terms={itin.pdfTemplate.importantNotes} /></div>}
+                    {/* Important Notes (override-first) */}
+                    {finalImportantNotes.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Important Notes" terms={finalImportantNotes} /></div>}
                     
-                    {/* Terms & Conditions from destination */}
-                    {itin.pdfTemplate?.termsAndConditions?.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Terms & Conditions" terms={itin.pdfTemplate.termsAndConditions} /></div>}
+                    {/* Terms & Conditions (override-first) */}
+                    {finalTerms.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Terms & Conditions" terms={finalTerms} /></div>}
                     
-                    {/* Legacy pdfTemplate sections (fallback) */}
-                    {itin.pdfTemplate?.paymentPolicy?.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Payment Policy" terms={itin.pdfTemplate.paymentPolicy} /></div>}
-                    {itin.pdfTemplate?.cancellationPolicy?.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Cancellation Policy" terms={itin.pdfTemplate.cancellationPolicy} /></div>}
+                    {/* Payment & Cancellation Policies (override-first) */}
+                    {finalPayment.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Payment Policy" terms={finalPayment} /></div>}
+                    {finalCancellation.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Cancellation Policy" terms={finalCancellation} /></div>}
 
                     <section className="relative w-full bg-white overflow-hidden flex-shrink-0 pdf-chunk">
                         <img src="/images/bg/page_payment.png" alt="Payment Details" style={{ width: '100%', display: 'block' }} />
