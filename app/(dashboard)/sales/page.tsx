@@ -95,7 +95,10 @@ function SalesContent() {
                                 <FileText className="w-4 h-4" style={{ color: '#06a15c' }} />
                             </div>
                             <div className="min-w-0">
-                                <p className="font-sans text-sm font-semibold truncate" style={{ color: '#052210' }}>{itin.customerName || "Unnamed"}</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <p className="font-sans text-sm font-semibold truncate" style={{ color: '#052210' }}>{itin.customerName || "Unnamed"}</p>
+                                    {itin.quoteId && <span className="font-sans text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase">{itin.quoteId}</span>}
+                                </div>
                                 <p className="font-sans text-xs truncate" style={{ color: 'rgba(5,34,16,0.45)' }}>{itin.destination || "—"} · {itin.nights || 0}N/{itin.days || 0}D</p>
                             </div>
                         </div>

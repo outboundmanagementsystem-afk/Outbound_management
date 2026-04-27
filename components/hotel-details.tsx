@@ -67,15 +67,14 @@ export function HotelDetails({ hotelList }: HotelDetailsProps = {}) {
             style={{ background: '#000000', border: '1.5px solid #000000', borderRadius: '16px' }}
           >
             {/* Plan Header */}
-            <div className="relative py-6 px-8 bg-black border-b border-white/10 flex flex-col sm:flex-row items-center justify-between gap-2">
-
-               <div className="flex items-center gap-4 relative z-10">
-                 <span className="font-sans text-[18px] font-black text-white uppercase tracking-[0.2em]">Plan {pIdx + 1}</span>
-                 <div className="h-4 w-px bg-white/20 hidden sm:block" />
-                 <h3 className="font-serif text-2xl font-black text-white uppercase tracking-widest">{cat}</h3>
+            <div className="relative py-6 px-8 bg-black border-b border-white/10 flex flex-row items-center justify-between gap-4">
+               <div className="flex items-center gap-3 relative z-10 flex-wrap">
+                 <span className="font-sans text-[14px] font-black text-white uppercase tracking-[0.15em] whitespace-nowrap">Option {pIdx + 1}</span>
+                 <div className="h-4 w-px bg-white/20" />
+                 <h3 className="font-serif text-xl sm:text-2xl font-black text-white uppercase tracking-widest whitespace-nowrap">{cat}</h3>
                </div>
-               <div className="relative z-10">
-                 <span className="hotel-count-badge font-sans text-[9px] font-black text-black uppercase tracking-widest bg-[#FFE500] px-3 py-1 rounded-full">
+               <div className="relative z-10 shrink-0">
+                 <span className="hotel-count-badge font-sans text-[9px] font-black text-black uppercase tracking-widest bg-[#FFE500] px-3 py-1 rounded-full whitespace-nowrap">
                    {tierHotels.length} {tierHotels.length === 1 ? 'Hotel' : 'Hotels'}
                  </span>
                </div>

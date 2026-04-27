@@ -15,7 +15,12 @@ async function generatePdf(url, outputPath) {
     
     // Navigate and wait for network to be idle
     try {
-        await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
+        console.log("Navigating and waiting for network idle...");
+        await page.goto(url, { waitUntil: 'networkidle', timeout: 90000 });
+        
+        // Ensure Flight section is loaded
+        console.log("Waiting for Flight Details section...");
+        await page.waitForSelector('.flight-section', { timeout: 10000 }).catch(() => console.log("Flight section not found, continuing..."));
     } catch (e) {
         console.log(`Initial navigation failed/timed out: ${e.message}. Trying anyway...`);
     }
@@ -30,14 +35,19 @@ async function generatePdf(url, outputPath) {
         /* Ensure proper text colors for TripSummary */
         .text-\\[#8E918F\\] { color: #6B7280 !important; } /* Gray labels */
         .text-\\[#1A211D\\] { color: #000000 !important; } /* Black values */
-        /* Ensure text visibility on dark backgrounds */
-        .pdf-dark-bg * { color: #000000 !important; }
-        .text-gray-600 { color: #000000 !important; }
-        .text-gray-500 { color: #000000 !important; }
-        .text-gray-400 { color: #000000 !important; }
-        .text-blue-800 { color: #000000 !important; }
-        .text-blue-600 { color: #000000 !important; }
-        .text-blue-500 { color: #000000 !important; }
+        
+        /* Ensure Flight section is visible during PDF render */
+        .flight-section {
+            opacity: 1 !important;
+            transform: none !important;
+            visibility: visible !important;
+        }
+        .flight-section * {
+            opacity: 1 !important;
+            transform: none !important;
+            visibility: visible !important;
+        }
+        
         /* Ensure all sections are visible */
         .pdf-chunk { display: block !important; visibility: visible !important; }
     ` });
@@ -48,15 +58,19 @@ async function generatePdf(url, outputPath) {
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(1000);
     
+    // Debug screenshot before PDF generation
+    console.log("Taking debug screenshot...");
+    await page.screenshot({ path: 'flight-debug.png', fullPage: true });
+
     // Wait for dynamic content to fully load
     console.log("Waiting for dynamic content to load...");
     await page.waitForTimeout(3000);
 
     // Calculate total height for dynamic PDF sizing
     const dimensions = await page.evaluate(() => {
-        const el = document.getElementById('itinerary-content');
+        const el = document.getElementById('itinerary-content') || document.body;
         return {
-            height: el ? el.scrollHeight : document.body.scrollHeight,
+            height: el.scrollHeight,
             width: 1000
         };
     });

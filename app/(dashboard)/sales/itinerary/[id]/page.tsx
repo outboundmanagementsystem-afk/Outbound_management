@@ -200,10 +200,15 @@ function ItineraryDetail() {
 
             {/* Header */}
             <div className="space-y-3">
-                <div>
+                <div className="flex items-center gap-3">
                     <h1 className="font-serif text-2xl sm:text-3xl tracking-wide" style={{ color: '#052210' }}>{itin.customerName || "Unnamed Itinerary"}</h1>
-                    <p className="font-sans text-xs sm:text-sm mt-1" style={{ color: 'rgba(5,34,16,0.6)' }}>{itin.destination} · {itin.nights}N/{itin.days}D</p>
+                    {itin.quoteId && (
+                        <span className="font-sans text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 uppercase tracking-widest mt-1">
+                            {itin.quoteId}
+                        </span>
+                    )}
                 </div>
+                <p className="font-sans text-xs sm:text-sm mt-1" style={{ color: 'rgba(5,34,16,0.6)' }}>{itin.destination} · {itin.nights}N/{itin.days}D</p>
                 <div className="flex flex-wrap gap-2">
                     <Link
                         href={`/sales/itinerary-generator/custom?editId=${itinId}`}

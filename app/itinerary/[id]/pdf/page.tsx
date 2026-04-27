@@ -109,6 +109,7 @@ export default function PDFPrintPage() {
                 height: Math.floor(chunk.offsetHeight),
                 isFooter: chunk.tagName.toLowerCase() === 'footer',
                 isDarkBg: chunk.classList.contains('pdf-dark-bg'),
+                enforceBreak: chunk.classList.contains('pdf-page-break') || chunk.classList.contains('built-package-page-break'),
                 chunk: chunk
             })).filter(c => c.height > 0);
 
@@ -117,6 +118,11 @@ export default function PDFPrintPage() {
 
             let currentY = 0;
             for (const item of chunkData) {
+                if (item.enforceBreak && currentY > 0) {
+                    pdf.addPage([totalWidth, totalHeight]);
+                    currentY = 0;
+                }
+                
                 const bgColor = (item.isFooter || item.isDarkBg) ? '#031A0C' : '#ffffff';
                 
                 const dataUrl = await toJpeg(item.chunk, {
@@ -162,6 +168,7 @@ export default function PDFPrintPage() {
     if (!itin) return <div className="min-h-screen flex items-center bg-[#031A0C]"><p className="text-white">Not found</p></div>
 
     const summaryFields = [
+        { label: "Trip ID", value: itin.quoteId || itin.id, icon: "🆔" },
         { label: "Consultant Name", value: toTitleCase(itin.consultantName || "—"), icon: "👤" },
         { label: "Consultant Phone", value: itin.consultantPhone || "—", icon: "📞" },
         { label: "Name", value: toTitleCase(itin.customerName || "—"), icon: "👤" },
@@ -171,6 +178,7 @@ export default function PDFPrintPage() {
         { label: "Dates", value: `${formatDate(itin.startDate)} – ${formatDate(itin.endDate)}`, icon: "📅" },
         { label: "Duration", value: `${itin.nights || 0}N / ${itin.days || 0}D`, icon: "🌙" },
         { label: "Total Adults", value: String(itin.adults || 0), icon: "👥" },
+        ...(itin.children ? [{ label: "Total Children", value: String(itin.children), icon: "👶" }] : []),
         ...(itin.cwb ? [{ label: "CWB (Child With Bed)", value: String(itin.cwb), icon: "🛏️" }] : []),
         ...(itin.cnb ? [{ label: "CNB (Child No Bed)", value: String(itin.cnb), icon: "👶" }] : []),
         ...(itin.childAge ? [{ label: "Kid's Age", value: itin.childAge, icon: "✦" }] : []),
@@ -239,6 +247,10 @@ export default function PDFPrintPage() {
             <style jsx global>{`
                 @page { size: A4; margin: 0; }
                 .opacity-0 { opacity: 1 !important; transform: none !important; }
+                .built-package-page-break {
+                    page-break-before: always;
+                    break-before: page;
+                }
                 @media print {
                     .no-print { display: none !important; }
                     body { margin: 0; padding: 0; }
@@ -254,7 +266,16 @@ export default function PDFPrintPage() {
             <div style={{ paddingTop: 60 }} className="no-print-pad">
                 <main id="pdf-root" className="relative bg-white shadow-2xl w-full max-w-[480px] mx-auto">
                     <div className="pdf-chunk w-full">
-                        <HeroSection customerName={itin.customerName} destination={itin.destination} nights={itin.nights} days={itin.days} startDate={formatDate(itin.startDate)} endDate={formatDate(itin.endDate)} />
+                        <HeroSection 
+                            customerName={itin.customerName} 
+                            destination={itin.destination} 
+                            nights={itin.nights} 
+                            days={itin.days} 
+                            startDate={formatDate(itin.startDate)} 
+                            endDate={formatDate(itin.endDate)}
+                            packageName={itin.packageName}
+                            description={itin.isReadyMade ? undefined : itin.description}
+                        />
                     </div>
                     
                     <section className="relative w-full bg-white overflow-hidden flex-shrink-0 pdf-chunk">
@@ -267,7 +288,7 @@ export default function PDFPrintPage() {
 
                     {hasFlights && (
                         <div className="pdf-chunk w-full">
-                            <FlightDetails segments={flights} />
+                            <FlightDetails segments={flights} module={itin?.module} />
                         </div>
                     )}
 
@@ -317,7 +338,7 @@ export default function PDFPrintPage() {
 
                     {/* Inclusions & Exclusions (override-first) */}
                     {(finalInclusions.length > 0 || finalExclusions.length > 0) && (
-                        <div className="pdf-chunk w-full">
+                        <div className={`pdf-chunk w-full ${itin?.module === 'built-package' ? 'built-package-page-break' : ''}`}>
                             <IncExcSection inclusions={finalInclusions} exclusions={finalExclusions} />
                         </div>
                     )}
@@ -332,7 +353,7 @@ export default function PDFPrintPage() {
                     {finalPayment.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Payment Policy" terms={finalPayment} /></div>}
                     {finalCancellation.length > 0 && <div className="pdf-chunk w-full"><TermsSection title="Cancellation Policy" terms={finalCancellation} /></div>}
 
-                    <section className="relative w-full bg-white overflow-hidden flex-shrink-0 pdf-chunk">
+                    <section className={`relative w-full bg-white overflow-hidden flex-shrink-0 pdf-chunk ${itin?.module === 'built-package' ? 'built-package-page-break' : 'pdf-page-break'}`}>
                         <img src="/images/bg/page_payment.png" alt="Payment Details" style={{ width: '100%', display: 'block' }} />
                     </section>
 

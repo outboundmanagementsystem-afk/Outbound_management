@@ -82,7 +82,7 @@ export default function PublicItineraryPage() {
                 height: Math.floor(chunk.offsetHeight),
                 isFooter: chunk.tagName.toLowerCase() === 'footer',
                 isDarkBg: chunk.classList.contains('pdf-dark-bg'),
-                enforceBreak: chunk.classList.contains('pdf-page-break'),
+                enforceBreak: chunk.classList.contains('pdf-page-break') || chunk.classList.contains('built-package-page-break'),
                 chunk: chunk
             })).filter(c => c.height > 0);
 
@@ -240,6 +240,7 @@ export default function PublicItineraryPage() {
 
     // Build trip summary fields from itinerary data
     const summaryFields = [
+        { label: "Trip ID", value: itin.quoteId || itin.id, icon: "🆔" },
         { label: "Consultant Name", value: toTitleCase(itin.consultantName || "—"), icon: "👤" },
         { label: "Consultant Phone", value: itin.consultantPhone || "—", icon: "📞" },
         { label: "Name", value: toTitleCase(itin.customerName || "—"), icon: "👤" },
@@ -249,6 +250,7 @@ export default function PublicItineraryPage() {
         { label: "Dates", value: `${formatDate(itin.startDate)} – ${formatDate(itin.endDate)}`, icon: "📅" },
         { label: "Duration", value: `${itin.nights || 0}N / ${itin.days || 0}D`, icon: "🌙" },
         { label: "Total Adults", value: String(itin.adults || 0), icon: "👥" },
+        ...(itin.children ? [{ label: "Total Children", value: String(itin.children), icon: "👶" }] : []),
         ...(itin.cwb ? [{ label: "CWB (Child With Bed)", value: String(itin.cwb), icon: "🛏️" }] : []),
         ...(itin.cnb ? [{ label: "CNB (Child No Bed)", value: String(itin.cnb), icon: "👶" }] : []),
         ...(itin.childAge ? [{ label: "Kid's Age", value: itin.childAge, icon: "✦" }] : []),
@@ -326,6 +328,12 @@ export default function PublicItineraryPage() {
 
     return (
         <div className="bg-gray-100 min-h-screen flex justify-center w-full" style={{ '--font-sans': 'var(--font-poppins), sans-serif', '--font-serif': 'var(--font-charmonman), serif' } as React.CSSProperties}>
+            <style>{`
+                .built-package-page-break {
+                    page-break-before: always;
+                    break-before: page;
+                }
+            `}</style>
             <button
                 id="download-pdf-btn"
                 onClick={handleDownloadPDF}
@@ -356,7 +364,7 @@ export default function PublicItineraryPage() {
                         startDate={formatDate(itin.startDate)}
                         endDate={formatDate(itin.endDate)}
                         packageName={itin.packageName}
-                        description={itin.description}
+                        description={itin.isReadyMade ? undefined : itin.description}
                     />
                 </div>
                 
@@ -373,7 +381,7 @@ export default function PublicItineraryPage() {
                 {/* FLIGHTS - Individual chunk */}
                 {hasFlights && (
                     <div className="pdf-chunk w-full">
-                        <FlightDetails segments={flights} />
+                        <FlightDetails segments={flights} module={itin?.module} />
                     </div>
                 )}
 
@@ -427,7 +435,7 @@ export default function PublicItineraryPage() {
 
                 {/* INCLUSIONS & EXCLUSIONS */}
                 {hasInclExcl && (
-                    <div className="pdf-chunk w-full">
+                    <div className={`pdf-chunk w-full ${itin?.module === 'built-package' ? 'built-package-page-break' : ''}`}>
                         <IncExcSection inclusions={finalInclusions} exclusions={finalExclusions} />
                     </div>
                 )}
@@ -461,7 +469,7 @@ export default function PublicItineraryPage() {
                 )}
 
                 {/* PAYMENT STATIC PAGE */}
-                <section className="relative w-full bg-white overflow-hidden flex-shrink-0 pdf-chunk pdf-page-break">
+                <section className={`relative w-full bg-white overflow-hidden flex-shrink-0 pdf-chunk ${itin?.module === 'built-package' ? 'built-package-page-break' : 'pdf-page-break'}`}>
                     <img src="/images/bg/page_payment.png" alt="Payment Details" style={{ width: '100%', display: 'block' }} />
                 </section>
 

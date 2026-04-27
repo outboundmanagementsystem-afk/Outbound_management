@@ -604,6 +604,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 override_payment_policy: overridePaymentPolicy,
                 override_cancellation_policy: overrideCancellationPolicy,
                 inclusions_customised: inclusionsCustomised,
+                module: mode === "package" ? "built-package" : "custom-itinerary",
             }
 
             let itinId = editId as string
@@ -634,6 +635,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                         ...baseData,
                         customerName, customerPhone, customerEmail,
                         consultantName, consultantPhone,
+                        module: "built-package",
                     }
                     const pipelineItinId = await createItinerary(itineraryDataForPipeline)
                     pipelineItinIdForOnSave = pipelineItinId
@@ -1069,13 +1071,13 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                 </div>
                                 <div>
                                     <h2 className="font-serif text-xl sm:text-2xl tracking-wide" style={{ color: '#052210' }}>Select Hotels & Tiers</h2>
-                                    <p className="font-sans text-xs sm:text-sm" style={{ color: '#6b7280' }}>Build up to 3 pricing plans to offer your clients different budget options.</p>
+                                    <p className="font-sans text-xs sm:text-sm" style={{ color: '#6b7280' }}>Build up to 3 pricing options to offer your clients different budget options.</p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => {
                                     if (tierPlans.length >= 3) {
-                                        alert("Maximum 3 pricing plans allowed.");
+                                        alert("Maximum 3 pricing options allowed.");
                                         return;
                                     }
                                     setTierPlans([...tierPlans, { 
@@ -1086,7 +1088,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                 className="flex items-center gap-2 px-6 py-3 rounded-xl font-sans text-xs font-bold tracking-wider uppercase transition-all shadow-sm hover:translate-y-[-1px] active:translate-y-[0px]"
                                 style={{ background: '#052210', color: '#FFFFFF' }}
                             >
-                                <Plus className="w-4 h-4" /> Add Pricing Plan
+                                <Plus className="w-4 h-4" /> Add Pricing Option
                             </button>
                         </div>
 
@@ -1100,7 +1102,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                                 {/* PLAN BADGE */}
                                                 <div className="bg-[#052210] px-4 py-2 rounded-xl shadow-sm flex items-center justify-center">
                                                     <span className="font-sans text-sm font-black text-white uppercase tracking-wider">
-                                                        Plan {planIdx + 1}
+                                                        Option {planIdx + 1}
                                                     </span>
                                                 </div>
 

@@ -8,7 +8,7 @@ interface FlightSegment {
   departure: string; departureDate: string; arrival: string; arrivalDate: string;
   airline: string; duration: string; flightNo: string;
 }
-interface FlightDetailsProps { segments?: FlightSegment[] }
+interface FlightDetailsProps { segments?: FlightSegment[]; module?: string; }
 
 const defaultSegments: FlightSegment[] = [
   { type: "Onward", from: "Trivandrum", fromCode: "TRV", to: "Delhi", toCode: "DEL", departure: "06:15", departureDate: "Mon, 23 Dec 2024", arrival: "09:40", arrivalDate: "Mon, 23 Dec 2024", airline: "Indigo", duration: "3h 25m", flightNo: "6E-7201" },
@@ -16,8 +16,9 @@ const defaultSegments: FlightSegment[] = [
   { type: "Return", from: "Srinagar", fromCode: "SXR", to: "Delhi", toCode: "DEL", departure: "15:20", departureDate: "Fri, 27 Dec 2024", arrival: "18:40", arrivalDate: "Fri, 27 Dec 2024", airline: "Air India", duration: "1h 20m", flightNo: "AI-442" },
 ]
 
-export function FlightDetails({ segments }: FlightDetailsProps = {}) {
+export function FlightDetails({ segments, module }: FlightDetailsProps = {}) {
   const flightSegments = segments || defaultSegments
+  const isBuiltPackage = module === "built-package";
   const ref = useRef<HTMLDivElement>(null)
   const [isVisible, setIsVisible] = useState(false)
 
@@ -32,7 +33,7 @@ export function FlightDetails({ segments }: FlightDetailsProps = {}) {
 
   return (
     <section
-      className="relative py-8 px-4 avoid-break pdf-section"
+      className={`relative py-8 px-4 avoid-break pdf-section flight-section ${isBuiltPackage ? 'is-built-package' : ''}`}
       style={{
         backgroundImage: "url('/images/bg/page_004.png')",
         backgroundSize: 'cover',
@@ -40,9 +41,67 @@ export function FlightDetails({ segments }: FlightDetailsProps = {}) {
         backgroundColor: '#051F10'
       }}
     >
-      <div className="absolute inset-0 bg-[#00000066] pointer-events-none" />
+      <style jsx>{`
+        @media print {
+          .flight-section {
+            background-image: none !important;
+            background-color: #051F10 !important;
+          }
+          .flight-bg-img {
+            display: block !important;
+          }
+        }
+      `}</style>
+      
+      {/* PDF-only background image to replace CSS background-image */}
+      <img 
+        src="/images/bg/page_004.png" 
+        alt="" 
+        className="absolute inset-0 w-full h-full object-cover pointer-events-none hidden flight-bg-img"
+        style={{ zIndex: 0 }}
+      />
+      
+      <div className="absolute inset-0 bg-[#00000066] pointer-events-none flight-overlay" style={{ zIndex: 1 }} />
 
-      <div ref={ref} className={`relative z-20 w-full mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+      <div ref={ref} className={`relative z-20 w-full mx-auto transition-all duration-1000 flight-content ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        {isBuiltPackage && (
+          <style>{`
+            @media print {
+              .flight-section.is-built-package {
+                background: #051F10 !important;
+                background-image: none !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                transform: none !important;
+              }
+              .flight-section.is-built-package * {
+                color: #ffffff !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                transform: none !important;
+              }
+              .flight-section.is-built-package .flight-content {
+                position: relative !important;
+                z-index: 20 !important;
+              }
+              .flight-section.is-built-package .flight-overlay {
+                display: none !important;
+              }
+              /* ticket specific colors preserved */
+              .flight-section.is-built-package .flight-ticket {
+                background: #FDFDFB !important;
+              }
+              .flight-section.is-built-package .flight-text-dark {
+                color: #1A211D !important;
+              }
+              /* Fix for backdrop filter */
+              .flight-section.is-built-package * {
+                backdrop-filter: none !important;
+                filter: none !important;
+              }
+            }
+          `}</style>
+        )}
         {/* Section header */}
         <div className="text-center mb-6 px-2">
           <div className="inline-flex items-center gap-2 mb-3">
@@ -61,7 +120,7 @@ export function FlightDetails({ segments }: FlightDetailsProps = {}) {
             return (
               <div
                 key={idx}
-                className="rounded-[24px] overflow-hidden transition-all duration-500 relative shadow-2xl border border-white/5"
+                className="rounded-[24px] overflow-hidden transition-all duration-500 relative shadow-2xl border border-white/5 flight-ticket"
                 style={{
                   background: '#FDFDFB',
                   transitionDelay: `${idx * 100}ms`,
@@ -94,46 +153,46 @@ export function FlightDetails({ segments }: FlightDetailsProps = {}) {
                 {/* Ticket body */}
                 <div className="px-5 py-5 relative">
                   {/* Main Flight Path */}
-                  <div className="flex items-center justify-between gap-3">
-                    {/* FROM */}
-                    <div className="flex-1">
-                      <p className="font-sans text-[8px] font-black uppercase tracking-[0.2em] text-[#8E918F] mb-1">From</p>
-                      <p className="font-serif text-3xl tracking-tighter leading-none font-black text-[#1A211D]">{(seg.fromCode || (seg as any).origin || 'ORG').toUpperCase()}</p>
-                      <p className="font-sans text-[9px] text-gray-400 mt-1 truncate">{seg.from}</p>
+                    <div className="flex items-center justify-between gap-3">
+                      {/* FROM */}
+                      <div className="flex-1">
+                        <p className="font-sans text-[8px] font-black uppercase tracking-[0.2em] text-[#8E918F] mb-1">From</p>
+                        <p className="font-serif text-3xl tracking-tighter leading-none font-black text-[#1A211D] flight-text-dark">{(seg.fromCode || (seg as any).origin || 'ORG').toUpperCase()}</p>
+                        <p className="font-sans text-[9px] text-gray-400 mt-1 truncate">{seg.from}</p>
+                      </div>
+  
+                      {/* PATH */}
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <Plane className="w-4 h-4 text-[#1A211D] mb-1 flight-text-dark" />
+                        <div className="w-12 h-0.5 border-t border-dashed border-[#FFE500]" />
+                      </div>
+  
+                      {/* TO */}
+                      <div className="flex-1 text-right">
+                        <p className="font-sans text-[8px] font-black uppercase tracking-[0.2em] text-[#8E918F] mb-1 text-right">To</p>
+                        <p className="font-serif text-3xl tracking-tighter leading-none font-black text-[#1A211D] flight-text-dark">{(seg.toCode || (seg as any).destination || 'DST').toUpperCase()}</p>
+                        <p className="font-sans text-[9px] text-gray-400 mt-1 truncate">{seg.to}</p>
+                      </div>
                     </div>
-
-                    {/* PATH */}
-                    <div className="flex flex-col items-center flex-shrink-0">
-                      <Plane className="w-4 h-4 text-[#1A211D] mb-1" />
-                      <div className="w-12 h-0.5 border-t border-dashed border-[#FFE500]" />
-                    </div>
-
-                    {/* TO */}
-                    <div className="flex-1 text-right">
-                      <p className="font-sans text-[8px] font-black uppercase tracking-[0.2em] text-[#8E918F] mb-1 text-right">To</p>
-                      <p className="font-serif text-3xl tracking-tighter leading-none font-black text-[#1A211D]">{(seg.toCode || (seg as any).destination || 'DST').toUpperCase()}</p>
-                      <p className="font-sans text-[9px] text-gray-400 mt-1 truncate">{seg.to}</p>
-                    </div>
-                  </div>
 
                   <div className="my-4 h-[1px] bg-gray-100" />
 
                   {/* Details Row */}
-                  <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4">
-                    <div>
-                      <p className="font-sans text-[7px] font-black uppercase tracking-widest text-[#8E918F] mb-0.5">Departure</p>
-                      <p className="font-sans text-xl font-black text-[#1A211D]">{(seg.departure || (seg as any).originTime || '00:00')}</p>
-                      <p className="font-sans text-[8px] text-gray-400">{seg.departureDate}</p>
+                    <div className="flex justify-between items-center bg-gray-50 rounded-xl p-4">
+                      <div>
+                        <p className="font-sans text-[7px] font-black uppercase tracking-widest text-[#8E918F] mb-0.5">Departure</p>
+                        <p className="font-sans text-xl font-black text-[#1A211D] flight-text-dark">{(seg.departure || (seg as any).originTime || '00:00')}</p>
+                        <p className="font-sans text-[8px] text-gray-400">{seg.departureDate}</p>
+                      </div>
+  
+                      <div className="w-px h-8 bg-gray-200" />
+  
+                      <div className="text-right">
+                        <p className="font-sans text-[7px] font-black uppercase tracking-widest text-[#8E918F] mb-0.5">Arrival</p>
+                        <p className="font-sans text-xl font-black text-[#1A211D] flight-text-dark">{(seg.arrival || (seg as any).destinationTime || '00:00')}</p>
+                        <p className="font-sans text-[8px] text-gray-400">{seg.arrivalDate}</p>
+                      </div>
                     </div>
-
-                    <div className="w-px h-8 bg-gray-200" />
-
-                    <div className="text-right">
-                      <p className="font-sans text-[7px] font-black uppercase tracking-widest text-[#8E918F] mb-0.5">Arrival</p>
-                      <p className="font-sans text-xl font-black text-[#1A211D]">{(seg.arrival || (seg as any).destinationTime || '00:00')}</p>
-                      <p className="font-sans text-[8px] text-gray-400">{seg.arrivalDate}</p>
-                    </div>
-                  </div>
 
                   {/* Airline */}
                   {seg.airline && (

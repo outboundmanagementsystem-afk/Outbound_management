@@ -108,7 +108,10 @@ function AdminKanbanBoard() {
                                                                 }}
                                                             >
                                                                 <Link href={`/sales/itinerary/${itin.id}`}>
-                                                                    <p className="font-sans text-sm font-semibold truncate" style={{ color: '#052210' }}>{itin.customerName || "Unnamed"}</p>
+                                                                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                                        <p className="font-sans text-sm font-semibold truncate" style={{ color: '#052210' }}>{itin.customerName || "Unnamed"}</p>
+                                                                        {itin.quoteId && <span className="font-sans text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 uppercase">{itin.quoteId}</span>}
+                                                                    </div>
                                                                     <div className="flex items-center gap-2 mt-2">
                                                                         <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(6,161,92,0.5)' }} />
                                                                         <span className="font-sans text-[11px] truncate" style={{ color: 'rgba(5,34,16,0.5)' }}>{itin.destination || "—"}</span>

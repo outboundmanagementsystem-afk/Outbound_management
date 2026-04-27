@@ -320,6 +320,7 @@ export function ReadyMadeGenerator() {
                 consultantPhone: userProfile?.phone || "",
                 status: "draft",
                 isReadyMade: true,
+                module: "ready-made",
                 // Add destination-based fields in pdfTemplate structure
                 pdfTemplate: {
                     inclusions: normalizeField((selectedDestinationData as any)?.pdfTemplate?.inclusions || (selectedDestinationData as any)?.inclusions),
@@ -860,16 +861,19 @@ export function ReadyMadeGenerator() {
                                         >
                                             <option>CP</option><option>EP</option><option>MAP</option><option>AP</option>
                                         </select>
-                                        <input
-                                            type="number" min="1"
-                                            className="px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none"
-                                            value={stop.nights}
-                                            onChange={e => {
-                                                const newStops = [...hotelStops];
-                                                newStops[idx].nights = Number(e.target.value);
-                                                setHotelStops(newStops);
-                                            }}
-                                        />
+                                        <div className="relative flex items-center bg-white border border-gray-200 rounded-xl px-2 py-1.5 w-16">
+                                            <input
+                                                type="number" min="1"
+                                                className="w-full bg-transparent text-xs outline-none font-bold pr-6"
+                                                value={stop.nights}
+                                                onChange={e => {
+                                                    const newStops = [...hotelStops];
+                                                    newStops[idx].nights = Number(e.target.value);
+                                                    setHotelStops(newStops);
+                                                }}
+                                            />
+                                            <span className="absolute right-2.5 text-[8px] font-bold text-gray-300 uppercase pointer-events-none">nts</span>
+                                        </div>
                                         <div className="flex items-center gap-1">
                                             <button
                                                 title="Add row"

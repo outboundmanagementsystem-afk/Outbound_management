@@ -73,7 +73,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
           <div className="absolute inset-0 bg-[#00000088] pointer-events-none" />
           <div className="relative z-10 w-full text-center px-2">
             <h2 className="font-serif text-[2.2rem] tracking-tight font-black uppercase leading-none text-white drop-shadow-2xl">
-              Select Your<br /><span className="text-[#FFE500]">Package Plan</span>
+              Select Your<br /><span className="text-[#FFE500]">Package Options</span>
             </h2>
             <div className="h-1.5 w-16 bg-[#FFE500] mx-auto mt-6 rounded-full shadow-[0_0_20px_rgba(255,229,0,0.5)]" />
           </div>
