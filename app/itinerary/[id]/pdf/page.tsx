@@ -93,7 +93,7 @@ export default function PDFPrintPage() {
             await new Promise(r => setTimeout(r, 1000));
 
             const { jsPDF } = await import('jspdf');
-            const html2canvas = (await import('html2canvas')).default;
+            const { toJpeg } = await import('html-to-image');
             const totalWidth = element.scrollWidth;
 
             // Use chunk-based rendering matching the mobile page approach
@@ -118,93 +118,18 @@ export default function PDFPrintPage() {
             let currentY = 0;
             for (const item of chunkData) {
                 const bgColor = (item.isFooter || item.isDarkBg) ? '#031A0C' : '#ffffff';
-                const canvas = await html2canvas(item.chunk, {
-                    scale: 3,
-                    useCORS: true,
-                    windowWidth: totalWidth,
-                    width: totalWidth,
+                
+                const dataUrl = await toJpeg(item.chunk, {
+                    quality: 0.95,
                     backgroundColor: bgColor,
-                    logging: false,
-                    onclone: function(clonedDoc) {
-                        const pdfRoot = clonedDoc.getElementById('pdf-root')
-                        if (pdfRoot) {
-                            pdfRoot.style.overflow = 'visible'
-                            pdfRoot.style.height = 'auto'
-                            pdfRoot.style.maxHeight = 'none'
-                        }
-                        // 1. Force black text on white backgrounds (Safety baseline)
-                        clonedDoc.querySelectorAll('[class*="bg-white"] *, [class*="bg-gray-50"] *').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
-                        });
-
-                        // 2. Day Label Recovery
-                        clonedDoc.querySelectorAll('[class*="day-marker-badge"], [class*="bg-[#051F10]"]').forEach(badge => {
-                             if (badge.textContent?.toUpperCase().includes('DAY')) {
-                                (badge as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
-                                (badge as HTMLElement).style.setProperty('color', '#ffe500', 'important');
-                                badge.querySelectorAll('*').forEach(el => {
-                                    (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
-                                });
-                             }
-                        });
-
-                        // 3. Overnight Stay Recovery
-                        clonedDoc.querySelectorAll('[class*="bg-[#051F10]"]').forEach(card => {
-                            (card as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
-                            card.querySelectorAll('p, h3, span, div').forEach(el => {
-                                const element = el as HTMLElement;
-                                const text = element.textContent?.toUpperCase() || "";
-                                if (text.includes('OVERNIGHT') || element.classList.contains('overnight-stay-label')) {
-                                    element.style.setProperty('color', '#ffe500', 'important');
-                                } else if (element.classList.contains('overnight-stay-value') || element.tagName === 'H3' || element.classList.contains('text-white')) {
-                                    element.style.setProperty('color', '#ffffff', 'important');
-                                }
-                            });
-                        });
-
-                        // 4. Pricing Recovery
-                        clonedDoc.querySelectorAll('[class*="price"], [class*="amount"], [class*="per-person"]').forEach(el => {
-                             const element = el as HTMLElement;
-                             if (element.classList.contains('price-amount')) {
-                                element.style.setProperty('color', '#ffe500', 'important');
-                             } else if (element.classList.contains('per-person-label')) {
-                                element.style.setProperty('color', '#ffffff', 'important');
-                             }
-                        });
-
-                        // 5. Hotel Count Badge Fix (Perfect Centering)
-                        clonedDoc.querySelectorAll('.hotel-count-badge').forEach(badge => {
-                            const element = badge as HTMLElement;
-                            element.style.setProperty('display', 'flex', 'important');
-                            element.style.setProperty('align-items', 'center', 'important');
-                            element.style.setProperty('justify-content', 'center', 'important');
-                            element.style.setProperty('height', '32px', 'important');
-                            element.style.setProperty('padding', '0 14px', 'important');
-                            element.style.setProperty('border-radius', '20px', 'important');
-                            element.style.setProperty('background-color', '#FFD700', 'important');
-                            element.style.setProperty('font-weight', '600', 'important');
-                            element.style.setProperty('line-height', '1', 'important');
-                        });
-
-                        clonedDoc.querySelectorAll('[data-pdf-logo]').forEach(el => {
-                            const element = el as HTMLElement;
-                            element.style.setProperty('width', '160px', 'important');
-                            element.style.setProperty('height', 'auto', 'important');
-                            element.style.setProperty('display', 'block', 'important');
-                            element.style.setProperty('object-fit', 'contain', 'important');
-                            element.style.setProperty('max-width', 'none', 'important');
-                        });
-
-                        // 5. Final Pass: Marked Branding Enforcement
-                        clonedDoc.querySelectorAll('[data-pdf-color]').forEach(el => {
-                            const pdfColor = el.getAttribute('data-pdf-color');
-                            if (pdfColor === 'yellow') (el as HTMLElement).style.setProperty('color', '#FFD700', 'important');
-                            if (pdfColor === 'white') (el as HTMLElement).style.setProperty('color', '#FFFFFF', 'important');
-                            if (pdfColor === 'black') (el as HTMLElement).style.setProperty('color', '#1a211d', 'important');
-                        });
+                    pixelRatio: 3,
+                    style: {
+                        overflow: 'visible',
+                        height: 'auto',
+                        maxHeight: 'none'
                     }
                 });
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
                 pdf.addImage(dataUrl, 'JPEG', 0, currentY, totalWidth, item.height, undefined, 'FAST');
                 currentY += item.height;
             }

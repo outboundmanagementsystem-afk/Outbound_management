@@ -43,13 +43,8 @@ export default function PublicItineraryPage() {
                 setDownloading(false)
                 return
             }
-            if (!rootElement) {
-                setDownloading(false)
-                return
-            }
 
             const { jsPDF } = await import('jspdf');
-            const html2canvas = (await import('html2canvas')).default;
             const { toJpeg } = await import('html-to-image');
 
             // Wait for full render before capture
@@ -134,173 +129,17 @@ export default function PublicItineraryPage() {
                 // Determine background color based on content
                 const bgColor = (item.isFooter || item.isDarkBg) ? '#031A0C' : '#ffffff';
 
-                const canvas = await html2canvas(item.chunk, {
-                    scale: 3,
-                    useCORS: true,
-                    allowTaint: true,
+                const dataUrl = await toJpeg(item.chunk, {
+                    quality: 0.95,
                     backgroundColor: bgColor,
-                    scrollY: -window.scrollY,
-                    windowWidth: item.chunk.scrollWidth,
-                    windowHeight: item.chunk.scrollHeight,
-                    onclone: function(clonedDoc) {
-                        const mainEl = clonedDoc.getElementById('itinerary-content')
-                        if (mainEl) {
-                            mainEl.style.overflow = 'visible'
-                            mainEl.style.height = 'auto'
-                            mainEl.style.maxHeight = 'none'
-                        }
-                        // --- PHASE 1: Baseline Style Inlining ---
-                        // Inline computed styles to ensure they persist in the canvas
-                        clonedDoc.querySelectorAll('*').forEach(el => {
-                            const element = el as HTMLElement;
-                            const computed = clonedDoc.defaultView?.getComputedStyle(el);
-                            if (!computed) return;
-                            const color = computed.getPropertyValue('color');
-                            const bg = computed.getPropertyValue('background-color');
-                            const fontSize = computed.getPropertyValue('font-size');
-                            const fontWeight = computed.getPropertyValue('font-weight');
-
-                            if (color) element.style.setProperty('color', color, 'important');
-                            if (bg && bg !== 'rgba(0, 0, 0, 0)') element.style.setProperty('background-color', bg, 'important');
-                            if (fontSize) element.style.setProperty('font-size', fontSize, 'important');
-                            if (fontWeight) element.style.setProperty('font-weight', fontWeight, 'important');
-                        });
-
-                        // --- PHASE 2: Global Context & Visibility Logic ---
-                        
-                        // Rule A: General Visibility for Dark Sections (Hero, Dark Footers, etc.)
-                        clonedDoc.querySelectorAll('section[class*="bg-[#031A0C]"], section[class*="bg-[#051F10]"], div[class*="bg-[#051F10]"]').forEach(section => {
-                            section.querySelectorAll('p, span, h1, h2, h3, div').forEach(el => {
-                                const element = el as HTMLElement;
-                                // Only set to white if NOT inside a white nested card or explicitly yellow
-                                if (!element.closest('.bg-white') && !element.closest('.bg-gray-50') && 
-                                    !element.classList.contains('text-[#FFE500]') && !element.getAttribute('data-pdf-color')) {
-                                    element.style.setProperty('color', '#ffffff', 'important');
-                                }
-                            });
-                        });
-
-                        // Rule B: Enforce Dark Text on Light Backgrounds (Inclusions, Summary, etc.)
-                        clonedDoc.querySelectorAll('.bg-white, .bg-gray-50, section[style*="#FAF9F6"], section[style*="#faf9f6"], section[style*="rgb(250, 249, 246)"]').forEach(container => {
-                           container.querySelectorAll('p, h1, h2, h3, span:not(.text-white), li').forEach(el => {
-                               const element = el as HTMLElement;
-                               // CRITICAL: Skip elements that are inside a dark sub-container (badge, overnight box)
-                               if (!element.closest('[class*="bg-[#051F10]"]') && !element.closest('[class*="day-marker-badge"]')) {
-                                   element.style.setProperty('color', '#1a211d', 'important');
-                               }
-                           });
-                        });
-
-                        // --- PHASE 3: Targeted Component Recovery ---
-
-                        // 1. Day Itinerary Specific Fixes
-                        clonedDoc.querySelectorAll('[class*="day-marker-badge"]').forEach(badge => {
-                            (badge as HTMLElement).style.setProperty('background-color', '#051f10', 'important');
-                            (badge as HTMLElement).style.setProperty('color', '#ffe500', 'important');
-                            badge.querySelectorAll('*').forEach(child => {
-                                (child as HTMLElement).style.setProperty('color', '#ffe500', 'important');
-                            });
-                        });
-
-                        clonedDoc.querySelectorAll('.overnight-stay-label').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
-                            (el as HTMLElement).style.setProperty('opacity', '1', 'important');
-                        });
-                        clonedDoc.querySelectorAll('.overnight-stay-value').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#ffffff', 'important');
-                            (el as HTMLElement).style.setProperty('opacity', '1', 'important');
-                        });
-
-                        // 2. Hotels, Flights & Inclusions Fixes
-                        clonedDoc.querySelectorAll('h3[class*="emerald-950"]').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#052e16', 'important');
-                        });
-                        clonedDoc.querySelectorAll('p[class*="text-gray-700"]').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#374151', 'important');
-                        });
-                        clonedDoc.querySelectorAll('[class*="hotel-name"], [class*="hotel-title"]').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
-                        });
-                        clonedDoc.querySelectorAll('[class*="hotel-location"], [class*="location-text"]').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#6b7280', 'important');
-                        });
-                        clonedDoc.querySelectorAll('[class*="nights-badge"]').forEach(el => {
-                            (el as HTMLElement).style.setProperty('background-color', '#f5c518', 'important');
-                            (el as HTMLElement).style.setProperty('color', '#1a1a1a', 'important');
-                        });
-
-                        // 3. Trip Summary Fixes
-                        clonedDoc.querySelectorAll('.trip-summary-label').forEach(el => {
-                            const element = el as HTMLElement;
-                            element.style.setProperty('color', '#8E918F', 'important');
-                            element.style.setProperty('font-size', '14px', 'important');
-                            element.style.setProperty('font-weight', '400', 'important');
-                            element.style.setProperty('letter-spacing', '0.1em', 'important');
-                        });
-                        clonedDoc.querySelectorAll('.trip-summary-value').forEach(el => {
-                            const element = el as HTMLElement;
-                            element.style.setProperty('color', '#1A211D', 'important');
-                            element.style.setProperty('font-size', '14px', 'important');
-                            element.style.setProperty('font-weight', '400', 'important');
-                        });
-
-                        // 4. Pricing & Amount Recovery
-                        clonedDoc.querySelectorAll('[class*="price-amount"], [class*="amount"]').forEach(el => {
-                            (el as HTMLElement).style.setProperty('color', '#ffe500', 'important');
-                        });
-
-                        // 5. Hotel Count Badge Fix (Perfect Centering)
-                        clonedDoc.querySelectorAll('.hotel-count-badge').forEach(badge => {
-                            const element = badge as HTMLElement;
-                            element.style.setProperty('display', 'flex', 'important');
-                            element.style.setProperty('align-items', 'center', 'important');
-                            element.style.setProperty('justify-content', 'center', 'important');
-                            element.style.setProperty('height', '32px', 'important');
-                            element.style.setProperty('padding', '0 14px', 'important');
-                            element.style.setProperty('border-radius', '20px', 'important');
-                            element.style.setProperty('background-color', '#FFD700', 'important');
-                            element.style.setProperty('font-weight', '600', 'important');
-                            element.style.setProperty('line-height', '1', 'important');
-                        });
-
-                        // 4. Footer Recovery
-                        clonedDoc.querySelectorAll('footer').forEach(footer => {
-                            (footer as HTMLElement).style.setProperty('background-color', '#031a0c', 'important');
-                            footer.querySelectorAll('*').forEach(el => {
-                                const element = el as HTMLElement;
-                                if (!element.hasAttribute('data-pdf-color') && !element.classList.contains('text-[#FFE500]')) {
-                                    element.style.setProperty('color', '#ffffff', 'important');
-                                }
-                            });
-                        });
-
-                        clonedDoc.querySelectorAll('[data-pdf-logo]').forEach(el => {
-                            const element = el as HTMLElement;
-                            element.style.setProperty('width', '160px', 'important');
-                            element.style.setProperty('height', 'auto', 'important');
-                            element.style.setProperty('display', 'block', 'important');
-                            element.style.setProperty('object-fit', 'contain', 'important');
-                            element.style.setProperty('max-width', 'none', 'important');
-                        });
-
-                        clonedDoc.querySelectorAll('[data-pdf-color]').forEach(el => {
-                            const element = el as HTMLElement;
-                            const pdfColor = element.getAttribute('data-pdf-color');
-                            if (pdfColor === 'yellow') {
-                                element.style.setProperty('color', '#FFE500', 'important');
-                            } else if (pdfColor === 'white') {
-                                element.style.setProperty('color', '#FFFFFF', 'important');
-                            } else if (pdfColor === 'black') {
-                                element.style.setProperty('color', '#1a211d', 'important');
-                            }
-                        });
-
-                        // Repaint delay for canvas stability
-                        return new Promise(resolve => setTimeout(resolve, 1500));
+                    pixelRatio: 3,
+                    style: {
+                        overflow: 'visible',
+                        height: 'auto',
+                        maxHeight: 'none'
                     }
                 });
 
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
                 pdf.addImage(dataUrl, 'JPEG', 0, currentY, widthPx, chunkHeight, undefined, 'FAST');
                 
                 currentY += chunkHeight;

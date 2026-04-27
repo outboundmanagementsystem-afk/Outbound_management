@@ -6,7 +6,6 @@ import { getItinerary, getItineraryDays, getItineraryHotels } from "@/lib/firest
 import Image from "next/image"
 import { Download, Loader2, MapPin, Calendar, Users, Phone, Mail, FileText, Hotel } from "lucide-react"
 import { jsPDF } from "jspdf"
-import html2canvas from "html2canvas"
 
 export default function VoucherPage() {
     const params = useParams()
@@ -53,31 +52,26 @@ export default function VoucherPage() {
             const buttons = document.querySelectorAll('.print\\:hidden')
             buttons.forEach((el: any) => el.style.display = 'none')
 
-            const canvas = await html2canvas(element, {
-                scale: 3, // Higher quality for text-heavy documents
-                useCORS: true,
-                logging: false,
-                windowWidth: 1000, // Fixed width for consistent layout
-                onclone: (clonedDoc) => {
-                    clonedDoc.querySelectorAll('[data-pdf-logo]').forEach(el => {
-                        const element = el as HTMLElement;
-                        element.style.setProperty('width', '240px', 'important'); // Larger for voucher header
-                        element.style.setProperty('height', 'auto', 'important');
-                        element.style.setProperty('display', 'block', 'important');
-                        element.style.setProperty('object-fit', 'contain', 'important');
-                        element.style.setProperty('max-width', 'none', 'important');
-                    });
+            const { toJpeg } = await import('html-to-image');
+            
+            const dataUrl = await toJpeg(element, {
+                quality: 0.95,
+                backgroundColor: '#ffffff',
+                pixelRatio: 3,
+                style: {
+                    overflow: 'visible',
+                    height: 'auto',
+                    maxHeight: 'none'
                 }
-            })
-
-            const imgData = canvas.toDataURL("image/jpeg", 0.95)
+            });
 
             const pdfWidth = 210 // A4 width in mm
-            const pdfHeight = (canvas.height * pdfWidth) / canvas.width
+            // Calculate height in mm based on original element aspect ratio
+            const pdfHeight = (element.offsetHeight * pdfWidth) / element.offsetWidth
 
             const pdf = new jsPDF("p", "mm", [pdfWidth, pdfHeight])
 
-            pdf.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight)
+            pdf.addImage(dataUrl, "JPEG", 0, 0, pdfWidth, pdfHeight)
             pdf.save(`Voucher-${itin?.customerName || 'Outbound'}.pdf`)
         } catch (error) {
             console.error("Error generating PDF:", error)
