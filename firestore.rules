@@ -57,7 +57,8 @@ service cloud.firestore {
 
     match /packages/{pkgId} {
       allow read: if isAnyRole();
-      allow create, update, delete: if isAdmin();
+      allow create, update: if isAdmin() || isSalesTeam();
+      allow delete: if isAdmin();
 
       match /{subCollection}/{docId} {
         allow read: if isAnyRole();

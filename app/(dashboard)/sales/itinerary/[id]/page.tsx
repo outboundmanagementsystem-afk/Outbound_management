@@ -217,13 +217,15 @@ function ItineraryDetail() {
                     >
                         <FileEdit className="w-3 h-3" /> Edit
                     </Link>
-                    <button
-                        onClick={() => window.open(`/voucher/${itinId}?download=1`, '_blank')}
-                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-sans text-[10px] tracking-wider uppercase transition-all hover:scale-105"
-                        style={{ background: 'rgba(6,161,92,0.1)', color: '#06a15c', border: '1px solid rgba(6,161,92,0.2)' }}
-                    >
-                        <FileText className="w-3 h-3" /> Voucher
-                    </button>
+                    {userProfile?.role !== "sales" && userProfile?.role !== "sales_lead" && (
+                        <button
+                            onClick={() => window.open(`/voucher/${itinId}?download=1`, '_blank')}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-sans text-[10px] tracking-wider uppercase transition-all hover:scale-105"
+                            style={{ background: 'rgba(6,161,92,0.1)', color: '#06a15c', border: '1px solid rgba(6,161,92,0.2)' }}
+                        >
+                            <FileText className="w-3 h-3" /> Voucher
+                        </button>
+                    )}
                     <button
                         onClick={() => window.open(`/itinerary/${itinId}?download=1`, '_blank')}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-sans text-[10px] tracking-wider uppercase transition-all hover:scale-105"

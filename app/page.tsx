@@ -2,28 +2,19 @@
 
 import { useAuth } from "@/lib/auth-context"
 import { useRouter } from "next/navigation"
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import { getRoleDashboard } from "@/lib/role-utils"
 
 export default function HomePage() {
   const { userProfile, loading, authError, retryAuth } = useAuth()
   const router = useRouter()
-  const hasNavigated = useRef(false)
 
   useEffect(() => {
     if (loading) return
-    if (hasNavigated.current) return
-
-    hasNavigated.current = true
-
-    if (!userProfile) {
-      router.replace("/login")
-    } else {
-      const target = getRoleDashboard(userProfile.role)
-      router.replace(target)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, userProfile])
+    console.log("HomePage:", { loading, userProfile })
+    const target = userProfile ? getRoleDashboard(userProfile.role) : "/login"
+    router.replace(target)
+  }, [loading, userProfile, router])
 
   if (authError && !loading) {
     return (
@@ -36,7 +27,7 @@ export default function HomePage() {
         </p>
         <div className="flex gap-3">
           <button
-            onClick={() => { hasNavigated.current = false; retryAuth() }}
+            onClick={() => { retryAuth() }}
             className="px-6 py-2 rounded-lg font-sans text-xs tracking-widest uppercase transition-all hover:bg-white/10"
             style={{ border: '1px solid rgba(212,175,55,0.5)', color: '#D4AF37' }}
           >

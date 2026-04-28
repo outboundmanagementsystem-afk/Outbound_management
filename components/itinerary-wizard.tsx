@@ -615,6 +615,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     ...baseData,
                     packageName: customerName,
                 }
+                console.log("SAVE PACKAGE PAYLOAD:", packageData);
                 if (editId) {
                     await updatePackage(editId, packageData)
                     await clearPackageSubcollections(editId)
@@ -637,6 +638,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                         consultantName, consultantPhone,
                         module: "built-package",
                     }
+                    console.log("SAVE PIPELINE PAYLOAD:", itineraryDataForPipeline);
                     const pipelineItinId = await createItinerary(itineraryDataForPipeline)
                     pipelineItinIdForOnSave = pipelineItinId
                     for (const day of dayPlans) await addItineraryDay(pipelineItinId, day)
@@ -653,6 +655,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     customerName, customerPhone, customerEmail,
                     consultantName, consultantPhone,
                 }
+                console.log("SAVE ITINERARY PAYLOAD:", itineraryData);
 
                 if (editId) {
                     await updateItinerary(editId as string, itineraryData)
@@ -685,9 +688,9 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 router.push(`/sales/itinerary/${itinId}`)
             }
 
-        } catch (err) {
-            console.error(err)
-            alert("Error saving")
+        } catch (err: any) {
+            console.error("SAVE ERROR:", err)
+            alert("Error saving: " + (err.message || JSON.stringify(err)))
         } finally {
             setSaving(false)
         }

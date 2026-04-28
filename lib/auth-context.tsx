@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, useRef, useCallback, ReactNode, useMemo } from "react"
 import { onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut, User } from "firebase/auth"
-import { doc, getDoc, setDoc, collection, getDocs, query, where } from "firebase/firestore"
+import { doc, getDoc, setDoc, collection, getDocs, query, where, limit } from "firebase/firestore"
 import { auth, db, googleProvider } from "./firebase"
 
 export type UserRole = "admin" | "owner" | "sales_lead" | "sales" | "pre_ops_lead" | "pre_ops" | "post_ops_lead" | "post_ops" | "finance" | "finance_lead"
@@ -98,8 +98,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return { uid: firebaseUser.uid, ...profile }
             }
 
-            // Check if this is the very first user → make them Super Admin
-            const allUsersSnap = await getDocs(collection(db, "users"))
+            const firstUserQuery = query(collection(db, "users"), limit(1))
+            const allUsersSnap = await getDocs(firstUserQuery)
             const isFirstUser = allUsersSnap.empty
 
             const isOwner = firebaseUser.email === "ahamedshafeek12345@gmail.com";
