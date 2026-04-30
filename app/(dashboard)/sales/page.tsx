@@ -16,19 +16,24 @@ export default function SalesDashboard() {
 }
 
 function SalesContent() {
-    const { userProfile } = useAuth()
-    const [itineraries, setItineraries] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
+  const { userProfile } = useAuth()
+  const [itineraries, setItineraries] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
 
-    useEffect(() => { loadData() }, [])
-
+  useEffect(() => {
     const loadData = async () => {
-        try {
-            const allItins = await getItineraries()
-            setItineraries(allItins)
-        } catch (err) { console.error(err) }
-        finally { setLoading(false) }
+      if (!userProfile?.uid) {
+        console.log("User profile not ready, skipping itinerary load")
+        setLoading(false)
+        return
+      }
+      console.log("Filtering itineraries for:", userProfile.uid)
+      const allItins = await getItineraries(userProfile.uid)
+      setItineraries(allItins)
+      setLoading(false)
     }
+    loadData()
+  }, [userProfile])
 
     const total = itineraries.length
     const confirmed = itineraries.filter((i: any) => ["handover", "completed"].includes(i.status)).length

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOP Checklist Template Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-text-main: #052210;
+            --color-text-muted: rgba(5, 34, 16, 0.5);
+            --color-border: rgba(5, 34, 16, 0.1);
+            --color-accent: #06a15c;
+            --color-accent-soft: rgba(6, 161, 92, 0.08);
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb;
+            color: var(--color-text-main);
+        }
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+        .edit-panel {
+            display: none;
+            animation: slideDown 0.2s ease-out forwards;
+        }
+        .edit-panel.active { display: block; }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(5, 34, 16, 0.4)' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+        }
+    </style>
+</head>
+<body class="p-8">
+    <div id="editor-container" class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8 pb-4 border-b border-[var(--color-border)]">
+            <div>
+                <h1 class="text-2xl font-bold">SOP Checklist Template</h1>
+                <div class="flex items-center gap-2 mt-1">
+                    <span id="item-count-badge" class="text-[10px] font-black uppercase tracking-widest text-[var(--color-accent)] bg-[var(--color-accent-soft)] px-2 py-0.5 rounded-full">
+                        2 CHECKLIST ITEMS
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Checklist Items -->
+        <div id="checklist-items" class="space-y-3">
+            <!-- Items will be injected here -->
+        </div>
+
+        <!-- Add Step Button -->
+        <button onclick="addNewStep()" class="w-full mt-6 py-6 rounded-2xl border-2 border-dashed border-[var(--color-border)] hover:border-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] group transition-all text-center">
+            <div class="flex flex-col items-center gap-2">
+                <div class="w-8 h-8 rounded-full bg-[var(--color-border)] group-hover:bg-[var(--color-accent)] flex items-center justify-center transition-all">
+                    <i data-lucide="plus" class="w-5 h-5 text-white"></i>
+                </div>
+                <span class="text-xs font-bold uppercase tracking-widest text-[var(--color-text-muted)] group-hover:text-[var(--color-accent)]">
+                    Add Process Step
+                </span>
+            </div>
+        </button>
+    </div>
+
+    <script>
+        let items = [
+            {
+                id: '1',
+                name: "Verify customer document validity",
+                type: "CHECKBOX_CHECK",
+                notes: "Check if the passport is valid for at least 6 months.",
+                subPoints: ["Passport front", "Passport back"],
+                requireAcknowledgement: true,
+                isMandatory: true
+            },
+            {
+                id: '2',
+                name: "Upload flight ticket confirmation",
+                type: "FILE_UPLOAD",
+                notes: "Ensure the PNR is visible.",
+                subPoints: [],
+                requireAcknowledgement: false,
+                isMandatory: true
+            }
+        ];
+
+        let editingId = null;
+
+        const TYPE_LABELS = {
+            DATE_PICKER: "DATE PICKER",
+            TEXT_INPUT: "TEXT INPUT",
+            FILE_UPLOAD: "FILE UPLOAD",
+            CHECKBOX_CHECK: "CHECKBOX CHECK",
+            DROPDOWN: "DROPDOWN",
+            NUMBER_INPUT: "NUMBER INPUT"
+        };
+
+        function render() {
+            const container = document.getElementById('checklist-items');
+            container.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'group';
+                itemEl.innerHTML = `
+                    <div class="flex items-center gap-4 py-4 px-5 rounded-xl border bg-white transition-all ${editingId === item.id ? 'border-[var(--color-accent)] ring-1 ring-[var(--color-accent-soft)]' : 'border-[var(--color-border)]'}">
+                        <div class="drag-handle text-gray-300 hover:text-gray-500">
+                            <i data-lucide="grip-vertical" class="w-5 h-5"></i>
+                        </div>
+                        <div class="w-5 h-5 rounded border-2 border-[var(--color-border)] shrink-0"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-3">
+                                <span class="text-sm font-semibold truncate">${item.name || '<span class="opacity-50 italic">Untitled Step</span>'}</span>
+                                <span class="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-gray-50 text-gray-500 border border-gray-100">
+                                    ${TYPE_LABELS[item.type]}
+                                </span>
+                                ${!item.isMandatory ? '<span class="text-[9px] font-bold uppercase tracking-wider text-orange-400">Optional</span>' : ''}
+                            </div>
+                            ${item.notes ? `<p class="text-[11px] text-[var(--color-text-muted)] mt-1 truncate max-w-md">${item.notes}</p>` : ''}
+                            <div class="flex gap-2 mt-2">
+                                ${item.subPoints.map(p => `<span class="text-[9px] text-[var(--color-text-muted)] bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">• ${p}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleEdit('${item.id}')" class="p-2 rounded-lg text-gray-400 hover:text-[var(--color-accent)] hover:bg-[var(--color-accent-soft)] transition-all">
+                                <i data-lucide="edit-3" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="deleteItem('${item.id}')" class="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="edit-panel-${item.id}" class="edit-panel ${editingId === item.id ? 'active' : ''} mt-2 ml-14 mr-2 p-6 rounded-2xl border-2 border-dashed border-[var(--color-accent)] bg-white">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="space-y-5">
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] block mb-2">Item Name</label>
+                                    <input type="text" value="${item.name}" oninput="updateEditForm('${item.id}', 'name', this.value)" class="w-full px-4 py-2.5 rounded-xl border border-[var(--color-border)] text-sm focus:outline-none focus:border-[var(--color-accent)]" placeholder="Step name">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] block mb-2">Type</label>
+                                    <select onchange="updateEditForm('${item.id}', 'type', this.value)" class="w-full px-4 py-2.5 rounded-xl border border-[var(--color-border)] text-sm focus:outline-none focus:border-[var(--color-accent)]">
+                                        ${Object.entries(TYPE_LABELS).map(([k, v]) => `<option value="${k}" ${item.type === k ? 'selected' : ''}>${v}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] block mb-2">Notes</label>
+                                    <textarea oninput="updateEditForm('${item.id}', 'notes', this.value)" class="w-full px-4 py-2.5 rounded-xl border border-[var(--color-border)] text-sm focus:outline-none focus:border-[var(--color-accent)] min-h-[80px]">${item.notes}</textarea>
+                                </div>
+                            </div>
+                            <div class="space-y-5">
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-widest text-[var(--color-text-muted)] block mb-2">Sub-points (Enter to add)</label>
+                                    <input type="text" onkeydown="handleSubPointKey(event, '${item.id}')" class="w-full px-4 py-2.5 rounded-xl border border-[var(--color-border)] text-sm focus:outline-none focus:border-[var(--color-accent)]" placeholder="Press Enter to add point">
+                                    <div class="flex flex-wrap gap-2 mt-2">
+                                        ${item.subPoints.map((p, i) => `
+                                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-50 border border-gray-100 text-[10px] font-medium">
+                                                ${p}
+                                                <button onclick="removeSubPoint('${item.id}', ${i})" class="hover:text-red-500">×</button>
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                <div class="p-4 rounded-xl border border-[var(--color-border)] bg-gray-50/50">
+                                    <div class="flex items-center justify-between mb-4">
+                                        <div>
+                                            <p class="text-xs font-bold">Require Acknowledgement</p>
+                                            <p class="text-[10px] text-[var(--color-text-muted)]">User must confirm completion</p>
+                                        </div>
+                                        <button onclick="toggleAck('${item.id}')" class="w-10 h-5 rounded-full relative transition-all ${item.requireAcknowledgement ? 'bg-[var(--color-accent)]' : 'bg-gray-300'}">
+                                            <div class="absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${item.requireAcknowledgement ? 'left-6' : 'left-1'}"></div>
+                                        </button>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="setMandatory('${item.id}', true)" class="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider border ${item.isMandatory ? 'bg-[var(--color-text-main)] text-white' : 'bg-white text-[var(--color-text-muted)]'}">Mandatory</button>
+                                        <button onclick="setMandatory('${item.id}', false)" class="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider border ${!item.isMandatory ? 'bg-[var(--color-text-main)] text-white' : 'bg-white text-[var(--color-text-muted)]'}">Optional</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex justify-end gap-3 mt-8 pt-4 border-t border-[var(--color-border)]">
+                            <button onclick="toggleEdit(null)" class="px-6 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Cancel</button>
+                            <button onclick="toggleEdit(null)" class="flex items-center gap-2 px-8 py-2 rounded-xl bg-[var(--color-text-main)] text-white text-xs font-bold uppercase tracking-wider">Save Step</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(itemEl);
+            });
+
+            document.getElementById('item-count-badge').innerText = `${items.length} CHECKLIST ITEMS`;
+            lucide.createIcons();
+        }
+
+        function toggleEdit(id) {
+            editingId = (editingId === id) ? null : id;
+            render();
+        }
+
+        function updateEditForm(id, field, value) {
+            const item = items.find(i => i.id === id);
+            if (item) item[field] = value;
+        }
+
+        function handleSubPointKey(e, id) {
+            if (e.key === 'Enter' && e.target.value.trim()) {
+                const item = items.find(i => i.id === id);
+                if (item) {
+                    item.subPoints.push(e.target.value.trim());
+                    e.target.value = '';
+                    render();
+                }
+            }
+        }
+
+        function removeSubPoint(id, idx) {
+            const item = items.find(i => i.id === id);
+            if (item) {
+                item.subPoints.splice(idx, 1);
+                render();
+            }
+        }
+
+        function toggleAck(id) {
+            const item = items.find(i => i.id === id);
+            if (item) {
+                item.requireAcknowledgement = !item.requireAcknowledgement;
+                render();
+            }
+        }
+
+        function setMandatory(id, val) {
+            const item = items.find(i => i.id === id);
+            if (item) {
+                item.isMandatory = val;
+                render();
+            }
+        }
+
+        function deleteItem(id) {
+            items = items.filter(i => i.id !== id);
+            render();
+        }
+
+        function addNewStep() {
+            const newId = Date.now().toString();
+            items.push({
+                id: newId,
+                name: "",
+                type: "CHECKBOX_CHECK",
+                notes: "",
+                subPoints: [],
+                requireAcknowledgement: false,
+                isMandatory: true
+            });
+            editingId = newId;
+            render();
+        }
+
+        render();
+    </script>
+</body>
+</html>

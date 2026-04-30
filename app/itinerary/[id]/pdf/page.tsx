@@ -29,6 +29,7 @@ export default function PDFPrintPage() {
     const [flights, setFlights] = useState<any[]>([])
     const [activities, setActivities] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
     useEffect(() => { loadData() }, [itinId])
 
@@ -191,6 +192,7 @@ export default function PDFPrintPage() {
         location: h.location || `${h.subDestination || itin.destination || "—"}`,
         rating: h.rating || h.starRating || null,
         tag: h.tag || null,
+        category: h.tier || h.category || null,
         nights: `${h.nights || itin.nights || 0} Nights`,
         amenities: h.amenities ? (typeof h.amenities === "string" ? h.amenities.split(",").map((a: string) => a.trim()) : h.amenities) : ["Breakfast Included"],
         mealPlan: h.mealPlan || "",
@@ -311,11 +313,20 @@ export default function PDFPrintPage() {
                                     }
                                 `}</style>
                             )}
-                            <HotelDetails hotelList={hotelList} />
+                            <HotelDetails 
+                                hotelList={hotelList} 
+                                baseUrl={baseUrl}
+                                showCustomImage={itin?.module === "built-package"}
+                            />
                         </div>
                     )}
 
-                    {hasTransfers && (
+                    {transfers && transfers.length > 0 && transfers.some(t => {
+                        const p = (t.pickup || "").trim().toLowerCase();
+                        const d = (t.drop || "").trim().toLowerCase();
+                        return (p !== "" && p !== "select pickup location") || 
+                               (d !== "" && d !== "select drop location");
+                    }) && (
                         <div className="pdf-chunk pdf-dark-bg w-full">
                             <TransferDetails transfers={transfers} />
                         </div>
@@ -333,6 +344,7 @@ export default function PDFPrintPage() {
                             plans={pricing?.[0]?.plans || itin.plans}
                             inclusions={['Per Person']}
                             gstNote="5% GST applicable on total package cost"
+                            baseUrl={baseUrl}
                         />
                     </div>
 

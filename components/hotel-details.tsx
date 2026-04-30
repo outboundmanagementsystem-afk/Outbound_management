@@ -17,14 +17,18 @@ interface HotelData {
   category?: string;
 }
 
-interface HotelDetailsProps { hotelList?: HotelData[] }
+interface HotelDetailsProps { 
+  hotelList?: HotelData[];
+  baseUrl?: string;
+  showCustomImage?: boolean;
+}
 
 const defaultHotels: HotelData[] = [
   { name: "Grand Mir International", subtitle: "Or Similar Property", location: "Srinagar, Kashmir", rating: 3, tag: null, nights: "4 Nights", amenities: ["Breakfast Included", "Housekeeping", "WiFi"], category: "BUDGET" },
   { name: "The Sarai", subtitle: "Or Deewan By Royal Naqash", location: "Srinagar, Kashmir", rating: 4, tag: "Recommended", nights: "4 Nights", amenities: ["All Meals", "Concierge", "Spa Access"], category: "DELUXE" },
 ]
 
-export function HotelDetails({ hotelList }: HotelDetailsProps = {}) {
+export function HotelDetails({ hotelList, baseUrl, showCustomImage }: HotelDetailsProps = {}) {
   const hotels = hotelList || defaultHotels
   const categories = Array.from(new Set(hotels.map(h => h.category || "STANDARD")))
 
@@ -81,6 +85,8 @@ export function HotelDetails({ hotelList }: HotelDetailsProps = {}) {
             </div>
 
             <div className="p-6 space-y-6">
+            
+
 
             {tierHotels.map((hotel, hIdx) => (
               <section
@@ -112,20 +118,7 @@ export function HotelDetails({ hotelList }: HotelDetailsProps = {}) {
 
                     {/* Meta Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                        {/* Star Rating */}
-                        {hotel.rating && (
-                          <div className="flex flex-col gap-2 p-3 rounded-2xl bg-gray-50 border border-gray-100">
-                              <span className="font-sans text-[8px] font-black text-gray-400 uppercase tracking-[0.2em]">Rating</span>
-                              <div className="flex items-center gap-1">
-                                  {Array.from({ length: 5 }).map((_, i) => (
-                                      <Star
-                                          key={i}
-                                          className={`w-3.5 h-3.5 ${i < hotel.rating ? 'fill-[#FFE500] text-[#FFE500]' : 'fill-gray-200 text-gray-200'}`}
-                                      />
-                                  ))}
-                              </div>
-                          </div>
-                        )}
+
 
                         {/* Meal Plan */}
                         {hotel.mealPlan && (

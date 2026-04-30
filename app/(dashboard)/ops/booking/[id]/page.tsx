@@ -141,8 +141,9 @@ function BookingDetail() {
         </div>
     )
 
-    const completedCount = checklist.filter(c => c.checked).length
-    const progress = checklist.length > 0 ? Math.round((completedCount / checklist.length) * 100) : 0
+    const requiredChecklist = checklist.filter(c => c.isRequired !== false)
+    const completedCount = requiredChecklist.filter(c => c.checked).length
+    const progress = requiredChecklist.length > 0 ? Math.round((completedCount / requiredChecklist.length) * 100) : 0
 
     return (
         <div className="space-y-6 max-w-3xl mx-auto">
@@ -158,7 +159,7 @@ function BookingDetail() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Link
-                        href={`/sales/itinerary-generator/custom?editId=${bookingId}&returnTo=${encodeURIComponent(`/ops/booking/${bookingId}`)}`}
+                        href={`/sales/itinerary-generator/${booking?.module === 'built-package' ? 'build-package' : 'custom'}?editId=${bookingId}&returnTo=${encodeURIComponent(`/ops/booking/${bookingId}`)}`}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-sans text-[10px] tracking-wider uppercase transition-all hover:scale-105"
                         style={{ background: 'rgba(52,211,153,0.1)', color: '#06a15c', border: '1px solid rgba(52,211,153,0.2)' }}
                     >
@@ -198,21 +199,21 @@ function BookingDetail() {
                 <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(5,34,16,0.08)' }}>
                     <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: progress === 100 ? '#34d399' : 'linear-gradient(90deg, #06a15c, #34d399)' }} />
                 </div>
-                <p className="font-sans text-xs mt-2" style={{ color: 'rgba(5,34,16,0.5)' }}>{completedCount} of {checklist.length} tasks completed</p>
+                <p className="font-sans text-xs mt-2" style={{ color: 'rgba(5,34,16,0.5)' }}>{completedCount} of {requiredChecklist.length} mandatory tasks completed</p>
 
                 {booking.status !== "post-ops" && booking.status !== "completed" && (
                     <div className="mt-6">
                         <button
                             onClick={handleHandover}
-                            disabled={loading || (checklist.length > 0 && checklist.some(c => !c.checked))}
-                            className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-sans font-bold text-sm tracking-widest uppercase transition-all ${loading || (checklist.length > 0 && checklist.some(c => !c.checked)) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.01]'}`}
+                            disabled={loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked))}
+                            className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-sans font-bold text-sm tracking-widest uppercase transition-all ${loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked)) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.01]'}`}
                             style={{ background: '#06a15c', color: '#FFFFFF', boxShadow: '0 4px 15px rgba(6,161,92,0.3)' }}
                         >
                             Handover to Post-Operation <ArrowLeft className="w-4 h-4 rotate-180" />
                         </button>
-                        {checklist.length > 0 && checklist.some(c => !c.checked) && (
+                        {requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked) && (
                             <p className="font-sans text-[10px] text-red-500 font-bold uppercase tracking-wider text-center mt-2">
-                                Complete all SOP tasks to handover
+                                Complete all mandatory SOP tasks to handover
                             </p>
                         )}
                     </div>

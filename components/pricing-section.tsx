@@ -17,6 +17,7 @@ interface PricingSectionProps {
   gstNote?: string
   applyGST?: boolean
   applyTCS?: boolean
+  baseUrl?: string
 }
 
 const defaultImages = [
@@ -25,7 +26,7 @@ const defaultImages = [
   "/images/bg/page_006.png"
 ]
 
-export function PricingSection({ price, plans, inclusions, gstNote, applyGST, applyTCS }: PricingSectionProps = {}) {
+export function PricingSection({ price, plans, inclusions, gstNote, applyGST, applyTCS, baseUrl }: PricingSectionProps = {}) {
   let baseInclusions: string[] = []
   if (typeof inclusions === 'string') {
     baseInclusions = inclusions.split(',').map(item => item.trim()).filter(item => item !== "")
@@ -52,6 +53,11 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
     let fileName = normalized
     if (normalized.includes("star")) {
       fileName = normalized.replace(/\s+/g, "")
+    }
+
+    // Support custom.jpg instead of .png
+    if (normalized.includes("custom")) {
+      return `/images/hotel_tiers/custom.jpg`
     }
     
     return `/images/hotel_tiers/${fileName}.png`
@@ -101,7 +107,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
                   {/* Top Image */}
                   <div className="w-full h-44 relative">
                     <img
-                      src={plan.image || getTierImage(plan.category)}
+                      src={plan.image || (baseUrl ? `${baseUrl.replace(/\/$/, "")}${getTierImage(plan.category)}` : getTierImage(plan.category))}
                       alt={plan.hotelName}
                       className="absolute inset-0 w-full h-full object-cover"
                       onError={(e) => {

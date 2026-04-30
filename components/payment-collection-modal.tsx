@@ -59,7 +59,7 @@ export default function PaymentCollectionModal({
     submitLabel = "Save Payment & Continue",
 }: PaymentCollectionModalProps) {
     const [amount, setAmount] = useState<string>("")
-    const [method, setMethod] = useState<PaymentMethod>("gpay")
+    const [method, setMethod] = useState<PaymentMethod | "">("")
     const [paymentType, setPaymentType] = useState<PaymentType>(defaultType)
     const [notes, setNotes] = useState("")
     const [screenshotFile, setScreenshotFile] = useState<File | undefined>()
@@ -69,7 +69,7 @@ export default function PaymentCollectionModal({
 
     const balance = totalPrice - amountAlreadyPaid
     const numAmount = Number(amount)
-    const isValid = numAmount > 0
+    const isValid = numAmount > 0 && !!method && !!screenshotFile
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -80,18 +80,22 @@ export default function PaymentCollectionModal({
 
     const handleSubmit = async () => {
         setError("")
-        if (!isValid) { setError("Please enter a valid amount."); return }
+        if (numAmount <= 0) { setError("Please enter a valid amount."); return }
+        if (!method) { setError("Please select a payment method."); return }
+        if (!screenshotFile) { setError("Please upload a payment screenshot."); return }
+        
         setSaving(true)
         try {
             await onSubmit({
                 type: paymentType,
                 amount: numAmount,
-                method,
+                method: method as PaymentMethod,
                 notes: notes.trim() || undefined,
                 screenshotFile,
             })
             // Reset form
             setAmount("")
+            setMethod("")
             setNotes("")
             setScreenshotFile(undefined)
             setPreviewUrl(undefined)
@@ -244,7 +248,7 @@ export default function PaymentCollectionModal({
                     {/* Screenshot Upload */}
                     <div>
                         <label className="font-sans text-[10px] font-bold tracking-wider uppercase mb-2 block" style={{ color: 'rgba(5,34,16,0.5)' }}>
-                            Payment Screenshot <span className="font-normal normal-case" style={{ color: 'rgba(5,34,16,0.3)' }}>(optional)</span>
+                            Payment Screenshot <span className="text-red-500">*</span>
                         </label>
                         {previewUrl ? (
                             <div className="relative rounded-xl overflow-hidden" style={{ border: '1.5px solid rgba(6,161,92,0.25)' }}>

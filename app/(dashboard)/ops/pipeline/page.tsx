@@ -7,6 +7,7 @@ import type { ItineraryStatus } from "@/lib/firestore"
 import Link from "next/link"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { MapPin, FileText, Package, ClipboardCheck, CheckCircle2 } from "lucide-react"
+import { StatusDialog } from "@/components/ui/StatusDialog"
 
 const columns: { id: ItineraryStatus; label: string; color: string; icon: any }[] = [
     { id: "handover", label: "Handover Received", color: "#a78bfa", icon: FileText },
@@ -26,6 +27,19 @@ function PreOpsPipeline() {
     const [itineraries, setItineraries] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
+
+    // Dialog states
+    const [dialogOpen, setDialogOpen] = useState(false)
+    const [dialogType, setDialogType] = useState<"success" | "error" | "warning">("success")
+    const [dialogTitle, setDialogTitle] = useState("")
+    const [dialogMessage, setDialogMessage] = useState("")
+
+    const showStatus = (type: "success" | "error" | "warning", title: string, message: string) => {
+        setDialogType(type)
+        setDialogTitle(title)
+        setDialogMessage(message)
+        setDialogOpen(true)
+    }
 
     useEffect(() => { loadData() }, [])
 
@@ -58,7 +72,7 @@ function PreOpsPipeline() {
                 if (checklist.length > 0) {
                     const allChecked = checklist.every((c: any) => c.checked)
                     if (!allChecked) {
-                        alert("Please complete all Pre-Ops SOP tasks in the booking view before handing over to Post-Ops.")
+                        showStatus("warning", "SOP Incomplete", "Please complete all Pre-Ops SOP tasks in the booking view before handing over to Post-Ops.")
                         return
                     }
                 }
@@ -177,6 +191,14 @@ function PreOpsPipeline() {
                     </div>
                 </DragDropContext>
             )}
+
+            <StatusDialog
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                type={dialogType}
+                title={dialogTitle}
+                message={dialogMessage}
+            />
         </div>
     )
 }

@@ -50,11 +50,11 @@ export function ReadyMadeGenerator() {
     ]
 
     const [startDate, setStartDate] = useState("")
-    const [adults, setAdults] = useState(2)
+    const [adults, setAdults] = useState<number | string>(2)
     const [children, setChildren] = useState(0)
 
-    const [cwb, setCwb] = useState(0)
-    const [cnb, setCnb] = useState(0)
+    const [cwb, setCwb] = useState<number | string>(0)
+    const [cnb, setCnb] = useState<number | string>(0)
     const [activePricing, setActivePricing] = useState<any[]>([])
 
     const [generating, setGenerating] = useState(false)
@@ -95,6 +95,16 @@ export function ReadyMadeGenerator() {
     const [previewActivities, setPreviewActivities] = useState<any[]>([])
     const [previewDays, setPreviewDays] = useState<any[]>([])
     const [fetchingDetails, setFetchingDetails] = useState(false)
+
+    const handleNumberInput = (value: string) => {
+        // 1. Remove non-numeric characters
+        let cleaned = value.replace(/\D/g, "");
+        // 2. Remove leading zeros if more than one digit (e.g., "05" -> "5", but "0" stays "0")
+        if (cleaned.length > 1 && cleaned.startsWith("0")) {
+            cleaned = cleaned.replace(/^0+/, "");
+        }
+        return cleaned;
+    };
 
     // Dynamic Pricing Helpers
     const getBracketPrice = (id: string) => {
@@ -309,9 +319,11 @@ export function ReadyMadeGenerator() {
                 customerPhone: fullPhone, 
                 startDate, 
                 endDate, 
-                adults, cwb, cnb,
+                adults: Number(adults) || 0, 
+                cwb: Number(cwb) || 0, 
+                cnb: Number(cnb) || 0,
                 totalPrice: Math.round(totalPrice),
-                perPersonPrice: Math.round(totalPrice / (adults + cwb + cnb)),
+                perPersonPrice: Math.round(totalPrice / ((Number(adults) || 0) + (Number(cwb) || 0) + (Number(cnb) || 0))),
                 destination: selectedDestinationData?.name || selectedDestinationData?.destinationName || destinations.find(d => d.id === selectedDestId)?.name || selectedPkg?.destination || "",
                 destinationName: selectedDestinationData?.name || selectedDestinationData?.destinationName || destinations.find(d => d.id === selectedDestId)?.name || selectedPkg?.destinationName || "",
                 createdBy: userProfile?.uid || "",
@@ -359,10 +371,12 @@ export function ReadyMadeGenerator() {
                 flightPrice: 0,
                 optionalPrice: 0,
                 totalPrice: Math.round(totalPrice),
-                perPersonPrice: Math.round(totalPrice / (adults + cwb + cnb)),
+                perPersonPrice: Math.round(totalPrice / ((Number(adults) || 0) + (Number(cwb) || 0) + (Number(cnb) || 0))),
                 margin: Number(adultPrice.margin) || 0,
                 nights: pkg.nights || 0,
-                adults, cwb, cnb
+                adults: Number(adults) || 0, 
+                cwb: Number(cwb) || 0, 
+                cnb: Number(cnb) || 0
             })
 
             router.push(`/itinerary/${itinId}`)
@@ -522,13 +536,13 @@ export function ReadyMadeGenerator() {
         }
     }
 
-    const updatePaxPricing = (index: number, field: string, value: number) => {
+    const updatePaxPricing = (index: number, field: string, value: number | string) => {
         const errorKey = `${index}-${field}`
         const fieldName = field === "net" ? "Net price" : "Margin"
         
         // Handle invalid or negative values by defaulting to 0
         let safeValue = value;
-        if (isNaN(value) || value < 0) {
+        if (typeof value === "number" && (isNaN(value) || value < 0)) {
             safeValue = 0;
             setPricingErrors(prev => ({ ...prev, [errorKey]: `${fieldName} cannot be negative` }))
         } else {
@@ -925,7 +939,9 @@ export function ReadyMadeGenerator() {
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
                                         {paxPricing.map((pax, idx) => {
-                                            const sellRaw = pax.net + (pax.net * (pax.margin / 100));
+                                            const netVal = Number(pax.net) || 0;
+                                            const marginVal = Number(pax.margin) || 0;
+                                            const sellRaw = netVal + (netVal * (marginVal / 100));
                                             const sellRounded = Math.round(sellRaw);
                                             const netErr = pricingErrors[`${idx}-net`];
                                             const marginErr = pricingErrors[`${idx}-margin`];
@@ -937,15 +953,12 @@ export function ReadyMadeGenerator() {
                                                     <td className="px-3 py-2 text-right">
                                                         <div className="flex flex-col items-end gap-1">
                                                             <input
-                                                                type="number"
-                                                                min="0"
-                                                                onKeyDown={e => { if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault(); }}
-                                                                onBlur={e => { if (e.target.value === '' || Number(e.target.value) < 0) updatePaxPricing(idx, "net", 0); }}
+                                                                type="text"
+                                                                inputMode="numeric"
                                                                 className={`w-20 px-2 py-1 border rounded text-right text-xs outline-none transition-all ${netErr ? 'border-red-500 bg-red-50' : 'bg-gray-50 border-gray-200 focus:border-emerald-400'}`}
-                                                                value={pax.net ?? 0}
+                                                                value={pax.net}
                                                                 onChange={e => {
-                                                                    const val = parseInt(e.target.value);
-                                                                    updatePaxPricing(idx, "net", isNaN(val) ? 0 : val);
+                                                                    updatePaxPricing(idx, "net", handleNumberInput(e.target.value));
                                                                 }}
                                                             />
                                                             {netErr && <span className="text-[9px] text-red-500 font-medium whitespace-nowrap">👉 {netErr}</span>}
@@ -954,15 +967,12 @@ export function ReadyMadeGenerator() {
                                                     <td className="px-3 py-2 text-right">
                                                         <div className="flex flex-col items-end gap-1">
                                                             <input
-                                                                type="number"
-                                                                min="0"
-                                                                onKeyDown={e => { if (['-', 'e', 'E', '+'].includes(e.key)) e.preventDefault(); }}
-                                                                onBlur={e => { if (e.target.value === '' || Number(e.target.value) < 0) updatePaxPricing(idx, "margin", 0); }}
+                                                                type="text"
+                                                                inputMode="numeric"
                                                                 className={`w-16 px-2 py-1 border rounded text-right text-xs outline-none transition-all ${marginErr ? 'border-red-500 bg-red-50' : 'bg-gray-50 border-gray-200 focus:border-emerald-400'}`}
-                                                                value={pax.margin ?? 0}
+                                                                value={pax.margin}
                                                                 onChange={e => {
-                                                                    const val = parseInt(e.target.value);
-                                                                    updatePaxPricing(idx, "margin", isNaN(val) ? 0 : val);
+                                                                    updatePaxPricing(idx, "margin", handleNumberInput(e.target.value));
                                                                 }}
                                                             />
                                                             {marginErr && <span className="text-[9px] text-red-500 font-medium whitespace-nowrap">👉 {marginErr}</span>}
@@ -1220,19 +1230,40 @@ export function ReadyMadeGenerator() {
                                             <div className="space-y-1 text-center">
                                                 <label className="text-[9px] font-bold text-gray-400 uppercase">Adults</label>
                                                 <div className="relative group">
-                                                    <input type="number" min="1" className="w-full px-2 py-3 bg-gray-50 border border-gray-100 rounded-xl text-center text-lg font-serif font-bold focus:bg-white focus:border-emerald-500 transition-all outline-none" value={adults} onChange={e => setAdults(Number(e.target.value))} />
+                                                    <input 
+                                                        type="number" 
+                                                        min="1" 
+                                                        inputMode="numeric"
+                                                        className="w-full px-2 py-3 bg-gray-50 border border-gray-100 rounded-xl text-center text-lg font-serif font-bold focus:bg-white focus:border-emerald-500 transition-all outline-none" 
+                                                        value={adults} 
+                                                        onChange={e => setAdults(handleNumberInput(e.target.value))} 
+                                                    />
                                                 </div>
                                             </div>
                                             <div className="space-y-1 text-center">
                                                 <label className="text-[9px] font-bold text-gray-400 uppercase">CWB (5-11 yrs)</label>
                                                 <div className="relative">
-                                                    <input type="number" min="0" className="w-full px-2 py-3 bg-gray-50 border border-gray-100 rounded-xl text-center text-lg font-serif font-bold focus:bg-white focus:border-emerald-500 transition-all outline-none" value={cwb} onChange={e => setCwb(Number(e.target.value))} />
+                                                    <input 
+                                                        type="number" 
+                                                        min="0" 
+                                                        inputMode="numeric"
+                                                        className="w-full px-2 py-3 bg-gray-50 border border-gray-100 rounded-xl text-center text-lg font-serif font-bold focus:bg-white focus:border-emerald-500 transition-all outline-none" 
+                                                        value={cwb} 
+                                                        onChange={e => setCwb(handleNumberInput(e.target.value))} 
+                                                    />
                                                 </div>
                                             </div>
                                             <div className="space-y-1 text-center">
                                                 <label className="text-[9px] font-bold text-gray-400 uppercase">CNB (2-4 yrs)</label>
                                                 <div className="relative">
-                                                    <input type="number" min="0" className="w-full px-2 py-3 bg-gray-50 border border-gray-100 rounded-xl text-center text-lg font-serif font-bold focus:bg-white focus:border-emerald-500 transition-all outline-none" value={cnb} onChange={e => setCnb(Number(e.target.value))} />
+                                                    <input 
+                                                        type="number" 
+                                                        min="0" 
+                                                        inputMode="numeric"
+                                                        className="w-full px-2 py-3 bg-gray-50 border border-gray-100 rounded-xl text-center text-lg font-serif font-bold focus:bg-white focus:border-emerald-500 transition-all outline-none" 
+                                                        value={cnb} 
+                                                        onChange={e => setCnb(handleNumberInput(e.target.value))} 
+                                                    />
                                                 </div>
                                             </div>
                                         </div>

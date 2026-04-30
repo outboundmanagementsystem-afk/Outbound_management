@@ -231,7 +231,7 @@ export default function VoucherPage() {
                                     <div key={idx} className="flex items-center justify-between p-5 rounded-xl font-sans" style={{ backgroundColor: '#f9fafb', border: '1px solid #f3f4f6' }}>
                                         <div>
                                             <p className="font-bold text-lg" style={{ color: '#111827' }}>{hotel.name || hotel.hotelName || "Unnamed Hotel"}</p>
-                                            <p className="text-sm mt-0.5" style={{ color: '#6b7280' }}>{hotel.category || 'Standard'}{hotel.rating ? ` · ${hotel.rating}★` : ''} Or Similar Property</p>
+                                            <p className="text-sm mt-0.5" style={{ color: '#6b7280' }}>{hotel.category || 'Standard'} Or Similar Property</p>
                                         </div>
                                         <div className="text-right">
                                             <p className="font-bold" style={{ color: '#06a15c' }}>{itin.nights || 0} Nights</p>

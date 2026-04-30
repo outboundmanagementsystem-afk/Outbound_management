@@ -133,8 +133,9 @@ function PostOpsBookingDetail() {
         </div>
     )
 
-    const completedCount = checklist.filter(c => c.checked).length
-    const progress = checklist.length > 0 ? Math.round((completedCount / checklist.length) * 100) : 0
+    const requiredChecklist = checklist.filter(c => c.isRequired !== false)
+    const completedCount = requiredChecklist.filter(c => c.checked).length
+    const progress = requiredChecklist.length > 0 ? Math.round((completedCount / requiredChecklist.length) * 100) : 0
 
     return (
         <div className="space-y-6 max-w-3xl mx-auto">
@@ -150,7 +151,7 @@ function PostOpsBookingDetail() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                     <Link
-                        href={`/sales/itinerary-generator/custom?editId=${bookingId}&returnTo=${encodeURIComponent(`/post-ops/booking/${bookingId}`)}`}
+                        href={`/sales/itinerary-generator/${booking?.module === 'built-package' ? 'build-package' : 'custom'}?editId=${bookingId}&returnTo=${encodeURIComponent(`/post-ops/booking/${bookingId}`)}`}
                         className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-sans text-[10px] tracking-wider uppercase transition-all hover:scale-105"
                         style={{ background: 'rgba(52,211,153,0.1)', color: '#06a15c', border: '1px solid rgba(52,211,153,0.2)' }}
                     >
@@ -190,7 +191,7 @@ function PostOpsBookingDetail() {
                 <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(5,34,16,0.08)' }}>
                     <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: progress === 100 ? '#34d399' : 'linear-gradient(90deg, #06a15c, #34d399)' }} />
                 </div>
-                <p className="font-sans text-xs mt-2" style={{ color: 'rgba(5,34,16,0.5)' }}>{completedCount} of {checklist.length} Post-Op tasks completed</p>
+                <p className="font-sans text-xs mt-2" style={{ color: 'rgba(5,34,16,0.5)' }}>{completedCount} of {requiredChecklist.length} mandatory Post-Op tasks completed</p>
                 {booking.status === "completed" && (
                     <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg" style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)' }}>
                         <CheckCircle className="w-4 h-4" style={{ color: '#34d399' }} />

@@ -43,6 +43,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
     const editId = searchParams.get("editId")
     const [step, setStep] = useState(0)
     const [saving, setSaving] = useState(false)
+    const [isEditingItinerary, setIsEditingItinerary] = useState(false)
+    const [itinModule, setItinModule] = useState<string | null>(null)
     const [calMonth, setCalMonth] = useState(() => new Date())
     const [pickingEnd, setPickingEnd] = useState(false)
 
@@ -355,6 +357,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
         const loadEditData = async () => {
             try {
                 let it, d, h, t, p, f, a;
+                let isItin = false;
                 if (mode === "package") {
                     [it, d, h, t, p, f, a] = await Promise.all([
                         getPackage(editId) as Promise<any>,
@@ -365,7 +368,20 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                         getPackageFlights(editId) as Promise<any[]>,
                         getPackageActivities(editId) as Promise<any[]>,
                     ])
+                    if (!it) {
+                        isItin = true;
+                        [it, d, h, t, p, f, a] = await Promise.all([
+                            getItinerary(editId) as Promise<any>,
+                            getItineraryDays(editId) as Promise<any[]>,
+                            getItineraryHotels(editId) as Promise<any[]>,
+                            getItineraryTransfers(editId) as Promise<any[]>,
+                            getItineraryPricing(editId) as Promise<any[]>,
+                            getItineraryFlights(editId) as Promise<any[]>,
+                            getItineraryActivities(editId) as Promise<any[]>,
+                        ])
+                    }
                 } else {
+                    isItin = true;
                     [it, d, h, t, p, f, a] = await Promise.all([
                         getItinerary(editId) as Promise<any>,
                         getItineraryDays(editId) as Promise<any[]>,
@@ -376,8 +392,10 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                         getItineraryActivities(editId) as Promise<any[]>,
                     ])
                 }
+                setIsEditingItinerary(isItin);
 
                 if (it) {
+                    setItinModule(it.module || null)
                     setCustomerName(it.customerName || it.packageName || "")
                     setCustomerPhone(it.customerPhone || "")
                     const split = splitPhoneNumber(it.customerPhone || "")
@@ -610,7 +628,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
             let itinId = editId as string
             let pipelineItinIdForOnSave: string | null = null
 
-            if (mode === "package") {
+            if (mode === "package" && !isEditingItinerary) {
                 const packageData = {
                     ...baseData,
                     packageName: customerName,
@@ -1875,7 +1893,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                         </div>
 
                                         {/* Optional Pricing - hidden in package mode */}
-                                        {mode !== "package" && (
+                                        {(mode !== "package" && itinModule !== "built-package") && (
                                         <div className="pt-3" style={{ borderTop: '1px solid #f3f4f6' }}>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                                 <div>
@@ -2171,7 +2189,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                         <p className="font-serif text-xl font-black tracking-wide leading-tight uppercase" style={{ color: '#052210' }}>{plan.category}</p>
                                     </div>
 
-                                    {mode === "package" && (
+                                    {(mode === "package" || itinModule === "built-package") && (
                                         <div className="mb-4">
                                             <label className="font-sans text-[10px] uppercase tracking-wider mb-1 block" style={{ color: '#059669' }}>Override Package Total (₹)</label>
                                             <input

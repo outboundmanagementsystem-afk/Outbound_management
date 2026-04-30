@@ -6,7 +6,7 @@ import { Plane, Clock } from "lucide-react"
 interface FlightSegment {
   type: string; from: string; fromCode: string; to: string; toCode: string;
   departure: string; departureDate: string; arrival: string; arrivalDate: string;
-  airline: string; duration: string; flightNo: string;
+  airline: string; duration: string; flightNo: string; price?: number | string;
 }
 interface FlightDetailsProps { segments?: FlightSegment[]; module?: string; }
 
@@ -131,9 +131,9 @@ export function FlightDetails({ segments, module }: FlightDetailsProps = {}) {
                   className="flex items-center justify-between px-5 py-3"
                   style={{ background: '#0B1510' }}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap flex-1">
                     <span
-                      className="px-3 py-1 rounded-lg font-sans text-[8px] font-black tracking-[0.1em] uppercase"
+                      className="px-3 py-1 rounded-lg font-sans text-[8px] font-black tracking-[0.1em] uppercase shrink-0"
                       style={{
                         background: isReturn ? 'rgba(100,149,237,0.15)' : 'rgba(255,229,0,0.12)',
                         color: isReturn ? '#87CEEB' : '#FFE500',
@@ -142,11 +142,19 @@ export function FlightDetails({ segments, module }: FlightDetailsProps = {}) {
                     >
                       {seg.type || 'Onward'}
                     </span>
-                    <span className="font-sans text-[10px] font-bold tracking-widest text-white/40 uppercase">{seg.flightNo || (seg as any).flightNumber || 'TBA'}</span>
+                    <span className="font-sans text-[10px] font-bold tracking-widest text-white/40 uppercase whitespace-nowrap">{seg.flightNo || (seg as any).flightNumber || 'TBA'}</span>
+                    
+                    {seg.airline && (
+                      <>
+                        <div className="h-3 w-px bg-white/20 mx-1" />
+                        <span className="font-sans text-[10px] font-bold tracking-widest text-white/60 uppercase whitespace-nowrap">{seg.airline}</span>
+                      </>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="w-3 h-3 text-[#FFE500]" />
-                    <span className="font-sans text-[10px] font-black text-[#FFE500] whitespace-nowrap" style={{ overflow: 'visible', textOverflow: 'unset' }}>{seg.duration || '2H'}</span>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Clock className="w-3 h-3 text-[#000000]" />
+                    <span className="font-sans text-[10px] font-black text-[#000000] whitespace-nowrap" style={{ overflow: 'visible', textOverflow: 'unset' }}>{seg.duration || '2H'}</span>
                   </div>
                 </div>
 
@@ -164,7 +172,7 @@ export function FlightDetails({ segments, module }: FlightDetailsProps = {}) {
                       {/* PATH */}
                       <div className="flex flex-col items-center flex-shrink-0">
                         <Plane className="w-4 h-4 text-[#1A211D] mb-1 flight-text-dark" />
-                        <div className="w-12 h-0.5 border-t border-dashed border-[#FFE500]" />
+                        <div className="w-12 h-0.5 border-t border-dashed border-gray-300" />
                       </div>
   
                       {/* TO */}
@@ -194,10 +202,29 @@ export function FlightDetails({ segments, module }: FlightDetailsProps = {}) {
                       </div>
                     </div>
 
-                  {/* Airline */}
-                  {seg.airline && (
-                    <div className="mt-3 text-center">
-                      <span className="font-sans text-[8px] font-black text-gray-400 uppercase tracking-widest">{seg.airline}</span>
+                  {/* Price and Note */}
+                  {seg.price && Number(seg.price) > 0 && (
+                    <div className="mt-6 text-center pt-4 border-t border-gray-100">
+                      <p className="font-sans text-xl font-black text-[#1A211D] flight-text-dark">₹{Number(seg.price).toLocaleString('en-IN')}</p>
+                      <div style={{ 
+                          background: 'rgba(5, 34, 16, 0.03)', 
+                          border: '1px solid rgba(5, 34, 16, 0.1)',
+                          borderRadius: '6px',
+                          padding: '8px 12px',
+                          marginTop: '10px',
+                          textAlign: 'center'
+                      }}>
+                          <p style={{ 
+                              color: '#052210', 
+                              fontSize: '11px', 
+                              fontWeight: '600',
+                              fontStyle: 'italic',
+                              letterSpacing: '0.02em',
+                              margin: 0
+                          }}>
+                              ⚠ Fare is based on current availability and subject to change due to airline pricing fluctuations. The final price will be confirmed and quoted at the time of booking.
+                          </p>
+                      </div>
                     </div>
                   )}
                 </div>

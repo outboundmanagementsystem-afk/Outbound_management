@@ -28,6 +28,7 @@ export default function PublicItineraryPage() {
     const [flights, setFlights] = useState<any[]>([])
     const [activities, setActivities] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
 
     useEffect(() => {
         loadData()
@@ -268,7 +269,7 @@ export default function PublicItineraryPage() {
         amenities: h.amenities ? (typeof h.amenities === "string" ? h.amenities.split(",").map((a: string) => a.trim()) : h.amenities) : ["Breakfast Included"],
         mealPlan: h.mealPlan || "",
         roomCategory: h.roomCategory || h.roomType || "",
-        category: h.category || "STANDARD"
+        category: h.tier || h.category || "STANDARD"
     }))
 
     // Build day plans for the component with sequential dates
@@ -405,12 +406,21 @@ export default function PublicItineraryPage() {
                                 }
                             `}</style>
                         )}
-                        <HotelDetails hotelList={hotelList} />
+                        <HotelDetails 
+                            hotelList={hotelList} 
+                            baseUrl={baseUrl}
+                            showCustomImage={itin?.module === "built-package"}
+                        />
                     </div>
                 )}
 
                 {/* TRANSFERS - Individual chunk */}
-                {hasTransfers && (
+                {transfers && transfers.length > 0 && transfers.some(t => {
+                    const p = (t.pickup || "").trim().toLowerCase();
+                    const d = (t.drop || "").trim().toLowerCase();
+                    return (p !== "" && p !== "select pickup location") || 
+                           (d !== "" && d !== "select drop location");
+                }) && (
                     <div className="pdf-chunk pdf-dark-bg w-full">
                         <TransferDetails transfers={transfers} />
                     </div>
@@ -430,6 +440,7 @@ export default function PublicItineraryPage() {
                         plans={pricing?.[0]?.plans || itin.plans}
                         inclusions={['Per Person']}
                         gstNote="5% GST applicable on total package cost"
+                        baseUrl={baseUrl}
                     />
                 </div>
 

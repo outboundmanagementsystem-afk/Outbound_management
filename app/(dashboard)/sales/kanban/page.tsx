@@ -7,6 +7,7 @@ import type { ItineraryStatus } from "@/lib/firestore"
 import Link from "next/link"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { FileText, Calendar, MapPin, DollarSign, X, AlertTriangle, CheckCircle2 } from "lucide-react"
+import { StatusDialog } from "@/components/ui/StatusDialog"
 
 const columns: { id: ItineraryStatus; label: string; color: string }[] = [
     { id: "draft", label: "Draft", color: "#9ca3af" },
@@ -28,6 +29,19 @@ function KanbanBoard() {
     const [loading, setLoading] = useState(true)
     const [search, setSearch] = useState("")
 
+    // Dialog states
+    const [dialogOpen, setDialogOpen] = useState(false)
+    const [dialogType, setDialogType] = useState<"success" | "error" | "warning">("success")
+    const [dialogTitle, setDialogTitle] = useState("")
+    const [dialogMessage, setDialogMessage] = useState("")
+
+    const showStatus = (type: "success" | "error" | "warning", title: string, message: string) => {
+        setDialogType(type)
+        setDialogTitle(title)
+        setDialogMessage(message)
+        setDialogOpen(true)
+    }
+
     useEffect(() => { loadData() }, [])
 
     const loadData = async () => {
@@ -48,7 +62,7 @@ function KanbanBoard() {
                 if (salesChecklist.length > 0) {
                     const allChecked = salesChecklist.every((c: any) => c.checked)
                     if (!allChecked) {
-                        alert("Please complete the Sales Pre-Handover Checklist in the itinerary view before moving to Handover.")
+                        showStatus("warning", "Checklist Incomplete", "Please complete the Sales Pre-Handover Checklist in the itinerary view before moving to Handover.")
                         return // Don't move yet
                     }
                 }
@@ -158,6 +172,13 @@ function KanbanBoard() {
                 </DragDropContext>
             )}
 
+            <StatusDialog
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                type={dialogType}
+                title={dialogTitle}
+                message={dialogMessage}
+            />
         </div>
     )
 }

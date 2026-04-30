@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { getSOPs, createSOP, updateSOP, deleteSOP } from "@/lib/firestore"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { GripHorizontal, GripVertical, Plus, Trash2, Edit3, X, Save, MessageSquare, ClipboardList, ChevronDown, FileUp, CheckSquare, Type, Calendar, Link2, List, Star, FileText } from "lucide-react"
+import { StatusDialog } from "@/components/ui/StatusDialog"
 
 const departments = [
     { id: "sales", label: "Sales", color: "#06a15c" },
@@ -69,6 +70,23 @@ function SOPsContent() {
     const [formItems, setFormItems] = useState<SOPItem[]>([newItem()])
     const [formWhatsapp, setFormWhatsapp] = useState("")
     const [isMounted, setIsMounted] = useState(false)
+    const [editingItemId, setEditingItemId] = useState<string | null>(null)
+    const [stepEditForm, setStepEditForm] = useState<SOPItem | null>(null)
+    const [newPoint, setNewPoint] = useState("")
+    
+    // Dialog states
+    const [dialogOpen, setDialogOpen] = useState(false)
+    const [dialogType, setDialogType] = useState<"success" | "error" | "warning">("success")
+    const [dialogTitle, setDialogTitle] = useState("")
+    const [dialogMessage, setDialogMessage] = useState("")
+
+    const showStatus = (type: "success" | "error" | "warning", title: string, message: string) => {
+        setDialogType(type)
+        setDialogTitle(title)
+        setDialogMessage(message)
+        setDialogOpen(true)
+    }
+
     useEffect(() => { setIsMounted(true) }, [])
 
     useEffect(() => { loadSOPs() }, [])
@@ -104,6 +122,7 @@ function SOPsContent() {
                 notes: i.notes || '',
                 points: i.points || [],
                 extraInfo: i.extraInfo || '',
+                options: i.options || [],
             }
         })
         setFormItems(items.length ? items : [newItem()])
@@ -166,17 +185,110 @@ function SOPsContent() {
         try {
             if (editSOP) {
                 await updateSOP(editSOP.id, { title: formTitle, items, whatsappTemplate: formWhatsapp })
+                showStatus("success", "Updated", "SOP Template updated successfully")
             } else {
                 await createSOP({ title: formTitle, department: activeDept, items, whatsappTemplate: formWhatsapp })
+                showStatus("success", "Created", "New SOP Template created successfully")
             }
             setShowModal(false)
             loadSOPs()
-        } catch (e) { console.error(e) }
+        } catch (e) { 
+            console.error(e)
+            showStatus("error", "Error", "Failed to save SOP template")
+        }
     }
 
     const handleDelete = async (id: string) => {
+        showStatus("warning", "Confirm Delete", "Are you sure you want to delete this SOP? This cannot be undone.")
+        // Note: Actual logic triggered by separate flow or confirming via prompt would be preferred, 
+        // but adhering to simple replacement request:
         if (!confirm("Delete this SOP?")) return
-        try { await deleteSOP(id); loadSOPs() } catch (e) { console.error(e) }
+        try { 
+            await deleteSOP(id); 
+            loadSOPs() 
+            showStatus("success", "Deleted", "SOP Template deleted successfully")
+        } catch (e) { 
+            console.error(e)
+            showStatus("error", "Error", "Failed to delete SOP template")
+        }
+    }
+
+    const startEditingItem = (sopId: string, item: SOPItem) => {
+        setEditingItemId(`${sopId}-${item.id}`)
+        setStepEditForm({ ...item })
+    }
+
+    const saveStepInline = async (sopId: string) => {
+        if (!stepEditForm) return
+        const sop = sops.find(s => s.id === sopId)
+        if (!sop) return
+
+        const newItems = (sop.items || []).map((i: any) => i.id === stepEditForm.id ? stepEditForm : i)
+        
+        try {
+            await updateSOP(sopId, { items: newItems })
+            const newSops = [...sops]
+            const idx = newSops.findIndex(s => s.id === sopId)
+            newSops[idx] = { ...sop, items: newItems }
+            setSOPs(newSops)
+            setEditingItemId(null)
+            setStepEditForm(null)
+            showStatus("success", "Saved", "Step changes saved successfully")
+        } catch (e) { 
+            console.error(e)
+            showStatus("error", "Error", "Failed to save step")
+        }
+    }
+
+    const deleteStepInline = async (sopId: string, itemId: string) => {
+        if (!confirm("Delete this step?")) return
+        const sop = sops.find(s => s.id === sopId)
+        if (!sop) return
+
+        const newItems = (sop.items || []).filter((i: any) => i.id !== itemId)
+        
+        try {
+            await updateSOP(sopId, { items: newItems })
+            const newSops = [...sops]
+            const idx = newSops.findIndex(s => s.id === sopId)
+            newSops[idx] = { ...sop, items: newItems }
+            setSOPs(newSops)
+            showStatus("success", "Deleted", "Step removed successfully")
+        } catch (e) { 
+            console.error(e)
+            showStatus("error", "Error", "Failed to remove step")
+        }
+    }
+
+    const addNewStepInline = async (sopId: string) => {
+        const sop = sops.find(s => s.id === sopId)
+        if (!sop) return
+
+        const newItemId = Math.random().toString(36).substring(7)
+        const newItem: SOPItem = {
+            id: newItemId,
+            title: "",
+            type: "checkbox",
+            isRequired: true,
+            notes: "",
+            points: [],
+            dependsOn: ""
+        }
+
+        const newItems = [...(sop.items || []), newItem]
+        
+        try {
+            await updateSOP(sopId, { items: newItems })
+            const newSops = [...sops]
+            const idx = newSops.findIndex(s => s.id === sopId)
+            newSops[idx] = { ...sop, items: newItems }
+            setSOPs(newSops)
+            setEditingItemId(`${sopId}-${newItemId}`)
+            setStepEditForm(newItem)
+        } catch (e) { 
+            console.error(e)
+            showStatus("error", "Error", "Failed to add new step")
+        }
     }
 
     const deptColor = departments.find(d => d.id === activeDept)?.color || "#06a15c"
@@ -217,19 +329,18 @@ function SOPsContent() {
                 <div className="space-y-4">
                     {filtered.map((sop: any) => (
                         <div key={sop.id} className="rounded-2xl p-6" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
-                            <div className="flex items-start justify-between mb-4">
+                            <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
                                 <div>
-                                    <h3 className="font-serif text-lg tracking-wide" style={{ color: '#052210' }}>{sop.title}</h3>
-                                    <p className="font-sans text-[10px] tracking-wider uppercase mt-1" style={{ color: deptColor }}>{sop.items?.length || 0} checklist items</p>
+                                    <h3 className="text-2xl font-bold text-[#052210]">{sop.title}</h3>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                                            {sop.items?.length || 0} {sop.items?.length === 1 ? 'CHECKLIST ITEM' : 'CHECKLIST ITEMS'}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => openEdit(sop)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-50" style={{ border: '1px solid rgba(5,34,16,0.08)' }}>
-                                        <Edit3 className="w-3.5 h-3.5" style={{ color: '#06a15c' }} />
-                                    </button>
-                                    <button onClick={() => handleDelete(sop.id)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-red-50" style={{ border: '1px solid rgba(239,68,68,0.15)' }}>
-                                        <Trash2 className="w-3.5 h-3.5" style={{ color: '#ef4444' }} />
-                                    </button>
-                                </div>
+                                <button onClick={() => handleDelete(sop.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                                    <Trash2 className="w-5 h-5" />
+                                </button>
                             </div>
                             <Droppable droppableId={`${sop.id}||items`}>
                                 {(provided) => (
@@ -242,69 +353,231 @@ function SOPsContent() {
                                     const dependsOn = isObj ? (item.dependsOn || '') : ''
                                     const depLabel = dependsOn ? (sop.items || []).find((x: any) => x?.id === dependsOn)?.title : ''
 
+                                    const isEditing = editingItemId === `${sop.id}-${item.id || idx}`
+
+                                    if (isEditing && stepEditForm) {
+                                        return (
+                                            <div key={`${sop.id}-${item.id || idx}`} className="p-8 rounded-[32px] border border-emerald-100 bg-white shadow-xl space-y-6 my-4">
+                                                {/* Edit Header */}
+                                                <div className="flex items-center gap-4">
+                                                    <input 
+                                                        value={stepEditForm.title}
+                                                        onChange={e => setStepEditForm({...stepEditForm, title: e.target.value})}
+                                                        className="flex-1 px-5 py-3.5 rounded-2xl border border-gray-100 text-lg font-bold focus:outline-none focus:border-emerald-500"
+                                                        placeholder="Step Title"
+                                                    />
+                                                    <div className="relative w-64">
+                                                        <select 
+                                                            value={stepEditForm.type}
+                                                            onChange={e => setStepEditForm({...stepEditForm, type: e.target.value})}
+                                                            className="w-full pl-5 pr-10 py-3.5 rounded-2xl border border-gray-100 text-sm font-medium appearance-none focus:outline-none focus:border-emerald-500 bg-white"
+                                                        >
+                                                            {stepTypes.map(t => (
+                                                                <option key={t.id} value={t.id}>{t.label}</option>
+                                                            ))}
+                                                        </select>
+                                                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                                    </div>
+                                                    <button onClick={() => deleteStepInline(sop.id, item.id)} className="p-3 text-gray-300 hover:text-red-500 transition-colors">
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+
+                                                {/* Dependency */}
+                                                <div>
+                                                    <select 
+                                                        value={stepEditForm.dependsOn || ""}
+                                                        onChange={e => setStepEditForm({...stepEditForm, dependsOn: e.target.value})}
+                                                        className="w-full px-5 py-3.5 rounded-2xl border border-gray-100 text-sm font-medium focus:outline-none focus:border-emerald-500 bg-gray-50/50 text-gray-500 appearance-none"
+                                                    >
+                                                        <option value="">No dependency</option>
+                                                        {sop.items.filter((i: any) => i.id !== item.id).map((i: any) => (
+                                                            <option key={i.id} value={i.id}>{i.title}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Notes */}
+                                                <div>
+                                                    <textarea 
+                                                        value={stepEditForm.notes || ""}
+                                                        onChange={e => setStepEditForm({...stepEditForm, notes: e.target.value})}
+                                                        className="w-full px-5 py-3.5 rounded-2xl border border-gray-100 text-sm focus:outline-none focus:border-emerald-500 min-h-[60px]"
+                                                        placeholder="Notes / Instructions"
+                                                    />
+                                                </div>
+
+                                                {/* Sub-tasks */}
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Key Points / Sub-tasks</h4>
+                                                        <button 
+                                                            onClick={() => {
+                                                                if (newPoint.trim()) {
+                                                                    setStepEditForm({...stepEditForm, points: [...(stepEditForm.points || []), newPoint.trim()]})
+                                                                    setNewPoint("")
+                                                                }
+                                                            }}
+                                                            className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:opacity-70 transition-all"
+                                                        >
+                                                            <Plus className="w-3 h-3" /> Add Point
+                                                        </button>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <input 
+                                                            value={newPoint}
+                                                            onChange={e => setNewPoint(e.target.value)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === "Enter" && newPoint.trim()) {
+                                                                    e.preventDefault()
+                                                                    setStepEditForm({...stepEditForm, points: [...(stepEditForm.points || []), newPoint.trim()]})
+                                                                    setNewPoint("")
+                                                                }
+                                                            }}
+                                                            className="w-full px-5 py-3.5 rounded-2xl border border-gray-100 text-sm italic focus:outline-none focus:border-emerald-500 bg-gray-50/50"
+                                                            placeholder="Extra configuration or metadata (Optional)"
+                                                        />
+                                                        <div className="space-y-2">
+                                                            {(stepEditForm.points || []).map((p, i) => (
+                                                                <div key={i} className="flex items-center gap-3 px-5 py-3 rounded-xl border border-gray-50 bg-white group/point">
+                                                                    <span className="flex-1 text-sm font-medium text-gray-600">{p}</span>
+                                                                    <button onClick={() => setStepEditForm({...stepEditForm, points: (stepEditForm.points || []).filter((_, k) => k !== i)})} className="text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover/point:opacity-100">
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Acknowledgement Toggle */}
+                                                <div className="p-5 rounded-2xl border border-gray-100 flex items-center justify-between bg-gray-50/30">
+                                                    <div>
+                                                        <p className="text-sm font-bold text-[#052210]">Require Acknowledgement</p>
+                                                        <p className="text-[11px] text-gray-400 mt-0.5">User must explicitly tick "Yes, I have done this"</p>
+                                                    </div>
+                                                    <button 
+                                                        onClick={() => setStepEditForm({...stepEditForm, requiresAcknowledgement: !stepEditForm.requiresAcknowledgement})}
+                                                        className={`w-12 h-6 rounded-full relative transition-all ${stepEditForm.requiresAcknowledgement ? 'bg-emerald-600' : 'bg-gray-200'}`}
+                                                    >
+                                                        <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${stepEditForm.requiresAcknowledgement ? 'left-7' : 'left-1'}`} />
+                                                    </button>
+                                                </div>
+
+                                                {/* Options (for choice types) */}
+                                                {(stepEditForm.type === 'multiple_choice' || stepEditForm.type === 'multiple_select') && (
+                                                    <div className="space-y-4">
+                                                        <div className="flex items-center justify-between">
+                                                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Options</h4>
+                                                            <button 
+                                                                onClick={() => setStepEditForm({...stepEditForm, options: [...(stepEditForm.options || []), ""]})}
+                                                                className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-emerald-600 hover:opacity-70 transition-all"
+                                                            >
+                                                                <Plus className="w-3 h-3" /> Add Option
+                                                            </button>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            {(stepEditForm.options || []).map((o, i) => (
+                                                                <div key={i} className="flex gap-2 items-center">
+                                                                    <input 
+                                                                        value={o}
+                                                                        onChange={e => {
+                                                                            const newOpts = [...(stepEditForm.options || [])]
+                                                                            newOpts[i] = e.target.value
+                                                                            setStepEditForm({...stepEditForm, options: newOpts})
+                                                                        }}
+                                                                        className="flex-1 px-4 py-2.5 rounded-xl border border-gray-100 text-xs focus:outline-none focus:border-emerald-500"
+                                                                        placeholder={`Option ${i + 1}`}
+                                                                    />
+                                                                    <button onClick={() => setStepEditForm({...stepEditForm, options: (stepEditForm.options || []).filter((_, k) => k !== i)})} className="text-gray-300 hover:text-red-500">
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Footer */}
+                                                <div className="flex items-center justify-between pt-4">
+                                                    <div className="flex gap-0.5 p-1 rounded-xl bg-gray-100 w-fit">
+                                                        <button 
+                                                            onClick={() => setStepEditForm({...stepEditForm, isRequired: true})}
+                                                            className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${stepEditForm.isRequired ? 'bg-[#052210] text-white' : 'text-gray-400'}`}
+                                                        >Mandatory</button>
+                                                        <button 
+                                                            onClick={() => setStepEditForm({...stepEditForm, isRequired: false})}
+                                                            className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${!stepEditForm.isRequired ? 'bg-[#052210] text-white' : 'text-gray-400'}`}
+                                                        >Optional</button>
+                                                    </div>
+                                                    <div className="flex items-center gap-3">
+                                                        <button 
+                                                            onClick={() => saveStepInline(sop.id)}
+                                                            className="px-10 py-3 rounded-2xl bg-emerald-600 text-white text-sm font-bold uppercase tracking-wider hover:opacity-90 transition-all shadow-lg shadow-emerald-100"
+                                                        >Save</button>
+                                                        <button onClick={() => setEditingItemId(null)} className="px-6 py-3 text-xs font-bold uppercase tracking-wider text-gray-400">Cancel</button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    }
+
                                     return (
                                         <Draggable key={`${sop.id}-${item.id || idx}`} draggableId={`${sop.id}||${item.id || idx}`} index={idx}>
                                             {(provided) => (
                                         <div 
                                             ref={provided.innerRef}
                                             {...provided.draggableProps}
-                                            className="flex items-center gap-3 py-2.5 px-4 rounded-xl" style={{ background: 'rgba(5,34,16,0.02)', ...provided.draggableProps.style }}>
-                                            <div {...provided.dragHandleProps} className="text-gray-400 hover:text-gray-600 cursor-grab active:cursor-grabbing">
-                                                <GripVertical className="w-4 h-4" />
+                                            className="flex items-center gap-3 py-4 px-6 rounded-2xl transition-all group" 
+                                            style={{ background: 'rgba(5,34,16,0.02)', ...provided.draggableProps.style }}>
+                                            <div {...provided.dragHandleProps} className="text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing">
+                                                <GripVertical className="w-5 h-5" />
                                             </div>
-                                            <div className="w-4 h-4 rounded border-2 flex-shrink-0" style={{ borderColor: 'rgba(5,34,16,0.2)' }} />
+                                            <div className="w-5 h-5 rounded-lg border-2 flex-shrink-0" style={{ borderColor: 'rgba(5,34,16,0.1)' }} />
                                             <div className="flex-1 min-w-0">
-                                                <div className="flex items-center gap-2 flex-wrap">
-                                                    <span className="font-sans text-sm font-medium" style={{ color: '#052210' }}>{title}</span>
-                                                    {!isRequired && (
-                                                        <span className="font-sans text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded-full" style={{ color: 'rgba(5,34,16,0.4)', background: 'rgba(5,34,16,0.06)' }}>Optional</span>
-                                                    )}
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                                    <span className="font-sans text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded" style={{ background: 'rgba(5,34,16,0.06)', color: 'rgba(5,34,16,0.45)' }}>
-                                                        {typeLabel(type)}
-                                                    </span>
-                                                    {depLabel && (
-                                                        <span className="font-sans text-[9px] font-bold tracking-wider uppercase flex items-center gap-1" style={{ color: '#06a15c' }}>
-                                                            <Link2 className="w-2.5 h-2.5" /> Depends on: {depLabel}
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="font-sans text-base font-bold" style={{ color: '#052210' }}>{title}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-sans text-[9px] font-black tracking-wider uppercase px-2 py-0.5 rounded bg-white text-gray-400 border border-gray-100">
+                                                            {typeLabel(type)}
                                                         </span>
-                                                    )}
-                                                    {isObj && item.requiresAcknowledgement && (
-                                                        <span className="font-sans text-[9px] font-bold tracking-wider uppercase px-2 py-0.5 rounded flex items-center gap-1" style={{ background: 'rgba(5,34,16,0.06)', color: 'rgba(5,34,16,0.6)' }}>
-                                                            <CheckSquare className="w-2.5 h-2.5" /> Must Acknowledge
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                  {isObj && (item.notes || (item.points && item.points.length > 0) || item.extraInfo || (item.options && item.options.length > 0)) && (
-                                                      <div className="mt-3 space-y-2 border-l-2 border-dashed pl-3" style={{ borderColor: 'rgba(5,34,16,0.1)' }}>
-                                                          {item.notes && <p className="font-sans text-[11px] italic leading-relaxed" style={{ color: 'rgba(5,34,16,0.5)' }}>{item.notes}</p>}
-                                                          {item.options && item.options.length > 0 && (
-                                                              <ul className="space-y-1">
-                                                                  {item.options.map((o: string, k: number) => (
-                                                                      <li key={k} className="font-sans text-[10px] flex items-center gap-1.5" style={{ color: 'rgba(5,34,16,0.6)' }}>
-                                                                          <span className={item.type === 'multiple_choice' ? "w-2 h-2 rounded-full border border-gray-400" : "w-2 h-2 rounded-[2px] border border-gray-400"} />
-                                                                          {o}
-                                                                      </li>
-                                                                  ))}
-                                                              </ul>
-                                                          )}
-                                                        {item.points && item.points.length > 0 && (
-                                                            <ul className="space-y-1">
-                                                                {item.points.map((p: string, k: number) => (
-                                                                    <li key={k} className="font-sans text-[10px] flex items-start gap-1.5" style={{ color: 'rgba(5,34,16,0.6)' }}>
-                                                                        <span className="w-1 h-1 rounded-full mt-1.5 flex-shrink-0" style={{ background: 'rgba(5,34,16,0.3)' }} />
-                                                                        {p}
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
+                                                        {!isRequired && (
+                                                            <span className="font-sans text-[9px] font-bold tracking-wider uppercase text-orange-400">Optional</span>
                                                         )}
-                                                        {item.extraInfo && (
-                                                            <div className="inline-flex items-center px-1.5 py-0.5 rounded font-mono text-[9px]" style={{ background: 'rgba(5,34,16,0.04)', color: 'rgba(5,34,16,0.4)' }}>
-                                                                {item.extraInfo}
+                                                    </div>
+                                                </div>
+                                                
+                                                {(item.notes || (item.points && item.points.length > 0)) && (
+                                                    <div className="mt-3 space-y-2 border-l-2 border-gray-100 pl-4 italic">
+                                                        {item.notes && <p className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.5)' }}>{item.notes}</p>}
+                                                        {item.points && item.points.length > 0 && (
+                                                            <div className="space-y-1">
+                                                                {item.points.map((p: string, k: number) => (
+                                                                    <div key={k} className="flex items-center gap-2 text-[11px]" style={{ color: 'rgba(5,34,16,0.5)' }}>
+                                                                        <div className="w-1 h-1 rounded-full bg-gray-300" />
+                                                                        <span>{p}</span>
+                                                                    </div>
+                                                                ))}
                                                             </div>
                                                         )}
                                                     </div>
                                                 )}
+                                            </div>
+                                            
+                                            {/* Step Actions */}
+                                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={() => startEditingItem(sop.id, item)}
+                                                    className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-all"
+                                                >
+                                                    <Edit3 className="w-4 h-4" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => deleteStepInline(sop.id, item.id)}
+                                                    className="p-2 rounded-lg border border-gray-100 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
                                             </div>
                                         </div>
                                         )}
@@ -312,6 +585,17 @@ function SOPsContent() {
                                     )
                                 })}
                                 {provided.placeholder}
+                                
+                                {/* Add Step Button */}
+                                <button 
+                                    onClick={() => addNewStepInline(sop.id)}
+                                    className="w-full py-4 rounded-2xl border-2 border-dashed border-gray-100 text-gray-400 hover:border-emerald-200 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex items-center justify-center gap-2 mt-4 group"
+                                >
+                                    <div className="w-6 h-6 rounded-lg bg-gray-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
+                                        <Plus className="w-4 h-4" />
+                                    </div>
+                                    <span className="text-sm font-bold uppercase tracking-wider">Add Process Step</span>
+                                </button>
                             </div>
                             )}
                             </Droppable>
