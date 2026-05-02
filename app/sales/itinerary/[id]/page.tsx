@@ -17,15 +17,15 @@ import SalesChecklistModal from "@/components/sales-checklist-modal"
 import Link from "next/link"
 import { ArrowLeft, Clock, Send, FileEdit, CheckCircle, XCircle, ChevronRight, Share2, Eye, Download, FileText, Hotel, Car, DollarSign, MapPin, Calendar, Users, Map, Circle } from "lucide-react"
 
-const statusFlow: ItineraryStatus[] = ["draft", "handover", "completed"]
+const statusFlow: ItineraryStatus[] = ["draft", "handover", "pre-ops", "post-ops", "completed"]
 const statusColors: Record<string, string> = {
     draft: "#9ca3af", sent: "#60a5fa", confirmed: "#34d399",
-    handover: "#a78bfa", completed: "#f472b6",
+    handover: "#a78bfa", "pre-ops": "#f59e0b", "post-ops": "#3b82f6", completed: "#f472b6",
 }
 
 export default function ItineraryDetailPage() {
     return (
-        <ProtectedRoute allowedRoles={["sales", "sales_lead", "admin", "owner"]}>
+        <ProtectedRoute allowedRoles={["sales", "sales_lead", "ops", "ops_lead", "admin", "owner"]}>
             <ItineraryDetail />
         </ProtectedRoute>
     )
@@ -49,6 +49,8 @@ function ItineraryDetail() {
     const [showPaymentModal, setShowPaymentModal] = useState(false)
     const [showChecklistModal, setShowChecklistModal] = useState(false)
     const [pendingStatus, setPendingStatus] = useState<ItineraryStatus | null>(null)
+    const [showConfirmOps, setShowConfirmOps] = useState(false)
+    const [stagingOps, setStagingOps] = useState(false)
 
     useEffect(() => { loadAll() }, [itinId])
 
@@ -135,6 +137,16 @@ function ItineraryDetail() {
         await _doStatusChange(newStatus)
     }
 
+    const handleSubmitToOps = async () => {
+        setStagingOps(true)
+        try {
+            await _doStatusChange("pre-ops")
+        } finally {
+            setStagingOps(false)
+            setShowConfirmOps(false)
+        }
+    }
+
     const _doStatusChange = async (newStatus: ItineraryStatus) => {
         await updateItineraryStatus(itinId, newStatus)
         if (newStatus === "handover") {
@@ -164,6 +176,7 @@ function ItineraryDetail() {
             method: data.method,
             notes: data.notes,
             screenshotUrl,
+            selectedPlan: data.selectedPlan ?? null,
             collectedBy: userProfile?.uid || "",
             collectedByName: userProfile?.name || "",
             collectedAt: new Date().toISOString(),
@@ -179,6 +192,11 @@ function ItineraryDetail() {
 
     const currentStatusIdx = statusFlow.indexOf(itin?.status || "draft")
     const nextStatus = currentStatusIdx < statusFlow.length - 1 ? statusFlow[currentStatusIdx + 1] : null
+    const role = userProfile?.role || ""
+    const isAdmin = role === "admin" || role === "owner"
+    const isSales = role === "sales" || role === "sales_lead"
+    const isOps = role === "ops" || role === "ops_lead"
+    const currentStatus = itin?.status || "draft"
 
     if (loading) return (
         <div className="flex items-center justify-center py-20">
@@ -308,38 +326,167 @@ If you have any questions, would like to make customizations, or have any concer
                 </div>
 
                 {/* Status pipeline */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                    {statusFlow.map((status, i) => {
-                        const isActive = i <= currentStatusIdx
-                        const color = statusColors[status]
+                {(() => {
+                    const visibleFlow = isSales
+                        ? statusFlow.filter(s => s === "draft" || s === "handover" || s === "pre-ops")
+                        : statusFlow
+                    return (
+                        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                            {visibleFlow.map((status, i) => {
+                                const isActive = statusFlow.indexOf(status) <= currentStatusIdx
+                                const color = statusColors[status]
+                                return (
+                                    <div key={status} className="flex items-center gap-2">
+                                        <span
+                                            className="px-3 py-1.5 rounded-full font-sans text-[10px] font-bold tracking-wider uppercase whitespace-nowrap"
+                                            style={{
+                                                background: isActive ? `${color}20` : 'rgba(5,34,16,0.05)',
+                                                color: isActive ? color : 'rgba(5,34,16,0.4)',
+                                                border: `1px solid ${isActive ? `${color}40` : 'rgba(5,34,16,0.08)'}`,
+                                            }}
+                                        >
+                                            {status}
+                                        </span>
+                                        {i < visibleFlow.length - 1 && <ChevronRight className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(5,34,16,0.3)' }} />}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )
+                })()}
+
+                {/* ── Role-based action button ── */}
+                {(() => {
+                    // ADMIN: generic next-stage button for all stages
+                    if (isAdmin && nextStatus) {
                         return (
-                            <div key={status} className="flex items-center gap-2">
-                                <span
-                                    className="px-3 py-1.5 rounded-full font-sans text-[10px] font-bold tracking-wider uppercase whitespace-nowrap"
-                                    style={{
-                                        background: isActive ? `${color}20` : 'rgba(5,34,16,0.05)',
-                                        color: isActive ? color : 'rgba(5,34,16,0.4)',
-                                        border: `1px solid ${isActive ? `${color}40` : 'rgba(5,34,16,0.08)'}`,
-                                    }}
+                            <div className="flex flex-col items-end gap-1">
+                                <button
+                                    onClick={() => handleStatusChange(nextStatus)}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-sans text-xs tracking-wider uppercase transition-all hover:scale-105 shadow-xl shadow-emerald-900/10 active:scale-95"
+                                    style={{ background: '#052210', color: '#4ade80' }}
                                 >
-                                    {status}
-                                </span>
-                                {i < statusFlow.length - 1 && <ChevronRight className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(5,34,16,0.3)' }} />}
+                                    Move to {nextStatus} <ChevronRight className="w-4 h-4" />
+                                </button>
                             </div>
                         )
-                    })}
-                </div>
+                    }
 
-                {/* Advance status button */}
-                {nextStatus && (
-                    <div className="flex flex-col items-end gap-1">
-                        <button
-                            onClick={() => handleStatusChange(nextStatus)}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-sans text-xs tracking-wider uppercase transition-all hover:scale-105 shadow-xl shadow-emerald-900/10 active:scale-95`}
-                            style={{ background: statusColors[nextStatus], color: '#fff' }}
-                        >
-                            Move to {nextStatus} <ChevronRight className="w-4 h-4" />
-                        </button>
+                    // SALES: Draft → Collect Advance & Move to Handover
+                    if (isSales && currentStatus === "draft") {
+                        return (
+                            <div className="flex flex-col items-end gap-1">
+                                <button
+                                    onClick={() => { setPendingStatus("handover"); setShowChecklistModal(true) }}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-sans text-xs tracking-wider uppercase transition-all hover:scale-105 shadow-xl shadow-emerald-900/10 active:scale-95"
+                                    style={{ background: '#052210', color: '#4ade80' }}
+                                >
+                                    <CheckCircle className="w-4 h-4" /> Collect Advance &amp; Move to Handover
+                                </button>
+                            </div>
+                        )
+                    }
+
+                    // SALES: Handover → Submit to Operations
+                    if (isSales && currentStatus === "handover") {
+                        return (
+                            <div className="flex flex-col items-end gap-1">
+                                <button
+                                    onClick={() => setShowConfirmOps(true)}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-sans text-xs tracking-wider uppercase transition-all hover:scale-105 shadow-xl shadow-emerald-900/10 active:scale-95"
+                                    style={{ background: '#052210', color: '#4ade80' }}
+                                >
+                                    <Send className="w-4 h-4" /> Submit to Operations
+                                </button>
+                            </div>
+                        )
+                    }
+
+                    // SALES: Pre-Ops / Post-Ops / Completed → read-only badge
+                    if (isSales && (currentStatus === "pre-ops" || currentStatus === "post-ops")) {
+                        return (
+                            <div className="flex justify-end">
+                                <span className="flex items-center gap-2 px-4 py-2 rounded-full font-sans text-[11px] font-bold tracking-wider uppercase" style={{ background: 'rgba(245,158,11,0.1)', color: '#d97706', border: '1px solid rgba(245,158,11,0.25)' }}>
+                                    🔄 In Operations
+                                </span>
+                            </div>
+                        )
+                    }
+                    if (isSales && currentStatus === "completed") {
+                        return (
+                            <div className="flex justify-end">
+                                <span className="flex items-center gap-2 px-4 py-2 rounded-full font-sans text-[11px] font-bold tracking-wider uppercase" style={{ background: 'rgba(52,211,153,0.1)', color: '#059669', border: '1px solid rgba(52,211,153,0.25)' }}>
+                                    ✅ Completed
+                                </span>
+                            </div>
+                        )
+                    }
+
+                    // OPS: Pre-Ops → Move to Post Ops
+                    if (isOps && currentStatus === "pre-ops") {
+                        return (
+                            <div className="flex flex-col items-end gap-1">
+                                <button
+                                    onClick={() => _doStatusChange("post-ops")}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-sans text-xs tracking-wider uppercase transition-all hover:scale-105 shadow-xl shadow-emerald-900/10 active:scale-95"
+                                    style={{ background: '#052210', color: '#4ade80' }}
+                                >
+                                    Move to Post Ops <ChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )
+                    }
+
+                    // OPS: Post-Ops → Mark as Completed
+                    if (isOps && currentStatus === "post-ops") {
+                        return (
+                            <div className="flex flex-col items-end gap-1">
+                                <button
+                                    onClick={() => _doStatusChange("completed")}
+                                    className="flex items-center gap-2 px-6 py-3 rounded-xl font-sans text-xs tracking-wider uppercase transition-all hover:scale-105 shadow-xl shadow-emerald-900/10 active:scale-95"
+                                    style={{ background: '#052210', color: '#4ade80' }}
+                                >
+                                    <CheckCircle className="w-4 h-4" /> Mark as Completed
+                                </button>
+                            </div>
+                        )
+                    }
+
+                    // OPS: Completed → badge only
+                    if (isOps && currentStatus === "completed") {
+                        return (
+                            <div className="flex justify-end">
+                                <span className="flex items-center gap-2 px-4 py-2 rounded-full font-sans text-[11px] font-bold tracking-wider uppercase" style={{ background: 'rgba(52,211,153,0.1)', color: '#059669', border: '1px solid rgba(52,211,153,0.25)' }}>
+                                    ✅ Completed
+                                </span>
+                            </div>
+                        )
+                    }
+
+                    return null
+                })()}
+
+                {/* Confirm Submit to Ops dialog */}
+                {showConfirmOps && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }} onClick={() => setShowConfirmOps(false)}>
+                        <div className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4" style={{ background: '#FFFFFF', boxShadow: '0 24px 64px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+                            <div>
+                                <h2 className="font-serif text-xl tracking-wide mb-1" style={{ color: '#052210' }}>Submit to Operations?</h2>
+                                <p className="font-sans text-sm" style={{ color: 'rgba(5,34,16,0.6)' }}>Are you sure you want to submit this to the Operations team? You will no longer manage this booking.</p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleSubmitToOps}
+                                    disabled={stagingOps}
+                                    className="flex-1 py-3 rounded-xl font-sans text-xs tracking-wider uppercase font-bold flex items-center justify-center gap-2 transition-all"
+                                    style={{ background: '#052210', color: '#4ade80' }}
+                                >
+                                    {stagingOps ? <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#4ade80', borderTopColor: 'transparent' }} /> : <Send className="w-4 h-4" />}
+                                    {stagingOps ? 'Submitting...' : 'Yes, Submit'}
+                                </button>
+                                <button onClick={() => setShowConfirmOps(false)} className="px-5 py-3 rounded-xl font-sans text-xs tracking-wider uppercase font-semibold" style={{ border: '1.5px solid #e5e7eb', color: 'rgba(5,34,16,0.45)' }}>Cancel</button>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -499,6 +646,7 @@ If you have any questions, would like to make customizations, or have any concer
             defaultType="advance"
             title="Collect Advance Payment"
             submitLabel="Save Payment & Move to Handover"
+            plans={pricing?.[0]?.plans ?? []}
         />
         </>
     )

@@ -6,12 +6,20 @@ import { X, Upload, DollarSign, Wallet, Building2, Smartphone, CheckCircle } fro
 export type PaymentMethod = "cash" | "gpay" | "phonepe" | "bank_transfer"
 export type PaymentType = "advance" | "balance" | "full"
 
+export interface PlanOption {
+    hotelName: string
+    category: string
+    total: number
+    perPersonPrice: number
+}
+
 export interface PaymentFormData {
     type: PaymentType
     amount: number
     method: PaymentMethod
     notes?: string
     screenshotFile?: File
+    selectedPlan?: PlanOption | null
 }
 
 interface PaymentCollectionModalProps {
@@ -24,6 +32,7 @@ interface PaymentCollectionModalProps {
     defaultType?: PaymentType
     title?: string
     submitLabel?: string
+    plans?: PlanOption[]
 }
 
 const methodIcons: Record<PaymentMethod, any> = {
@@ -57,6 +66,7 @@ export default function PaymentCollectionModal({
     defaultType = "advance",
     title = "Record Payment",
     submitLabel = "Save Payment & Continue",
+    plans = [],
 }: PaymentCollectionModalProps) {
     const [amount, setAmount] = useState<string>("")
     const [method, setMethod] = useState<PaymentMethod | "">("")
@@ -66,10 +76,17 @@ export default function PaymentCollectionModal({
     const [previewUrl, setPreviewUrl] = useState<string | undefined>()
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState("")
+    const [selectedPlanIdx, setSelectedPlanIdx] = useState<number | null>(null)
 
-    const balance = totalPrice - amountAlreadyPaid
+    // If multiple plans exist, use the selected plan's total; otherwise fall back to totalPrice prop
+    const hasPlans = plans && plans.length > 1
+    const activePlan = hasPlans && selectedPlanIdx !== null ? plans[selectedPlanIdx] : null
+    const effectiveTotal = activePlan ? activePlan.total : (hasPlans ? 0 : totalPrice)
+    const balance = effectiveTotal - amountAlreadyPaid
+
     const numAmount = Number(amount)
-    const isValid = numAmount > 0 && !!method && !!screenshotFile
+    const planRequired = hasPlans && selectedPlanIdx === null
+    const isValid = numAmount > 0 && !!method && !!screenshotFile && !planRequired
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
@@ -80,6 +97,7 @@ export default function PaymentCollectionModal({
 
     const handleSubmit = async () => {
         setError("")
+        if (hasPlans && selectedPlanIdx === null) { setError("Please select a plan first."); return }
         if (numAmount <= 0) { setError("Please enter a valid amount."); return }
         if (!method) { setError("Please select a payment method."); return }
         if (!screenshotFile) { setError("Please upload a payment screenshot."); return }
@@ -92,6 +110,7 @@ export default function PaymentCollectionModal({
                 method: method as PaymentMethod,
                 notes: notes.trim() || undefined,
                 screenshotFile,
+                selectedPlan: activePlan ?? null,
             })
             // Reset form
             setAmount("")
@@ -100,6 +119,7 @@ export default function PaymentCollectionModal({
             setScreenshotFile(undefined)
             setPreviewUrl(undefined)
             setPaymentType(defaultType)
+            setSelectedPlanIdx(null)
         } catch (e: any) {
             setError(e?.message || "Failed to save payment. Please try again.")
         } finally {
@@ -147,21 +167,63 @@ export default function PaymentCollectionModal({
                     </button>
                 </div>
 
-                {/* ── Summary Bar ── */}
-                {totalPrice > 0 && (
-                    <div className="flex-shrink-0 grid grid-cols-3 divide-x" style={{ background: '#f0fdf4', borderBottom: '1px solid rgba(6,161,92,0.12)' }}>
-                        {[
-                            { label: "Total Package", value: `₹${Number(totalPrice).toLocaleString()}`, color: '#052210' },
-                            { label: "Already Paid", value: `₹${Number(amountAlreadyPaid).toLocaleString()}`, color: '#06a15c' },
-                            { label: "Remaining", value: `₹${Number(balance).toLocaleString()}`, color: balance > 0 ? '#d97706' : '#06a15c' },
-                        ].map(item => (
-                            <div key={item.label} className="px-4 py-3 text-center">
-                                <p className="font-sans text-[9px] font-bold tracking-wider uppercase mb-0.5" style={{ color: 'rgba(5,34,16,0.4)' }}>{item.label}</p>
-                                <p className="font-serif text-sm font-bold" style={{ color: item.color }}>{item.value}</p>
-                            </div>
-                        ))}
+                {/* ── Plan Selection (only when multiple plans exist) ── */}
+                {hasPlans && (
+                    <div className="flex-shrink-0 px-6 py-4" style={{ background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                        <p className="font-sans text-[10px] font-bold tracking-wider uppercase mb-2.5" style={{ color: 'rgba(5,34,16,0.45)' }}>
+                            Selected Plan <span className="text-red-500">*</span>
+                        </p>
+                        <div className="flex flex-col gap-2">
+                            {plans.map((plan, idx) => {
+                                const isActive = selectedPlanIdx === idx
+                                return (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setSelectedPlanIdx(idx)}
+                                        className="flex items-center justify-between px-4 py-3 rounded-xl font-sans text-sm font-semibold transition-all text-left"
+                                        style={{
+                                            background: isActive ? '#052210' : '#FFFFFF',
+                                            color: isActive ? '#4ade80' : 'rgba(5,34,16,0.6)',
+                                            border: isActive ? '1.5px solid rgba(6,161,92,0.4)' : '1.5px solid #e5e7eb',
+                                            boxShadow: isActive ? '0 2px 12px rgba(5,34,16,0.15)' : 'none',
+                                        }}
+                                    >
+                                        <span>Plan {idx + 1} — {plan.category}</span>
+                                        <span className="font-serif text-base font-bold" style={{ color: isActive ? '#4ade80' : '#06a15c' }}>
+                                            ₹{plan.total.toLocaleString()}
+                                        </span>
+                                    </button>
+                                )
+                            })}
+                        </div>
                     </div>
                 )}
+
+                {/* ── Summary Bar ── */}
+                <div className="flex-shrink-0 grid grid-cols-3 divide-x" style={{ background: '#f0fdf4', borderBottom: '1px solid rgba(6,161,92,0.12)' }}>
+                    {[
+                        {
+                            label: "Total Package",
+                            value: hasPlans
+                                ? (activePlan ? `₹${activePlan.total.toLocaleString()}` : "Select a plan")
+                                : (totalPrice > 0 ? `₹${Number(totalPrice).toLocaleString()}` : "—"),
+                            color: activePlan || !hasPlans ? '#052210' : '#9ca3af',
+                        },
+                        { label: "Already Paid", value: `₹${Number(amountAlreadyPaid).toLocaleString()}`, color: '#06a15c' },
+                        {
+                            label: "Remaining",
+                            value: hasPlans
+                                ? (activePlan ? `₹${balance.toLocaleString()}` : "—")
+                                : `₹${Number(balance).toLocaleString()}`,
+                            color: (!hasPlans || activePlan) ? (balance > 0 ? '#d97706' : '#06a15c') : '#9ca3af',
+                        },
+                    ].map(item => (
+                        <div key={item.label} className="px-4 py-3 text-center">
+                            <p className="font-sans text-[9px] font-bold tracking-wider uppercase mb-0.5" style={{ color: 'rgba(5,34,16,0.4)' }}>{item.label}</p>
+                            <p className="font-serif text-sm font-bold" style={{ color: item.color }}>{item.value}</p>
+                        </div>
+                    ))}
+                </div>
 
                 {/* ── Scrollable Body ── */}
                 <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5" style={{ scrollbarWidth: 'none' }}>

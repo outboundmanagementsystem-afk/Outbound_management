@@ -90,7 +90,9 @@ export function TransferDetails({ transfers }: { transfers: any[] }) {
                                     <div className="flex items-center gap-4">
                                         <div>
                                             <span className="block font-sans text-[6px] font-black text-gray-400 uppercase tracking-widest mb-0.5">Vehicle</span>
-                                            <span className="font-sans text-[11px] font-black text-[#1A211D] uppercase">{t.vehicle || t.type || "Private"}</span>
+                                            <span className="font-sans text-[11px] font-black text-[#1A211D] uppercase">
+                                                {t.vehicle && t.vehicle !== "Select vehicle" ? t.vehicle : (t.vehicleType && t.vehicleType !== "Select vehicle" ? t.vehicleType : "Private")}
+                                            </span>
                                         </div>
                                     </div>
                                     <div className="text-right">

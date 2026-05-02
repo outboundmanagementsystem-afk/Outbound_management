@@ -153,8 +153,8 @@ export function FlightDetails({ segments, module }: FlightDetailsProps = {}) {
                   </div>
 
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <Clock className="w-3 h-3 text-[#000000]" />
-                    <span className="font-sans text-[10px] font-black text-[#000000] whitespace-nowrap" style={{ overflow: 'visible', textOverflow: 'unset' }}>{seg.duration || '2H'}</span>
+                    <Clock className="w-3 h-3" style={{ color: '#FFE500' }} />
+                    <span className="font-sans text-[10px] font-black whitespace-nowrap" style={{ color: '#FFE500' }}>{seg.duration || ''}</span>
                   </div>
                 </div>
 

@@ -172,7 +172,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
           <div className="relative z-10 w-full flex justify-center">
             <div className="bg-white rounded-[20px] p-10 shadow-2xl border border-gray-100 w-full max-w-xl flex flex-col items-center text-center">
                 <p className="font-sans text-[13px] tracking-[0.15em] uppercase mb-1 font-black text-[#000000]">
-                   Your Trip Investment
+                   Your Package Plan
                 </p>
                 
                 <div className="h-[1.5px] w-8 bg-[#FFE500] mb-3" />

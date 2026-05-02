@@ -484,7 +484,7 @@ function UsersContent() {
             {/* Delete Confirmation */}
             {deleteConfirm && (
                 <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setDeleteConfirm(null)}>
-                    <div className="w-full max-w-sm rounded-2xl p-6 text-center space-y-4" style={{ background: '#FFFFFF', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }} onClick={e => e.stopPropagation()}>
+                    <div className="w-full max-sm rounded-2xl p-6 text-center space-y-4" style={{ background: '#FFFFFF', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }} onClick={e => e.stopPropagation()}>
                         <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center" style={{ background: 'rgba(239,68,68,0.1)' }}>
                             <Trash2 className="w-6 h-6" style={{ color: '#ef4444' }} />
                         </div>

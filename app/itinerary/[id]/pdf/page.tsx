@@ -14,6 +14,7 @@ import { PricingSection } from "@/components/pricing-section"
 import { IncExcSection } from "@/components/inc-exc-section"
 import { TermsSection } from "@/components/terms-section"
 import { FooterSection } from "@/components/footer-section"
+import { AttractionsActivities } from "@/components/attractions-activities"
 import Image from "next/image"
 
 export default function PDFPrintPage() {
@@ -183,7 +184,6 @@ export default function PDFPrintPage() {
         ...(itin.cwb ? [{ label: "CWB (Child With Bed)", value: String(itin.cwb), icon: "🛏️" }] : []),
         ...(itin.cnb ? [{ label: "CNB (Child No Bed)", value: String(itin.cnb), icon: "👶" }] : []),
         ...(itin.childAge ? [{ label: "Kid's Age", value: itin.childAge, icon: "✦" }] : []),
-        ...(activities && activities.length > 0 ? [{ label: "Experiences", value: activities.map(a => toTitleCase(a.name || a.activityName)).join(" · "), icon: "🎟️" }] : []),
     ]
 
     const hotelList = hotels.map((h: any) => ({
@@ -294,6 +294,23 @@ export default function PDFPrintPage() {
                         </div>
                     )}
 
+                    {transfers && transfers.length > 0 && transfers.some(t => {
+                        const p = (t.pickup || "").trim().toLowerCase();
+                        const d = (t.drop || "").trim().toLowerCase();
+                        return (p !== "" && p !== "select pickup location") || 
+                               (d !== "" && d !== "select drop location");
+                    }) && (
+                        <div className="pdf-chunk pdf-dark-bg w-full">
+                            <TransferDetails transfers={transfers} />
+                        </div>
+                    )}
+
+                    {activities && activities.length > 0 && (
+                        <div className="pdf-chunk w-full">
+                            <AttractionsActivities activities={activities} totalPax={totalPax} />
+                        </div>
+                    )}
+
                     {hasHotels && (
                         <div className={`pdf-chunk pdf-dark-bg w-full ${itin?.isReadyMade ? 'hide-hotel-plan-header' : ''}`}>
                             {itin?.isReadyMade && (
@@ -321,17 +338,6 @@ export default function PDFPrintPage() {
                         </div>
                     )}
 
-                    {transfers && transfers.length > 0 && transfers.some(t => {
-                        const p = (t.pickup || "").trim().toLowerCase();
-                        const d = (t.drop || "").trim().toLowerCase();
-                        return (p !== "" && p !== "select pickup location") || 
-                               (d !== "" && d !== "select drop location");
-                    }) && (
-                        <div className="pdf-chunk pdf-dark-bg w-full">
-                            <TransferDetails transfers={transfers} />
-                        </div>
-                    )}
-
                     {hasDayPlans && (
                         <div className="pdf-chunk pdf-dark-bg w-full">
                             <DayItinerary dayPlans={dayPlans} destination={itin.destination} totalDays={itin.days} startDate={itin.startDate} />
@@ -349,7 +355,7 @@ export default function PDFPrintPage() {
                     </div>
 
                     {/* Inclusions & Exclusions (override-first) */}
-                    {(finalInclusions.length > 0 || finalExclusions.length > 0) && (
+                    {hasInclExcl && (
                         <div className={`pdf-chunk w-full ${itin?.module === 'built-package' ? 'built-package-page-break' : ''}`}>
                             <IncExcSection inclusions={finalInclusions} exclusions={finalExclusions} />
                         </div>

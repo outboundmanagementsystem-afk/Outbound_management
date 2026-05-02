@@ -183,6 +183,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
     const [manualHotelCost, setManualHotelCost] = useState<number | null>(0)
     const [manualTransferCost, setManualTransferCost] = useState<number | null>(0)
     const [manualActivityCost, setManualActivityCost] = useState<number | null>(0)
+    // Per-plan hotel cost overrides (indexed by plan idx)
+    const [planHotelCostOverrides, setPlanHotelCostOverrides] = useState<(number | null)[]>([])
 
     // New Multi-Plan Architecture
     const [plans, setPlans] = useState<any[]>([])
@@ -526,14 +528,14 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
 
     const calculatePricing = () => {
         let transferCost = 0
-        if (manualTransferCost !== null) {
+        if (manualTransferCost !== null && manualTransferCost > 0) {
             transferCost = manualTransferCost
         } else {
             transfers.forEach(t => { transferCost += Number(t.price) || 0 })
         }
 
         let activityCost = 0
-        if (manualActivityCost !== null) {
+        if (manualActivityCost !== null && manualActivityCost > 0) {
             activityCost = manualActivityCost
         } else {
             selectedActivities.forEach(a => {
@@ -542,49 +544,45 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
             })
         }
 
-        let optionalCost = 0
-        dayPlans.forEach(d => { optionalCost += Number(d.optionalPrice) || 0 })
-
         const pax = adults + children
-        const baseNetCost = transferCost + activityCost
+        const baseShared = transferCost + activityCost
 
         if (selectedHotels.length === 0) {
-            const hotelCost = manualHotelCost !== null ? manualHotelCost : 0
-            const netCost = baseNetCost + hotelCost
+            const hotelCost = (planHotelCostOverrides[0] !== null && planHotelCostOverrides[0] !== undefined) ? planHotelCostOverrides[0] : (manualHotelCost !== null ? manualHotelCost : 0)
+            const netCost = baseShared + hotelCost
             const marginAmt = netCost * (margin / 100)
-            const total = netCost + marginAmt + optionalCost
+            const total = netCost + marginAmt
             setTotalPrice(Math.round(total))
-            setPerPersonPrice(adults > 0 ? Math.round(total / adults) : Math.round(total))
-            setPlans([{ hotelName: "No Hotel Selected", total, perPersonPrice: adults > 0 ? Math.round(total / adults) : Math.round(total), hotelCost }])
+            setPerPersonPrice(pax > 0 ? Math.round(total / pax) : Math.round(total))
+            setPlans([{ hotelName: "No Hotel Selected", category: "Custom", total: Math.round(total), perPersonPrice: pax > 0 ? Math.round(total / pax) : Math.round(total), hotelCost, transferCost, activityCost, marginAmt: Math.round(marginAmt) }])
         } else {
-            // Group hotels by category (to support multi-hotel sequential stays in the same package option)
             const categories = Array.from(new Set(selectedHotels.map(h => h.category || "Uncategorized")))
-            const newPlans = categories.map(cat => {
+            const newPlans = categories.map((cat, idx) => {
                 const hotelsInCat = selectedHotels.filter(h => (h.category || "Uncategorized") === cat)
-                const hotelCost = manualHotelCost !== null ? manualHotelCost : hotelsInCat.reduce((sum, h) => sum + (Number(h.ratePerNight) * Number(h.selectedNights || nights)), 0)
-                const netCost = baseNetCost + hotelCost
+                const autoHotelCost = hotelsInCat.reduce((sum, h) => sum + (Number(h.ratePerNight) * Number(h.selectedNights || nights)), 0)
+                const hotelCost = (planHotelCostOverrides[idx] !== null && planHotelCostOverrides[idx] !== undefined) ? planHotelCostOverrides[idx]! : autoHotelCost
+                const netCost = baseShared + hotelCost
                 const marginAmt = netCost * (margin / 100)
-                const total = netCost + marginAmt + optionalCost
-                
-                // Construct a descriptive name for the multi-hotel plan - now focused on Tier
-                const hotelsDisplay = `PLAN ${categories.indexOf(cat) + 1} - ${cat}`
-
+                const total = netCost + marginAmt
                 return {
-                    hotelName: hotelsDisplay,
+                    hotelName: `PLAN ${idx + 1} - ${cat}`,
                     category: cat,
                     hotelCost,
+                    autoHotelCost,
+                    transferCost,
+                    activityCost,
+                    marginAmt: Math.round(marginAmt),
                     total: Math.round(total),
-                    perPersonPrice: adults > 0 ? Math.round(total / adults) : Math.round(total)
+                    perPersonPrice: pax > 0 ? Math.round(total / pax) : Math.round(total)
                 }
             })
-            // For legacy fields, just use the first plan
             setTotalPrice(newPlans[0].total)
             setPerPersonPrice(newPlans[0].perPersonPrice)
             setPlans(newPlans)
         }
     }
 
-    useEffect(() => { calculatePricing() }, [selectedHotels, transfers, selectedActivities, margin, nights, adults, children, dayPlans, manualHotelCost, manualTransferCost, manualActivityCost])
+    useEffect(() => { calculatePricing() }, [selectedHotels, transfers, selectedActivities, margin, nights, adults, children, dayPlans, manualHotelCost, manualTransferCost, manualActivityCost, planHotelCostOverrides])
 
     const handleSave = async () => {
         // --- VALIDATION CHECK ---
@@ -2118,131 +2116,210 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
 
                 {/* STEP 7: Pricing */}
                 {step === 7 && (
-                    <div className="space-y-5">
+                    <div className="space-y-6">
+                        {/* Header */}
                         <div className="flex items-center gap-2 mb-2">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#ecfdf5' }}><DollarSign className="w-3.5 h-3.5" style={{ color: '#059669' }} /></div>
                             <div>
                                 <h2 className="font-serif text-lg sm:text-xl tracking-wide" style={{ color: '#052210' }}>Pricing</h2>
-                                <p className="font-sans text-[11px]" style={{ color: '#9ca3af' }}>Auto-calculated cost breakdown</p>
+                                <p className="font-sans text-[11px]" style={{ color: '#9ca3af' }}>Per-plan breakdown — all values update in real time</p>
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
-                                <span className="font-sans text-sm" style={{ color: '#6b7280' }}>Hotel Cost ({nights} nights)</span>
-                                <input
-                                    type="number"
-                                    className="w-40 pl-3 pr-10 py-2 rounded-lg font-sans text-sm text-right font-bold"
-                                    style={inputStyle}
-                                    value={(manualHotelCost === 0 || manualHotelCost === null) ? "" : manualHotelCost}
-                                    onFocus={e => { if (Number(e.target.value) === 0) e.target.value = "" }}
-                                    onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualHotelCost(0); else setManualHotelCost(Math.max(0, parseInt(val) || 0)); }}
-                                    onBlur={e => { if (e.target.value === "") setManualHotelCost(0); }}
-                                />
-                            </div>
-                            <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
-                                <span className="font-sans text-sm" style={{ color: '#6b7280' }}>Transfer Cost</span>
-                                <input
-                                    type="number"
-                                    className="w-40 pl-3 pr-10 py-2 rounded-lg font-sans text-sm text-right font-bold"
-                                    style={inputStyle}
-                                    value={(manualTransferCost === 0 || manualTransferCost === null) ? "" : manualTransferCost}
-                                    onFocus={e => { if (Number(e.target.value) === 0) e.target.value = "" }}
-                                    onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualTransferCost(0); else setManualTransferCost(Math.max(0, parseInt(val) || 0)); }}
-                                    onBlur={e => { if (e.target.value === "") setManualTransferCost(0); }}
-                                />
-                            </div>
-                            <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
-                                <span className="font-sans text-sm" style={{ color: '#6b7280' }}>Activities Cost</span>
-                                <input
-                                    type="number"
-                                    className="w-40 pl-3 pr-10 py-2 rounded-lg font-sans text-sm text-right font-bold"
-                                    style={inputStyle}
-                                    value={(manualActivityCost === 0 || manualActivityCost === null) ? "" : manualActivityCost}
-                                    onFocus={e => { if (Number(e.target.value) === 0) e.target.value = "" }}
-                                    onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualActivityCost(0); else setManualActivityCost(Math.max(0, parseInt(val) || 0)); }}
-                                    onBlur={e => { if (e.target.value === "") setManualActivityCost(0); }}
-                                />
-                            </div>
-
-                            {dayPlans.reduce((s: number, d: any) => s + (Number(d.optionalPrice) || 0), 0) > 0 && (
-                                <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#fef2f2', border: '1px solid #fecaca' }}>
-                                    <span className="font-sans text-sm" style={{ color: '#dc2626' }}>Optional Add-ons Cost</span>
-                                    <span className="font-sans text-sm font-bold" style={{ color: '#991b1b' }}>₹{dayPlans.reduce((s: number, d: any) => s + (Number(d.optionalPrice) || 0), 0).toLocaleString()}</span>
+                        {/* SECTION 1: Per-Plan Hotel Cost */}
+                        {plans.length > 0 && (
+                            <div className="rounded-xl overflow-hidden" style={{ border: '1px solid #e5e7eb' }}>
+                                <div className="px-4 py-3" style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                                    <p className="font-sans text-[11px] font-bold uppercase tracking-widest" style={{ color: '#059669' }}>Hotel Cost per Plan ({nights} nights)</p>
+                                    <p className="font-sans text-[10px] mt-0.5" style={{ color: '#9ca3af' }}>Pre-filled from Hotels step · Editable to override</p>
                                 </div>
-                            )}
+                                <div className={`grid gap-0 divide-x`} style={{ gridTemplateColumns: `repeat(${plans.length}, minmax(0, 1fr))` }}>
+                                    {plans.map((plan, idx) => {
+                                        const override = planHotelCostOverrides[idx]
+                                        const displayVal = override !== null && override !== undefined ? override : (plan.autoHotelCost ?? plan.hotelCost ?? 0)
+                                        return (
+                                            <div key={idx} className="p-4 flex flex-col gap-2">
+                                                <p className="font-sans text-[10px] font-black uppercase tracking-wider" style={{ color: '#052210' }}>Plan {idx + 1}: {plan.category}</p>
+                                                <div className="relative">
+                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-sans text-sm font-bold" style={{ color: '#059669' }}>₹</span>
+                                                    <input
+                                                        type="number"
+                                                        className="w-full pl-7 pr-3 py-2 rounded-lg font-sans text-sm font-bold outline-none"
+                                                        style={{ background: '#FFFFFF', border: '1px solid #d1d5db', color: '#052210' }}
+                                                        value={displayVal === 0 ? "" : displayVal}
+                                                        placeholder="0"
+                                                        onChange={e => {
+                                                            let val = e.target.value.replace(/^0+/, '')
+                                                            const newOverrides = [...planHotelCostOverrides]
+                                                            newOverrides[idx] = val === "" ? (plan.autoHotelCost ?? 0) : Math.max(0, parseInt(val) || 0)
+                                                            setPlanHotelCostOverrides(newOverrides)
+                                                        }}
+                                                        onBlur={e => {
+                                                            if (e.target.value === "") {
+                                                                const newOverrides = [...planHotelCostOverrides]
+                                                                newOverrides[idx] = plan.autoHotelCost ?? 0
+                                                                setPlanHotelCostOverrides(newOverrides)
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                                {plan.autoHotelCost > 0 && (
+                                                    <p className="font-sans text-[9px]" style={{ color: '#9ca3af' }}>Auto: ₹{plan.autoHotelCost.toLocaleString()}</p>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
 
+                        {/* SECTION 2: Shared Fields */}
+                        <div className="space-y-2">
+                            <p className="font-sans text-[11px] font-bold uppercase tracking-widest mb-2" style={{ color: '#6b7280' }}>Shared Costs (applies to all plans)</p>
+
+                            {/* Transfer Cost */}
                             <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
-                                <span className="font-sans text-sm" style={{ color: '#6b7280' }}>Margin % (Applies to Base)</span>
-                                <input type="number" className="w-24 pl-3 pr-10 py-2 rounded-lg font-sans text-sm text-right font-bold" style={inputStyle} value={margin === 0 ? "" : margin} onFocus={e => { if (margin === 0) e.target.value = "" }} onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setMargin(0); else setMargin(Math.max(0, parseInt(val) || 0)); }} onBlur={e => { if (e.target.value === "") setMargin(0); }} />
+                                <div>
+                                    <span className="font-sans text-sm font-medium" style={{ color: '#374151' }}>Transfer Cost</span>
+                                    {transfers.some(t => Number(t.price) > 0) && manualTransferCost === 0 && (
+                                        <span className="ml-2 font-sans text-[10px]" style={{ color: '#9ca3af' }}>Auto: ₹{transfers.reduce((s, t) => s + (Number(t.price) || 0), 0).toLocaleString()}</span>
+                                    )}
+                                </div>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-sans text-sm font-bold" style={{ color: '#6b7280' }}>₹</span>
+                                    <input
+                                        type="number"
+                                        className="w-36 pl-7 pr-3 py-2 rounded-lg font-sans text-sm font-bold text-right outline-none"
+                                        style={inputStyle}
+                                        placeholder="0"
+                                        value={(manualTransferCost === 0 || manualTransferCost === null) ? "" : manualTransferCost}
+                                        onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualTransferCost(0); else setManualTransferCost(Math.max(0, parseInt(val) || 0)); }}
+                                        onBlur={e => { if (e.target.value === "") setManualTransferCost(0); }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Activities Cost */}
+                            <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                                <div>
+                                    <span className="font-sans text-sm font-medium" style={{ color: '#374151' }}>Activities Cost</span>
+                                    {selectedActivities.length > 0 && manualActivityCost === 0 && (
+                                        <span className="ml-2 font-sans text-[10px]" style={{ color: '#9ca3af' }}>
+                                            Auto: ₹{selectedActivities.reduce((s, a) => {
+                                                const p = a.isActivity ? ((Number(a.price) || 0) + (Number(a.vehiclePrice) || 0)) : (Number(a.entryFee) || Number(a.price) || 0)
+                                                return s + p * (adults + children)
+                                            }, 0).toLocaleString()}
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-sans text-sm font-bold" style={{ color: '#6b7280' }}>₹</span>
+                                    <input
+                                        type="number"
+                                        className="w-36 pl-7 pr-3 py-2 rounded-lg font-sans text-sm font-bold text-right outline-none"
+                                        style={inputStyle}
+                                        placeholder="0"
+                                        value={(manualActivityCost === 0 || manualActivityCost === null) ? "" : manualActivityCost}
+                                        onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualActivityCost(0); else setManualActivityCost(Math.max(0, parseInt(val) || 0)); }}
+                                        onBlur={e => { if (e.target.value === "") setManualActivityCost(0); }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Margin */}
+                            <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                                <span className="font-sans text-sm font-medium" style={{ color: '#374151' }}>Margin % (applied to base cost)</span>
+                                <input type="number" className="w-24 pl-3 pr-3 py-2 rounded-lg font-sans text-sm font-bold text-right outline-none" style={inputStyle} placeholder="15" value={margin === 0 ? "" : margin} onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setMargin(0); else setMargin(Math.max(0, parseInt(val) || 0)); }} onBlur={e => { if (e.target.value === "") setMargin(15); }} />
                             </div>
                         </div>
 
+                        {/* SECTION 3: Plan Cards with live breakdown */}
                         <div className="h-px" style={{ background: 'linear-gradient(90deg, transparent, #a7f3d0, transparent)' }} />
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {plans.map((plan, idx) => (
-                                <div key={idx} className="flex flex-col justify-between p-5 rounded-2xl relative overflow-hidden" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
-                                    {/* Plan Header */}
-                                    <div className="mb-4">
-                                        <p className="font-sans text-[11px] font-bold tracking-widest uppercase mb-1" style={{ color: '#059669' }}>PLAN {idx + 1}</p>
-                                        <p className="font-serif text-xl font-black tracking-wide leading-tight uppercase" style={{ color: '#052210' }}>{plan.category}</p>
-                                    </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {plans.map((plan, idx) => {
+                                const pax = adults + children
+                                const overrideTotal = plan.overrideTotal ?? null
 
-                                    {(mode === "package" || itinModule === "built-package") && (
-                                        <div className="mb-4">
-                                            <label className="font-sans text-[10px] uppercase tracking-wider mb-1 block" style={{ color: '#059669' }}>Override Package Total (₹)</label>
-                                            <input
-                                                type="number"
-                                                className="w-full pl-3 pr-10 py-2 rounded-lg font-sans text-sm font-bold outline-none"
-                                                style={{ background: '#FFFFFF', border: '1px solid #6ee7b7', color: '#052210' }}
-                                                value={plan.total === 0 ? "" : plan.total}
-                                                onFocus={e => { if (plan.total === 0) e.target.value = "" }}
-                                                onChange={e => {
-                                                    let val = e.target.value.replace(/^0+/, '');
-                                                    let newTotal = 0;
-                                                    if (val !== "") newTotal = Math.max(0, parseInt(val) || 0);
-                                                    
-                                                    const newPlans = [...plans];
-                                                    const pax = adults + children;
-                                                    newPlans[idx].total = newTotal;
-                                                    newPlans[idx].perPersonPrice = adults > 0 ? Math.round(newTotal / adults) : Math.round(newTotal);
-                                                    setPlans(newPlans);
+                                const displayTotal = overrideTotal !== null ? overrideTotal : plan.total
+                                const displayPerPerson = pax > 0 ? Math.round(displayTotal / pax) : displayTotal
 
-                                                    if (idx === 0) {
-                                                        setTotalPrice(newTotal);
-                                                        setPerPersonPrice(newPlans[idx].perPersonPrice);
-                                                    }
-                                                }}
-                                                onBlur={e => {
-                                                    if (e.target.value === "") {
-                                                        const newPlans = [...plans];
-                                                        newPlans[idx].total = 0;
-                                                        newPlans[idx].perPersonPrice = 0;
-                                                        setPlans(newPlans);
-                                                        if (idx === 0) {
-                                                            setTotalPrice(0);
-                                                            setPerPersonPrice(0);
+                                return (
+                                    <div key={idx} className="flex flex-col p-5 rounded-2xl gap-4" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
+                                        {/* Plan label */}
+                                        <div>
+                                            <p className="font-sans text-[11px] font-bold tracking-widest uppercase" style={{ color: '#059669' }}>Plan {idx + 1}</p>
+                                            <p className="font-serif text-xl font-black uppercase leading-tight" style={{ color: '#052210' }}>{plan.category}</p>
+                                        </div>
+
+                                        {/* Breakdown table */}
+                                        <div className="rounded-xl overflow-hidden text-[11px] font-sans" style={{ background: '#FFFFFF', border: '1px solid #d1fae5' }}>
+                                            {[
+                                                { label: `Hotel Cost (${nights}N)`, val: plan.hotelCost ?? 0 },
+                                                { label: '+ Transfer Cost', val: plan.transferCost ?? 0 },
+                                                { label: '+ Activities Cost', val: plan.activityCost ?? 0 },
+                                            ].map((row, i) => (
+                                                <div key={i} className="flex justify-between px-3 py-2" style={{ borderBottom: '1px solid #d1fae5' }}>
+                                                    <span style={{ color: '#6b7280' }}>{row.label}</span>
+                                                    <span className="font-bold" style={{ color: '#052210' }}>₹{(row.val).toLocaleString()}</span>
+                                                </div>
+                                            ))}
+                                            <div className="flex justify-between px-3 py-2" style={{ borderBottom: '1px solid #d1fae5', background: '#f0fdf4' }}>
+                                                <span style={{ color: '#6b7280' }}>Base Total</span>
+                                                <span className="font-bold" style={{ color: '#052210' }}>₹{((plan.hotelCost ?? 0) + (plan.transferCost ?? 0) + (plan.activityCost ?? 0)).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between px-3 py-2" style={{ borderBottom: '1px solid #d1fae5' }}>
+                                                <span style={{ color: '#6b7280' }}>+ Margin ({margin}%)</span>
+                                                <span className="font-bold" style={{ color: '#059669' }}>₹{(plan.marginAmt ?? 0).toLocaleString()}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Override field */}
+                                        {(mode === "package" || itinModule === "built-package") && (
+                                            <div>
+                                                <label className="font-sans text-[10px] uppercase tracking-wider mb-1 block" style={{ color: '#059669' }}>Override Package Total (₹)</label>
+                                                <input
+                                                    type="number"
+                                                    className="w-full pl-3 pr-3 py-2 rounded-lg font-sans text-sm font-bold outline-none"
+                                                    style={{ background: '#FFFFFF', border: '1px solid #6ee7b7', color: '#052210' }}
+                                                    placeholder={`Auto: ${plan.total}`}
+                                                    value={(plan.overrideTotal === null || plan.overrideTotal === undefined) ? "" : plan.overrideTotal}
+                                                    onChange={e => {
+                                                        let val = e.target.value.replace(/^0+/, '')
+                                                        const newPlans = [...plans]
+                                                        const newTotal = val === "" ? null : Math.max(0, parseInt(val) || 0)
+                                                        newPlans[idx].overrideTotal = newTotal
+                                                        const finalTotal = newTotal ?? newPlans[idx].total
+                                                        const finalPP = pax > 0 ? Math.round(finalTotal / pax) : finalTotal
+                                                        newPlans[idx].perPersonPrice = finalPP
+                                                        setPlans(newPlans)
+                                                        if (idx === 0) { setTotalPrice(finalTotal); setPerPersonPrice(finalPP) }
+                                                    }}
+                                                    onBlur={e => {
+                                                        if (e.target.value === "") {
+                                                            const newPlans = [...plans]
+                                                            newPlans[idx].overrideTotal = null
+                                                            setPlans(newPlans)
                                                         }
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                    )}
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
 
-                                    {/* Plan Pricing */}
-                                    <div className="space-y-2 mt-auto">
-                                        <div className="flex justify-between items-end border-b pb-2" style={{ borderColor: 'rgba(5, 150, 105, 0.1)' }}>
-                                            <p className="font-sans text-[11px] font-semibold tracking-wider uppercase" style={{ color: '#059669' }}>Total</p>
-                                            <p className="font-serif text-xl sm:text-2xl font-bold tracking-wide leading-none" style={{ color: '#059669' }}>₹{plan.total.toLocaleString()}</p>
-                                        </div>
-                                        <div className="flex justify-between items-end">
-                                            <p className="font-sans text-[10px] font-semibold tracking-wider uppercase" style={{ color: '#6ee7b7' }}>Per Person</p>
-                                            <p className="font-sans text-sm font-bold tracking-wide" style={{ color: '#052210' }}>₹{plan.perPersonPrice.toLocaleString()}</p>
+                                        {/* Total display */}
+                                        <div className="space-y-1.5 pt-1" style={{ borderTop: '2px solid #a7f3d0' }}>
+                                            <div className="flex justify-between items-center">
+                                                <p className="font-sans text-[11px] font-bold uppercase tracking-wider" style={{ color: '#059669' }}>Total</p>
+                                                <p className="font-serif text-2xl font-black" style={{ color: '#059669' }}>₹{displayTotal.toLocaleString()}</p>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <p className="font-sans text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#6ee7b7' }}>Per Person ({pax} pax)</p>
+                                                <p className="font-sans text-sm font-bold" style={{ color: '#052210' }}>₹{displayPerPerson.toLocaleString()}</p>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            ))}
+                                )
+                            })}
                         </div>
                     </div>
                 )}

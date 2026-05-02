@@ -200,8 +200,6 @@ function SOPsContent() {
 
     const handleDelete = async (id: string) => {
         showStatus("warning", "Confirm Delete", "Are you sure you want to delete this SOP? This cannot be undone.")
-        // Note: Actual logic triggered by separate flow or confirming via prompt would be preferred, 
-        // but adhering to simple replacement request:
         if (!confirm("Delete this SOP?")) return
         try { 
             await deleteSOP(id); 
@@ -351,7 +349,6 @@ function SOPsContent() {
                                     const type = isObj ? (item.type || 'checkbox') : 'checkbox'
                                     const isRequired = isObj ? item.isRequired !== false : true
                                     const dependsOn = isObj ? (item.dependsOn || '') : ''
-                                    const depLabel = dependsOn ? (sop.items || []).find((x: any) => x?.id === dependsOn)?.title : ''
 
                                     const isEditing = editingItemId === `${sop.id}-${item.id || idx}`
 
@@ -887,6 +884,14 @@ function SOPsContent() {
                     </div>
                 </div>
             )}
+            
+            <StatusDialog
+                open={dialogOpen}
+                onOpenChange={setDialogOpen}
+                type={dialogType}
+                title={dialogTitle}
+                message={dialogMessage}
+            />
         </div>
     )
 }

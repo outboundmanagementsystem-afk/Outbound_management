@@ -14,6 +14,7 @@ import { PricingSection } from "@/components/pricing-section"
 import { IncExcSection } from "@/components/inc-exc-section"
 import { TermsSection } from "@/components/terms-section"
 import { FooterSection } from "@/components/footer-section"
+import { AttractionsActivities } from "@/components/attractions-activities"
 import { Download } from "lucide-react"
 import Image from "next/image"
 
@@ -255,7 +256,6 @@ export default function PublicItineraryPage() {
         ...(itin.cwb ? [{ label: "CWB (Child With Bed)", value: String(itin.cwb), icon: "🛏️" }] : []),
         ...(itin.cnb ? [{ label: "CNB (Child No Bed)", value: String(itin.cnb), icon: "👶" }] : []),
         ...(itin.childAge ? [{ label: "Kid's Age", value: itin.childAge, icon: "✦" }] : []),
-        ...(activities && activities.length > 0 ? [{ label: "Experiences", value: activities.map(a => toTitleCase(a.name || a.activityName)).join(" · "), icon: "🎟️" }] : []),
     ]
 
     // Build hotel list for the component - include all details
@@ -316,6 +316,9 @@ export default function PublicItineraryPage() {
     const finalPayment = itin.override_payment_policy ?? itin.pdfTemplate?.paymentPolicy ?? []
     const finalCancellation = itin.override_cancellation_policy ?? itin.pdfTemplate?.cancellationPolicy ?? []
     const hasInclExcl = finalInclusions.length > 0 || finalExclusions.length > 0
+    
+    // Calculate total pax for pricing
+    const totalPax = (Number(itin.adults) || 0) + (Number(itin.children) || 0);
     
     // Debug PDF template data
     console.log("=== ITINERARY PDF DEBUG ===");
@@ -386,6 +389,25 @@ export default function PublicItineraryPage() {
                     </div>
                 )}
 
+                {/* TRANSFERS - Individual chunk */}
+                {transfers && transfers.length > 0 && transfers.some(t => {
+                    const p = (t.pickup || "").trim().toLowerCase();
+                    const d = (t.drop || "").trim().toLowerCase();
+                    return (p !== "" && p !== "select pickup location") || 
+                           (d !== "" && d !== "select drop location");
+                }) && (
+                    <div className="pdf-chunk pdf-dark-bg w-full">
+                        <TransferDetails transfers={transfers} />
+                    </div>
+                )}
+
+                {/* ATTRACTIONS & ACTIVITIES - Individual chunk */}
+                {activities && activities.length > 0 && (
+                    <div className="pdf-chunk w-full">
+                        <AttractionsActivities activities={activities} totalPax={totalPax} />
+                    </div>
+                )}
+
                 {/* HOTELS - Individual chunk - Always show when hotels exist */}
                 {hasHotels && (
                     <div className={`pdf-chunk pdf-dark-bg w-full ${itin?.isReadyMade ? 'hide-hotel-plan-header' : ''}`}>
@@ -411,18 +433,6 @@ export default function PublicItineraryPage() {
                             baseUrl={baseUrl}
                             showCustomImage={itin?.module === "built-package"}
                         />
-                    </div>
-                )}
-
-                {/* TRANSFERS - Individual chunk */}
-                {transfers && transfers.length > 0 && transfers.some(t => {
-                    const p = (t.pickup || "").trim().toLowerCase();
-                    const d = (t.drop || "").trim().toLowerCase();
-                    return (p !== "" && p !== "select pickup location") || 
-                           (d !== "" && d !== "select drop location");
-                }) && (
-                    <div className="pdf-chunk pdf-dark-bg w-full">
-                        <TransferDetails transfers={transfers} />
                     </div>
                 )}
 

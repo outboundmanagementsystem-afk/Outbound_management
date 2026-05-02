@@ -64,6 +64,8 @@ const navigation: Record<string, any[]> = {
         { name: 'My KPIs', href: '/ops/kpi', icon: BarChart3 },
         { name: 'My Team', href: '/ops/my-team', icon: Users },
         { name: 'Profile', href: '/ops/profile', icon: Settings },
+        { name: 'Pipeline', href: '/ops/pipeline', icon: KanbanSquare },
+        { name: 'Customers', href: '/ops/customers', icon: ClipboardList },
     ],
     pre_ops_lead: [
         { name: 'Dashboard', href: '/ops', icon: Package },
@@ -83,6 +85,7 @@ const navigation: Record<string, any[]> = {
         { name: 'My KPIs', href: '/ops/kpi', icon: BarChart3 },
         { name: 'Customers', href: '/ops/customers', icon: ClipboardList },
         { name: 'Profile', href: '/ops/profile', icon: Settings },
+        { name: 'Pipeline', href: '/ops/pipeline', icon: KanbanSquare },
     ],
     post_ops_lead: [
         { name: 'Dashboard', href: '/post-ops', icon: ClipboardCheck },
@@ -123,7 +126,7 @@ const roleLabel: Record<string, string> = {
     finance_lead: 'Finance Lead',
 }
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { userProfile, loading, signOut } = useAuth()
     const router = useRouter()
     const pathname = usePathname()
@@ -154,10 +157,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
 
     return (
-        /* Root: fixed viewport, no page-level scroll */
         <div className="h-screen overflow-hidden flex" style={{ background: '#F2F4F3' }}>
-
-            {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
                     className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden"
@@ -165,7 +165,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 />
             )}
 
-            {/* ── SIDEBAR ── */}
             <aside
                 className={`
                     fixed lg:relative inset-y-0 left-0 z-50
@@ -181,7 +180,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     boxShadow: '4px 0 24px rgba(0,0,0,0.15)',
                 }}
             >
-                {/* Logo area — fixed height */}
                 <div className={`flex-shrink-0 flex items-center px-4 ${isCollapsed ? 'justify-center py-5' : 'justify-between py-4'}`}
                     style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     {isCollapsed ? (
@@ -211,7 +209,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     )}
                 </div>
 
-                {/* Role badge — fixed */}
                 {!isCollapsed && (
                     <div className="flex-shrink-0 px-4 pt-4 pb-2">
                         <div
@@ -231,13 +228,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {isCollapsed && <div className="flex-shrink-0 h-2" />}
 
-                {/* Navigation — this is the ONLY scrollable part */}
                 <nav
                     className={`flex-1 overflow-y-auto py-2 ${isCollapsed ? 'px-2' : 'px-3'}`}
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                     {items.map((item: any) => {
-                        // Section divider/header
                         if (item.divider) {
                             if (isCollapsed) return (
                                 <div key={`divider-${item.name}`} className="my-1 mx-2 h-px" style={{ background: 'rgba(255,255,255,0.08)' }} />
@@ -285,9 +280,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     })}
                 </nav>
 
-                {/* Bottom controls — fixed */}
                 <div className="flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                    {/* Collapse toggle */}
                     <button
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         className={`
@@ -301,7 +294,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         {!isCollapsed && <span className="font-sans text-xs font-medium">Collapse sidebar</span>}
                     </button>
 
-                    {/* User profile */}
                     <div className={`flex items-center ${isCollapsed ? 'flex-col justify-center py-4 gap-2' : 'justify-between px-4 py-3'}`}>
                         <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-2.5 min-w-0'}`}>
                             <div
@@ -332,10 +324,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
             </aside>
 
-            {/* ── MAIN CONTENT AREA ── */}
             <div className="flex-1 h-full flex flex-col overflow-hidden min-w-0">
-
-                {/* Top bar — fixed */}
                 <header
                     className="flex-shrink-0 z-30 flex items-center justify-between px-5 py-3"
                     style={{
@@ -361,7 +350,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </div>
                 </header>
 
-                {/* Page content — scrollable independently */}
                 <main className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
                     {children}
                 </main>
