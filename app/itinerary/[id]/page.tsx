@@ -273,10 +273,6 @@ export default function PublicItineraryPage() {
     }))
 
     // Build day plans for the component with sequential dates
-    console.log("=== MAIN ITINERARY PAGE DATE CALCULATION ===");
-    console.log("Start Date:", itin.startDate);
-    console.log("Raw Days:", days);
-    
     const dayPlans = days.map((d: any, index: number) => {
         // Generate sequential date based on start date
         const currentDate = new Date(itin.startDate);

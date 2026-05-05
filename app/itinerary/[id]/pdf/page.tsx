@@ -57,12 +57,12 @@ export default function PDFPrintPage() {
                         return itinHotel;
                     });
                 } catch (e) {
-                    console.warn("Could not enrich hotel ratings:", e);
+                    
                 }
             }
 
             setItin(it); setDays(d); setHotels(enrichedHotels); setTransfers(t); setPricing(p); setFlights(f); setActivities(a)
-        } catch (err) { console.error(err) }
+        } catch (err) { }
         finally { setLoading(false) }
     }
 
@@ -143,24 +143,13 @@ export default function PDFPrintPage() {
             }
 
             pdf.save(`Itinerary-${itin?.customerName || "Outbound"}.pdf`);
-        } catch (err) { console.error(err) }
+        } catch (err) { }
     }
 
     const formatDate = (dateStr: string) => {
         if (!dateStr) return ""
         try { return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) } catch { return dateStr }
     }
-
-    // Debug component state
-    console.log("=== COMPONENT STATE DEBUG ===");
-    console.log("Loading:", loading);
-    console.log("Itinerary:", itin);
-    console.log("Days:", days);
-    console.log("Hotels:", hotels);
-    console.log("Transfers:", transfers);
-    console.log("Flights:", flights);
-    console.log("Activities:", activities);
-    console.log("Pricing:", pricing);
 
     if (loading) return (
         <div className="min-h-screen flex items-center justify-center bg-[#031A0C]">
@@ -199,12 +188,6 @@ export default function PDFPrintPage() {
         roomCategory: h.roomCategory || h.roomType || "",
     }))
 
-    // Debug day plans data
-    console.log("=== DAY PLANS DEBUG ===");
-    console.log("Itinerary Start Date:", itin.startDate);
-    console.log("Raw Days Data:", days);
-    console.log("Days Length:", days.length);
-    
     const dayPlans = days.map((d: any, index: number) => { 
         // Generate sequential date based on start date
         const currentDate = new Date(itin.startDate);
@@ -215,8 +198,6 @@ export default function PDFPrintPage() {
             day: "numeric" 
         }).toUpperCase();
         
-        // Debug logging
-        console.log(`Day ${index + 1}: Start Date: ${itin.startDate}, Calculated Date: ${formattedDate}, Original Date: ${d.date}`);
         
         return {
             day: d.day || `Day ${String(d.dayNumber || index + 1).padStart(2, '0')}`, 
@@ -227,10 +208,8 @@ export default function PDFPrintPage() {
             subDestination: d.subDestination || "",
             overnightStay: d.overnightStay || ""
         };
-    })
+    });
     
-    console.log("Final Day Plans:", dayPlans);
-
     const hasFlights = flights && flights.length > 0
     const hasHotels = hotelList.length > 0
     const hasTransfers = transfers && transfers.length > 0
