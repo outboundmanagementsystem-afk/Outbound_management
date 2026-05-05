@@ -196,6 +196,7 @@ export default function PublicItineraryPage() {
             setHotels(enrichedHotels)
             setTransfers(t)
             setPricing(p)
+            console.log("DEBUG: Fetched pricing data:", p);
             setFlights(f)
             setActivities(a)
 

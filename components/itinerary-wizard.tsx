@@ -577,6 +577,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     perPersonPrice: pax > 0 ? Math.round(total / pax) : Math.round(total)
                 }
             })
+            console.log("DEBUG: calculatePricing newPlans:", newPlans);
             setTotalPrice(newPlans[0].total)
             setPerPersonPrice(newPlans[0].perPersonPrice)
             setPlans(newPlans)
@@ -696,6 +697,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 for (const hotel of selectedHotels) await addItineraryHotel(itinId, hotel)
                 for (const transfer of transfers) await addItineraryTransfer(itinId, transfer)
                 for (const act of selectedActivities) await addItineraryActivity(itinId, act)
+                console.log("DEBUG: Saving itinerary pricing:", { totalPrice, perPersonPrice, plans });
                 await addItineraryPricing(itinId, { totalPrice, perPersonPrice, margin, nights, adults, children, plans, manualHotelCost, manualTransferCost, manualActivityCost })
             }
 
@@ -2328,6 +2330,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 {/* STEP 8: Preview */}
                 {step === 8 && (
                     <div className="space-y-4">
+                        {console.log("DEBUG: Preview step plans:", plans)}
                         <div className="flex items-center gap-2 mb-2">
                             <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: '#ecfdf5' }}><Eye className="w-3.5 h-3.5" style={{ color: '#059669' }} /></div>
                             <div>

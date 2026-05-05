@@ -61,6 +61,8 @@ export default function PDFPrintPage() {
                 }
             }
 
+            setPricing(p);
+            console.log("DEBUG: PDF Page fetched pricing:", p);
             setItin(it); setDays(d); setHotels(enrichedHotels); setTransfers(t); setPricing(p); setFlights(f); setActivities(a)
         } catch (err) { }
         finally { setLoading(false) }
