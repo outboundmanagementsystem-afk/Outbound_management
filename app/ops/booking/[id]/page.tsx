@@ -4,8 +4,8 @@ import { ProtectedRoute } from "@/components/protected-route"
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import {
-    getItinerary, getSopChecklist, updateSopItem, updateItineraryStatus, initPostOpsChecklist, initSopChecklist,
-    getItineraryDays, getItineraryHotels, getItineraryTransfers, getItineraryPricing, getItineraryFlights, syncChecklist
+    getItinerary, getSopChecklist, getSalesChecklist, updateSopItem, updateItineraryStatus, initPostOpsChecklist, initSopChecklist,
+    getItineraryDays, getItineraryHotels, getItineraryTransfers, getItineraryPricing, getItineraryFlights, getItineraryActivities, syncChecklist
 } from "@/lib/firestore"
 import { storage } from "@/lib/firebase"
 import Link from "next/link"
@@ -29,8 +29,11 @@ function BookingDetail() {
     const [transfers, setTransfers] = useState<any[]>([])
     const [pricing, setPricing] = useState<any[]>([])
     const [flights, setFlights] = useState<any[]>([])
+    const [activities, setActivities] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [uploadingItemId, setUploadingItemId] = useState<string | null>(null)
+    const [salesChecklist, setSalesChecklist] = useState<any[]>([])
+    const [activeTab, setActiveTab] = useState<'trip'|'handover'|'checklist'>('trip')
 
     useEffect(() => { loadData() }, [bookingId])
 
@@ -39,18 +42,22 @@ function BookingDetail() {
             const bk = await getItinerary(bookingId)
             setBooking(bk)
 
-            const [d, h, t, p, f] = await Promise.all([
+            const [d, h, t, p, f, a] = await Promise.all([
                 getItineraryDays(bookingId),
                 getItineraryHotels(bookingId),
                 getItineraryTransfers(bookingId),
                 getItineraryPricing(bookingId),
                 getItineraryFlights(bookingId),
+                getItineraryActivities(bookingId),
             ])
             setDays(d)
             setHotels(h)
             setTransfers(t)
             setPricing(p)
             setFlights(f)
+            setActivities(a)
+
+            try { const sc = await getSalesChecklist(bookingId); setSalesChecklist(sc) } catch(e) { console.error('sales cl', e) }
 
             let cl = await getSopChecklist(bookingId)
             let needsSync = true;
@@ -82,8 +89,6 @@ function BookingDetail() {
         })
         const updatedChecklist = checklist.map(c => c.id === itemId ? { ...c, checked: !currentChecked } : c)
         setChecklist(updatedChecklist)
-
-        // We no longer auto-transition here. The user must click the Handover button.
     }
 
     const updateSopItemState = async (itemId: string, data: any) => {
@@ -190,223 +195,329 @@ function BookingDetail() {
                 </div>
             </div>
 
-            {/* Progress */}
-            <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                <div className="flex items-center justify-between mb-3">
-                    <span className="font-sans text-xs tracking-wider uppercase" style={{ color: 'rgba(6,161,92,0.6)' }}>Progress</span>
-                    <span className="font-sans text-sm font-bold" style={{ color: progress === 100 ? '#34d399' : '#06a15c' }}>{progress}%</span>
-                </div>
-                <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(5,34,16,0.08)' }}>
-                    <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: progress === 100 ? '#34d399' : 'linear-gradient(90deg, #06a15c, #34d399)' }} />
-                </div>
-                <p className="font-sans text-xs mt-2" style={{ color: 'rgba(5,34,16,0.5)' }}>{completedCount} of {requiredChecklist.length} mandatory tasks completed</p>
-
-                {booking.status !== "post-ops" && booking.status !== "completed" && (
-                    <div className="mt-6">
-                        <button
-                            onClick={handleHandover}
-                            disabled={loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked))}
-                            className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-sans font-bold text-sm tracking-widest uppercase transition-all ${loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked)) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.01]'}`}
-                            style={{ background: '#06a15c', color: '#FFFFFF', boxShadow: '0 4px 15px rgba(6,161,92,0.3)' }}
-                        >
-                            Handover to Post-Operation <ArrowLeft className="w-4 h-4 rotate-180" />
-                        </button>
-                        {requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked) && (
-                            <p className="font-sans text-[10px] text-red-500 font-bold uppercase tracking-wider text-center mt-2">
-                                Complete all mandatory SOP tasks to handover
-                            </p>
-                        )}
-                    </div>
-                )}
-
-                {(booking.status === "post-ops" || booking.status === "completed") && (
-                    <div className="mt-6 flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)' }}>
-                        <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#34d399' }} />
-                        <div>
-                            <span className="font-sans text-sm font-bold block" style={{ color: '#052210' }}>Handover Complete</span>
-                            <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>This booking is now managed by the Post-Operation team.</span>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* Details grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                {/* Customer info */}
-                <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                    <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Customer</h3>
-                    <div className="space-y-2 font-sans text-sm" style={{ color: 'rgba(5,34,16,0.8)' }}>
-                        <p><strong style={{ color: '#052210' }}>{booking.customerName}</strong></p>
-                        {booking.customerPhone && <p>{booking.customerPhone}</p>}
-                        {booking.customerEmail && <p>{booking.customerEmail}</p>}
+            {/* Handover Complete Banner (Persistent) */}
+            {(booking.status === "post-ops" || booking.status === "completed") && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)' }}>
+                    <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#34d399' }} />
+                    <div>
+                        <span className="font-sans text-sm font-bold block" style={{ color: '#052210' }}>Handover Complete</span>
+                        <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>This booking is now managed by the Post-Operation team.</span>
                     </div>
                 </div>
+            )}
 
-                {/* Trip info */}
-                <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                    <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Trip</h3>
-                    <div className="space-y-2 font-sans text-sm" style={{ color: 'rgba(5,34,16,0.8)' }}>
-                        <p>{booking.destination} · {booking.nights}N/{booking.days}D</p>
-                        <p>{booking.startDate} → {booking.endDate}</p>
-                        <p>{booking.adults} Adults{booking.children > 0 ? `, ${booking.children} Children (${booking.childAge})` : ""}</p>
-                        {booking.placesCovered && <p>{booking.placesCovered}</p>}
-                    </div>
-                </div>
-
-                {/* Hotels */}
-                <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                    <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels ({hotels.length})</h3>
-                    {hotels.map((h: any, idx: number) => (
-                        <div key={`${h.id}-${idx}`} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
-                            <span className="font-sans text-sm" style={{ color: '#052210' }}>{h.name || h.hotelName || "Unnamed Hotel"}</span>
-                            <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>{h.category}{h.rating ? ` · ${h.rating}★` : ''}</span>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Flights */}
-                {flights.length > 0 && (
-                    <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                        <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Flights ({flights.length})</h3>
-                        {flights.map((f: any, idx: number) => (
-                            <div key={`${f.id}-${idx}`} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
-                                <div>
-                                    <span className="font-sans text-sm block" style={{ color: '#052210' }}>{f.airline} {f.flightNo ? `(${f.flightNo})` : ""}</span>
-                                    <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.5)' }}>{f.fromCode} → {f.toCode} · {f.departure} - {f.arrival}</span>
-                                </div>
-                                <span className="font-sans text-xs font-bold self-start mt-1" style={{ color: '#06a15c' }}>{f.flightType}</span>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Checklist */}
-            <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(6,161,92,0.08)' }}>
-                    <h3 className="font-serif text-lg tracking-wide" style={{ color: '#06a15c' }}>SOP Checklist</h3>
-                </div>
-                {checklist.length === 0 && (
-                    <div className="px-6 py-10 text-center">
-                        <Package className="w-10 h-10 mx-auto mb-3" style={{ color: 'rgba(6,161,92,0.2)' }} />
-                        <p className="font-sans text-sm font-semibold mb-1" style={{ color: '#052210' }}>SOP Checklist not initialized</p>
-                        <p className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.5)' }}>
-                            Ask a Sales or Admin user to move this booking's status to re-trigger SOP initialization,<br />or have the admin deploy the updated Firestore security rules.
-                        </p>
-                    </div>
-                )}
-                {checklist.map((item: any) => (
-                    <div
-                        key={item.id}
-                        className="w-full px-6 py-4 flex items-start gap-4 hover:bg-white/[0.02] transition-colors text-left"
-                        style={{ borderBottom: '1px solid rgba(6,161,92,0.06)' }}
+            {/* Tab Navigation */}
+            <div className="flex items-center gap-1 border-b" style={{ borderColor: 'rgba(5,34,16,0.08)' }}>
+                {[
+                    { id: 'trip', label: 'Trip Details' },
+                    { id: 'handover', label: 'Sales Handover Data' },
+                    { id: 'checklist', label: 'Pre-Ops Checklist' }
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`px-4 py-3 font-sans text-[11px] font-bold tracking-wider uppercase transition-all border-b-2 -mb-[px] ${activeTab === tab.id ? 'text-[#06a15c] border-[#06a15c]' : 'text-gray-400 border-transparent hover:text-gray-600'}`}
                     >
-                        <button
-                            onClick={() => toggleItem(item.id, item.checked)}
-                            disabled={(item.requiresAcknowledgement && !item.acknowledged && !item.checked) || (["file_upload", "File Upload"].includes(item.type) && !item.fileUrl && !item.checked) || (["file_or_text"].includes(item.type) && !item.fileUrl && !item.response && !item.checked) || (item.isRequired && ["text_input", "Text Input", "single_choice", "Single Choice", "multiple_choice", "Multiple Choice", "rating", "Rating", "rating_5", "rating_10"].includes(item.type) && !item.response && !item.checked) || (item.isRequired && ["multiple_select", "Multiple Select"].includes(item.type) && (!item.response || item.response.length === 0) && !item.checked)}
-                            className={`mt-0.5 transition-colors ${((item.requiresAcknowledgement && !item.acknowledged && !item.checked) || (["file_upload", "File Upload"].includes(item.type) && !item.fileUrl && !item.checked) || (["file_or_text"].includes(item.type) && !item.fileUrl && !item.response && !item.checked)) ? "opacity-50 cursor-not-allowed" : "hover:scale-110"}`}
-                        >
-                            {item.checked ? (
-                                <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#34d399' }} />
-                            ) : (
-                                <Circle className="w-5 h-5 flex-shrink-0" style={{ color: 'rgba(5,34,16,0.4)' }} />
-                            )}
-                        </button>
-                        <div className="flex-1">
-                            <span
-                                className="font-sans text-sm block transition-colors mt-0.5"
-                                style={{
-                                    color: item.checked ? 'rgba(5,34,16,0.5)' : '#052210',
-                                    textDecoration: item.checked ? 'line-through' : 'none',
-                                }}
-                            >
-                                {item.name || item.title}
-                            </span>
-
-                            {/* Acknowledgement section */}
-                            {item.requiresAcknowledgement && !item.checked && (
-                                <label className="flex items-center gap-2 mt-3 p-3 rounded-lg cursor-pointer w-fit" style={{ background: 'rgba(5,34,16,0.03)', border: '1px solid rgba(5,34,16,0.08)' }}>
-                                    <input 
-                                        type="checkbox" 
-                                        checked={item.acknowledged || false}
-                                        onChange={(e) => updateSopItemState(item.id, { acknowledged: e.target.checked })}
-                                        className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600"
-                                    />
-                                    <span className="font-sans text-xs font-medium" style={{ color: '#052210' }}>Yes, I have done this</span>
-                                </label>
-                            )}
-
-                            
-                                    {/* Dynamic Input Types */}
-{["text_input", "Text Input"].includes(item.type) && (<div className="mt-3"><input type="text" disabled={item.checked} value={item.response || ""} onChange={(e) => updateSopItemState(item.id, { response: e.target.value })} placeholder="Enter your answer..." className="w-full px-3 py-2 rounded-lg font-sans text-xs outline-none" style={{ border: "1px solid rgba(5,34,16,0.1)", color: "#052210" }} /></div>)}
-{["file_or_text"].includes(item.type) && !item.checked && !item.fileUrl && (<div className="mt-3"><input type="text" disabled={item.checked} value={item.response || ""} onChange={(e) => updateSopItemState(item.id, { response: e.target.value })} placeholder="Enter text answer OR upload a file below..." className="w-full px-3 py-2 rounded-lg font-sans text-xs outline-none" style={{ border: "1px solid rgba(5,34,16,0.1)", color: "#052210" }} /></div>)}
-{["date_picker", "Date Picker"].includes(item.type) && (<div className="mt-3"><input type="date" disabled={item.checked} value={item.response || ""} onChange={(e) => updateSopItemState(item.id, { response: e.target.value })} className="px-3 py-2 rounded-lg font-sans text-xs outline-none" style={{ border: "1px solid rgba(5,34,16,0.1)", color: "#052210" }} /></div>)}
-{["single_choice", "Single Choice"].includes(item.type) && (item.options || item.points) && (<div className="mt-3 space-y-2">{(item.options || item.points || []).map((opt: any, i: number) => (<label key={i} className="flex items-center gap-2 cursor-pointer"><input type="radio" disabled={item.checked} name={"single-"+item.id} checked={item.response === opt} onChange={() => updateSopItemState(item.id, { response: opt })} className="w-3.5 h-3.5" style={{ accentColor: "#06a15c" }} /><span className="font-sans text-xs" style={{ color: "rgba(5,34,16,0.8)" }}>{opt}</span></label>))}</div>)}
-{["multiple_choice", "Multiple Choice", "multiple_select"].includes(item.type) && (item.options || item.points) && (<div className="mt-3 space-y-2">{(item.options || item.points || []).map((opt: any, i: number) => { const currentArr = Array.isArray(item.response) ? item.response : []; return (<label key={i} className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={currentArr.includes(opt)} onChange={(e) => { let n = [...currentArr]; if (e.target.checked) n.push(opt); else n = n.filter(x => x !== opt); updateSopItemState(item.id, { response: n }); }} className="w-3.5 h-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600" /><span className="font-sans text-xs" style={{ color: "rgba(5,34,16,0.8)" }}>{opt}</span></label>) })}</div>)}
-{["rating", "Rating", "rating_5", "rating_10"].includes(item.type) && (<div className="mt-3 flex items-center gap-1.5">{Array.from({ length: item.type === "rating_10" ? 10 : (parseInt(item.extraInfo || "5") || 5) }).map((_: any, i: number) => (<button key={i} onClick={() => updateSopItemState(item.id, { response: (i + 1).toString() })} className="text-xl transition-colors hover:scale-110" style={{ color: (parseInt(item.response || "0")) > i ? "#f59e0b" : "rgba(5,34,16,0.1)" }}>?</button>))} <span className="ml-2 font-sans text-[10px] text-gray-400">({item.response || 0} / {item.type === "rating_10" ? 10 : (parseInt(item.extraInfo || "5") || 5)})</span></div>)}
-{item.checked && item.response && (<div className="mt-2 bg-emerald-50/50 px-3 py-2 rounded-lg border border-emerald-100"><span className="font-sans text-[10px] font-bold uppercase tracking-wider block text-emerald-600 mb-1">Response:</span><span className="font-sans text-xs text-emerald-900 font-medium">{Array.isArray(item.response) ? item.response.join(", ") : item.response}</span></div>)}
-
-{/* File upload section */}
-                            {['file_upload', 'File Upload', 'file_or_text'].includes(item.type) && !item.checked && (
-                                <div className="mt-3 p-3 rounded-lg w-fit" style={{ background: 'rgba(5,34,16,0.03)', border: '1px solid rgba(5,34,16,0.08)' }}>
-                                    {!item.fileUrl ? (
-                                        <div className="flex items-center gap-3">
-                                            <input 
-                                                type="file" 
-                                                id={`file-${item.id}`}
-                                                className="hidden" 
-                                                onChange={(e) => handleFileUpload(item.id, e.target.files?.[0])}
-                                            />
-                                            <label htmlFor={`file-${item.id}`} className="cursor-pointer flex items-center gap-2 px-3 py-1.5 rounded-md font-sans text-[10px] font-bold tracking-wider uppercase transition-colors" style={{ background: 'rgba(6,161,92,0.1)', color: '#06a15c', border: '1px dashed rgba(6,161,92,0.3)' }}>
-                                                <FileText className="w-3.5 h-3.5" /> Upload File
-                                            </label>
-                                            {uploadingItemId === item.id && <span className="font-sans text-[10px] text-gray-500 animate-pulse">Uploading...</span>}
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-3">
-                                            <a href={item.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 font-sans text-xs hover:underline" style={{ color: '#06a15c' }}>
-                                                <FileText className="w-3.5 h-3.5" /> View Uploaded File
-                                            </a>
-                                            <button onClick={() => updateSopItemState(item.id, { fileUrl: '' })} className="px-2 py-1 rounded bg-red-50 text-[10px] uppercase font-bold text-red-500 tracking-wider">Remove</button>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* If already checked and has a file, show the file link */}
-                            {item.checked && item.fileUrl && (
-                                <div className="mt-2 text-left">
-                                    <a href={item.fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 font-sans text-[11px] opacity-70 hover:opacity-100 transition-opacity" style={{ color: '#06a15c' }}>
-                                        <FileText className="w-3 h-3" /> View Uploaded File
-                                    </a>
-                                </div>
-                            )}
-
-                            {/* Existing Notes/Points Display */}
-                            {(item.notes || (item.points && item.points.length > 0) || item.extraInfo) && (
-                                <div className="mt-3 space-y-2 border-l-2 border-dashed pl-3 text-left" style={{ borderColor: 'rgba(5,34,16,0.1)' }}>
-                                    {item.extraInfo && (
-                                        <div className="inline-flex items-center px-1.5 py-0.5 rounded font-bold font-sans text-xs" style={{ background: 'rgba(5,34,16,0.06)', color: '#052210' }}>
-                                            {item.extraInfo}
-                                        </div>
-                                    )}
-                                    {item.notes && <p className="font-sans text-[11px] italic leading-relaxed" style={{ color: 'rgba(5,34,16,0.5)' }}>{item.notes}</p>}
-                                    {item.points && item.points.length > 0 && (
-                                        <ul className="space-y-1">
-                                            {item.points.map((p: string, k: number) => (
-                                                <li key={k} className="font-sans text-[10px] flex items-start gap-1.5" style={{ color: 'rgba(5,34,16,0.6)' }}>
-                                                    <span className="w-1 h-1 rounded-full mt-1.5 flex-shrink-0" style={{ background: 'rgba(5,34,16,0.3)' }} />
-                                                    {p}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                        {tab.label}
+                    </button>
                 ))}
             </div>
+
+            {/* Tab 1: Trip Details */}
+            {activeTab === 'trip' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                        {/* Customer info */}
+                        <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                            <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Customer</h3>
+                            <div className="space-y-2 font-sans text-sm" style={{ color: 'rgba(5,34,16,0.8)' }}>
+                                <p><strong style={{ color: '#052210' }}>{booking.customerName}</strong></p>
+                                {booking.customerPhone && <p>{booking.customerPhone}</p>}
+                                {booking.customerEmail && <p>{booking.customerEmail}</p>}
+                            </div>
+                        </div>
+
+                        {/* Trip info */}
+                        <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                            <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Trip</h3>
+                            <div className="space-y-2 font-sans text-sm" style={{ color: 'rgba(5,34,16,0.8)' }}>
+                                <p>{booking.destination} · {booking.nights}N/{booking.days}D</p>
+                                <p>{booking.startDate} → {booking.endDate}</p>
+                                <p>{booking.adults} Adults{booking.children > 0 ? `, ${booking.children} Children (${booking.childAge})` : ""}</p>
+                                {booking.placesCovered && <p>{booking.placesCovered}</p>}
+                            </div>
+                        </div>
+
+                        {/* Hotels */}
+                        <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                            <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels ({hotels.length})</h3>
+                            {hotels.map((h: any, idx: number) => (
+                                <div key={`${h.id}-${idx}`} className="flex justify-between py-2 items-start" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                                    <span className="font-sans text-sm" style={{ color: '#052210' }}>{h.name || h.hotelName || "Unnamed Hotel"}</span>
+                                    <div className="flex flex-col items-end">
+                                        <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>{h.category}{h.rating ? ` · ${h.rating}★` : ''}</span>
+                                        <div className="flex flex-col items-end gap-0.5 mt-0.5">
+                                            {(h.roomCategory || h.roomType || h.room) && (
+                                                <span className="font-sans text-[10px] font-bold" style={{ color: '#06a15c' }}>{h.roomCategory || h.roomType || h.room}</span>
+                                            )}
+                                            {h.mealPlan && (
+                                                <span className="font-sans text-[9px] uppercase tracking-wider" style={{ color: 'rgba(5,34,16,0.4)' }}>{h.mealPlan}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Flights */}
+                        {flights.length > 0 && (
+                            <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                                <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Flights ({flights.length})</h3>
+                                {flights.map((f: any, idx: number) => (
+                                    <div key={`${f.id}-${idx}`} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                                        <div>
+                                            <span className="font-sans text-sm block" style={{ color: '#052210' }}>{f.airline} {f.flightNo ? `(${f.flightNo})` : ""}</span>
+                                            <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.5)' }}>{f.fromCode} → {f.toCode} · {f.departure} - {f.arrival}</span>
+                                        </div>
+                                        <span className="font-sans text-xs font-bold self-start mt-1" style={{ color: '#06a15c' }}>{f.flightType}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Activities */}
+                    {activities.length > 0 && (
+                        <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                            <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Activities ({activities.length})</h3>
+                            {activities.map((a: any, idx: number) => (
+                                <div key={`${a.id}-${idx}`} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                                    <span className="font-sans text-sm" style={{ color: '#052210' }}>{a.name || a.activityName}</span>
+                                    <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>{a.category || a.activityType}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Transfers */}
+                    {transfers.length > 0 && (
+                        <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                            <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Transfers ({transfers.length})</h3>
+                            {transfers.map((t: any, idx: number) => (
+                                <div key={idx} className="flex justify-between py-2 items-start" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                                    <div>
+                                        <span className="font-sans text-sm font-semibold" style={{ color: '#052210' }}>{t.type}{t.vehicleType ? ` · ${t.vehicleType}` : ''}</span>
+                                        <div className="flex flex-col mt-1 space-y-0.5">
+                                            {t.pickup && <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}><strong className="font-medium">Pickup:</strong> {t.pickup}</span>}
+                                            {t.drop && <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}><strong className="font-medium">Drop:</strong> {t.drop}</span>}
+                                        </div>
+                                    </div>
+                                    {t.price > 0 && (
+                                        <span className="font-sans text-xs font-bold self-start mt-1" style={{ color: '#06a15c' }}>₹{Number(t.price).toLocaleString()}</span>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Pricing */}
+                    {pricing?.[0]?.plans && pricing[0].plans.length > 0 && (
+                        <div className="rounded-2xl p-5" style={{ background: 'rgba(6,161,92,0.05)', border: '1px solid rgba(6,161,92,0.15)' }}>
+                            <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Pricing</h3>
+                            <div className="space-y-3">
+                                {pricing[0].plans.map((p: any, i: number) => (
+                                    <div key={i} className="flex justify-between items-end border-b pb-2 last:border-0 last:pb-0" style={{ borderColor: 'rgba(6,161,92,0.1)' }}>
+                                        <div>
+                                            <p className="font-sans text-xs font-bold" style={{ color: '#052210' }}>{p.hotelName}</p>
+                                            <p className="font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.5)' }}>{p.category} | ₹{p.perPersonPrice?.toLocaleString()} pp</p>
+                                        </div>
+                                        <p className="font-serif text-lg font-bold" style={{ color: '#06a15c' }}>₹{p.total?.toLocaleString()}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Day Plans */}
+                    {days.length > 0 && (
+                        <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                            <div className="px-6 py-5" style={{ borderBottom: '1px solid rgba(6,161,92,0.08)' }}>
+                                <h3 className="font-serif text-lg tracking-wide" style={{ color: '#06a15c' }}>Day Plans ({days.length})</h3>
+                            </div>
+                            {[...days].sort((a, b) => {
+                                const numA = parseInt((a.day || String(a.dayNumber || '')).replace(/\D/g, '')) || 0
+                                const numB = parseInt((b.day || String(b.dayNumber || '')).replace(/\D/g, '')) || 0
+                                return numA - numB
+                            }).map((day: any, idx: number) => (
+                                <div key={day.id || idx} className="px-6 py-4" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <span className="px-2.5 py-0.5 rounded-full font-sans text-[10px] font-bold tracking-wider uppercase" style={{ background: 'rgba(6,161,92,0.12)', color: '#06a15c' }}>{day.day}</span>
+                                    </div>
+                                    <p className="font-sans text-sm font-semibold" style={{ color: '#052210' }}>{day.title}</p>
+                                    {day.description && <p className="font-sans text-xs mt-1" style={{ color: 'rgba(5,34,16,0.7)' }}>{day.description}</p>}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Tab 2: Sales Handover Data */}
+            {activeTab === 'handover' && (
+                <div className="space-y-6">
+                    {salesChecklist.length > 0 ? (
+                        <>
+                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)' }}>
+                                <CheckCircle className="w-5 h-5 flex-shrink-0" style={{ color: '#34d399' }} />
+                                <span className="font-sans text-xs font-bold" style={{ color: '#052210' }}>
+                                    ✅ Handover Checklist Completed by {booking.salesName || booking.consultantName || 'Sales Person'} on {booking.handoverDate || booking.updatedAt?.split('T')[0] || 'Recent'}
+                                </span>
+                            </div>
+                            <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                                {salesChecklist.map((item: any, idx: number) => {
+                                    const type = (item.type || "").toLowerCase();
+                                    const hasResponse = !!item.response && item.response.toString().trim() !== "";
+                                    const hasFile = !!item.fileUrl;
+                                    const hasAck = !!item.acknowledged || !!item.checked;
+
+                                    return (
+                                        <div key={idx} className="px-6 py-4 border-b last:border-0" style={{ borderColor: 'rgba(5,34,16,0.05)' }}>
+                                            <p className="font-sans text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'rgba(5,34,16,0.6)' }}>{item.name || item.title}</p>
+                                            
+                                            {/* Priority 1: File */}
+                                            {hasFile ? (
+                                                <button
+                                                    onClick={() => window.open(item.fileUrl, '_blank')}
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg font-sans text-[10px] font-bold tracking-wider uppercase transition-all hover:scale-105" 
+                                                    style={{ background: 'transparent', color: '#06a15c', border: '1.5px solid #06a15c' }}
+                                                >
+                                                    📎 View File
+                                                </button>
+                                            ) : type.includes("file") ? (
+                                                <p className="text-[11px] font-sans italic text-gray-400">No file uploaded</p>
+                                            ) : 
+                                            
+                                            /* Priority 2: Choice with Options */
+                                            (type.includes("choice") && (item.options || item.points)) ? (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {(item.options || item.points || []).map((opt: any, i: number) => {
+                                                        const isSelected = Array.isArray(item.response) ? item.response.includes(opt) : item.response === opt;
+                                                        return (
+                                                            <span key={i} className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider" style={{ background: isSelected ? '#06a15c' : 'rgba(5,34,16,0.08)', color: isSelected ? '#FFFFFF' : 'rgba(5,34,16,0.4)' }}>
+                                                                {opt}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : 
+
+                                            /* Priority 3: Any Text/Response */
+                                            hasResponse ? (
+                                                <div className="font-sans" style={{ background: 'rgba(5,34,16,0.03)', border: '0.5px solid rgba(5,34,16,0.1)', borderRadius: '6px', padding: '7px 10px', fontSize: '13px', color: '#052210', pointerEvents: 'none' }}>
+                                                    {item.response}
+                                                </div>
+                                            ) :
+
+                                            /* Priority 4: Checkbox/Acknowledgement */
+                                            (hasAck || type.includes("checkbox") || item.requiresAcknowledgement) ? (
+                                                <div className="flex items-center gap-2 text-[#06a15c]">
+                                                    <CheckCircle className="w-4 h-4" />
+                                                    <span className="font-sans text-xs font-semibold">Confirmed — "Yes, I understand and agree"</span>
+                                                </div>
+                                            ) : (
+                                                <div className="font-sans italic" style={{ background: 'rgba(5,34,16,0.03)', border: '0.5px solid rgba(5,34,16,0.1)', borderRadius: '6px', padding: '7px 10px', fontSize: '13px', color: 'rgba(5,34,16,0.4)', pointerEvents: 'none' }}>
+                                                    N/A
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    ) : (
+                        <div className="py-12 text-center rounded-2xl bg-white border border-dashed border-gray-200">
+                            <p className="font-sans text-sm text-gray-400 italic">No handover checklist data found for this booking.</p>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Tab 3: Pre-Ops Checklist */}
+            {activeTab === 'checklist' && (
+                <div className="space-y-6">
+                    <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="font-sans text-xs tracking-wider uppercase" style={{ color: 'rgba(6,161,92,0.6)' }}>Checklist Progress</span>
+                            <span className="font-sans text-sm font-bold" style={{ color: progress === 100 ? '#34d399' : '#06a15c' }}>{progress}%</span>
+                        </div>
+                        <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(5,34,16,0.08)' }}>
+                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${progress}%`, background: progress === 100 ? '#34d399' : 'linear-gradient(90deg, #06a15c, #34d399)' }} />
+                        </div>
+                        <p className="font-sans text-xs mt-2" style={{ color: 'rgba(5,34,16,0.5)' }}>{completedCount} of {requiredChecklist.length} mandatory tasks completed</p>
+                    </div>
+
+                    <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                        {checklist.length === 0 ? (
+                            <div className="px-6 py-10 text-center">
+                                <Package className="w-10 h-10 mx-auto mb-3" style={{ color: 'rgba(6,161,92,0.2)' }} />
+                                <p className="font-sans text-sm font-semibold" style={{ color: '#052210' }}>SOP Checklist not initialized</p>
+                            </div>
+                        ) : (
+                            checklist.map((item: any) => (
+                                <div key={item.id} className="w-full px-6 py-5 flex items-start gap-4 border-b last:border-0" style={{ borderColor: 'rgba(6,161,92,0.06)' }}>
+                                    <button
+                                        onClick={() => toggleItem(item.id, item.checked)}
+                                        disabled={!item.response && !item.fileUrl && !item.checked && item.isRequired !== false}
+                                        className="mt-1 transition-all"
+                                    >
+                                        {item.checked ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <Circle className="w-5 h-5 text-gray-300" />}
+                                    </button>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="font-sans text-sm font-bold truncate" style={{ color: '#052210' }}>{item.name || item.title}</span>
+                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest uppercase ${item.isRequired === false ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-400'}`}>
+                                                {item.isRequired === false ? 'Optional' : 'Mandatory'}
+                                            </span>
+                                        </div>
+                                        
+                                        {/* Input area */}
+                                        {['text_input', 'Text Input'].includes(item.type) && (
+                                            <input type="text" value={item.response || ""} onChange={(e) => updateSopItemState(item.id, { response: e.target.value })} placeholder="Enter response..." className="w-full px-3 py-2 rounded-lg font-sans text-xs border border-gray-100 bg-gray-50/50 outline-none focus:border-emerald-200" />
+                                        )}
+                                        {['file_upload', 'File Upload'].includes(item.type) && (
+                                            <div className="flex items-center gap-3">
+                                                {!item.fileUrl ? (
+                                                    <>
+                                                        <input type="file" id={`f-${item.id}`} className="hidden" onChange={(e) => handleFileUpload(item.id, e.target.files?.[0])} />
+                                                        <label htmlFor={`f-${item.id}`} className="cursor-pointer px-3 py-1.5 rounded-lg bg-emerald-50 border border-dashed border-emerald-200 text-[#06a15c] font-sans text-[10px] font-bold uppercase tracking-wider">Upload File</label>
+                                                        {uploadingItemId === item.id && <span className="text-[10px] text-gray-400 animate-pulse">Uploading...</span>}
+                                                    </>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-emerald-600 hover:underline">View Uploaded File</a>
+                                                        <button onClick={() => updateSopItemState(item.id, { fileUrl: '' })} className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Remove</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        
+                                        {item.notes && <p className="font-sans text-[10px] italic text-gray-400 mt-2">{item.notes}</p>}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <button
+                        onClick={handleHandover}
+                        disabled={loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked)) || booking.status === "post-ops"}
+                        className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-sans font-bold text-sm tracking-widest uppercase transition-all ${loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked)) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.01] active:scale-[0.98]'}`}
+                        style={{ background: '#06a15c', color: '#FFFFFF', boxShadow: '0 4px 15px rgba(6,161,92,0.3)' }}
+                    >
+                        Handover to Post-Operation <ArrowLeft className="w-4 h-4 rotate-180" />
+                    </button>
+                </div>
+            )}
         </div>
     )
 }

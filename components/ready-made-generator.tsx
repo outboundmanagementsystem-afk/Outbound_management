@@ -72,7 +72,7 @@ export function ReadyMadeGenerator() {
     const [newPkgDescription, setNewPkgDescription] = useState("")
 
     const [dayPlans, setDayPlans] = useState<string[]>([]) // Array of day plan IDs or names
-    const [hotelStops, setHotelStops] = useState<any[]>([{ location: "", hotelId: "", mealPlan: "CP", nights: 2 }])
+    const [hotelStops, setHotelStops] = useState<any[]>([{ location: "", hotelId: "", mealPlan: "CP", nights: 2, roomType: "Standard" }])
     const [paxPricing, setPaxPricing] = useState([
         { id: "2pax", label: "2 PAX", desc: "Min 2 pax rate", net: 0, margin: 20 },
         { id: "4pax", label: "4 PAX", desc: "Min 4 pax rate", net: 0, margin: 20 },
@@ -492,6 +492,7 @@ export function ReadyMadeGenerator() {
                         hotelId: stop.hotelId,
                         hotelName: hotelInfo?.hotelName || hotelInfo?.name || "",
                         mealPlan: stop.mealPlan,
+                        roomType: stop.roomType || "Standard",
                         nights: stop.nights
                     })
                 }
@@ -864,6 +865,21 @@ export function ReadyMadeGenerator() {
                                                 </div>
                                             )}
                                         </div>
+                                        <select
+                                            className="px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none focus:border-emerald-400"
+                                            value={stop.roomType || "Standard"}
+                                            onChange={e => {
+                                                const newStops = [...hotelStops];
+                                                newStops[idx].roomType = e.target.value;
+                                                setHotelStops(newStops);
+                                            }}
+                                        >
+                                            <option value="Standard">Standard</option>
+                                            <option value="Deluxe">Deluxe</option>
+                                            <option value="Super Deluxe">Super Deluxe</option>
+                                            <option value="Suite">Suite</option>
+                                            <option value="Luxury">Luxury</option>
+                                        </select>
                                         <select
                                             className="px-2 py-1.5 bg-white border border-gray-200 rounded-md text-xs outline-none"
                                             value={stop.mealPlan}

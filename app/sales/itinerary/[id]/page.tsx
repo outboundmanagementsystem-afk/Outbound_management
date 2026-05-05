@@ -148,7 +148,12 @@ function ItineraryDetail() {
     }
 
     const _doStatusChange = async (newStatus: ItineraryStatus) => {
-        await updateItineraryStatus(itinId, newStatus)
+        const extraData: any = {}
+        if (newStatus === "handover") {
+            extraData.salesName = userProfile?.name || "Sales Person"
+            extraData.handoverDate = new Date().toISOString().split('T')[0]
+        }
+        await updateItineraryStatus(itinId, newStatus, extraData)
         if (newStatus === "handover") {
             await initSopChecklist(itinId)
         }
@@ -517,9 +522,17 @@ If you have any questions, would like to make customizations, or have any concer
                     <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                         <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels ({hotels.length})</h3>
                         {hotels.map((h: any, idx: number) => (
-                            <div key={`${h.id}-${idx}`} className="flex justify-between py-2" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                            <div key={`${h.id}-${idx}`} className="flex justify-between py-2 items-start" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
                                 <span className="font-sans text-sm" style={{ color: '#052210' }}>{h.name || h.hotelName || "Unnamed Hotel"}</span>
-                                <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>{h.category}{h.rating ? ` · ${h.rating}★` : ''}</span>
+                                <div className="flex flex-col items-end gap-0.5">
+                                    <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>{h.category}{h.rating ? ` · ${h.rating}★` : ''}</span>
+                                    {(h.roomCategory || h.roomType || h.room) && (
+                                        <span className="font-sans text-[10px] font-bold" style={{ color: '#06a15c' }}>{h.roomCategory || h.roomType || h.room}</span>
+                                    )}
+                                    {h.mealPlan && (
+                                        <span className="font-sans text-[9px] uppercase tracking-wider" style={{ color: 'rgba(5,34,16,0.4)' }}>{h.mealPlan}</span>
+                                    )}
+                                </div>
                             </div>
                         ))}
                     </div>

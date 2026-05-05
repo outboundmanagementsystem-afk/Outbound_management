@@ -70,14 +70,12 @@ const navigation: Record<string, any[]> = {
     pre_ops_lead: [
         { name: 'Dashboard', href: '/ops', icon: Package },
         { name: 'Pipeline', href: '/ops/pipeline', icon: KanbanSquare },
-        { name: 'Customers', href: '/ops/customers', icon: ClipboardList },
         { name: 'My Team', href: '/ops/my-team', icon: Users },
         { name: 'Itinerary Generators', href: '/ops/itinerary-generator', icon: FileText },
     ],
     pre_ops: [
         { name: 'Dashboard', href: '/ops', icon: Package },
         { name: 'Pipeline', href: '/ops/pipeline', icon: KanbanSquare },
-        { name: 'Customers', href: '/ops/customers', icon: ClipboardList },
         { name: 'Itinerary Generators', href: '/ops/itinerary-generator', icon: FileText },
     ],
     ops: [
@@ -90,13 +88,11 @@ const navigation: Record<string, any[]> = {
     post_ops_lead: [
         { name: 'Dashboard', href: '/post-ops', icon: ClipboardCheck },
         { name: 'Pipeline', href: '/post-ops/pipeline', icon: KanbanSquare },
-        { name: 'Customers', href: '/post-ops/customers', icon: ClipboardList },
         { name: 'My Team', href: '/post-ops/my-team', icon: Users },
     ],
     post_ops: [
         { name: 'Dashboard', href: '/post-ops', icon: ClipboardCheck },
         { name: 'Pipeline', href: '/post-ops/pipeline', icon: KanbanSquare },
-        { name: 'Customers', href: '/post-ops/customers', icon: ClipboardList },
     ],
     finance_lead: [
         { name: 'Dashboard', href: '/finance', icon: DollarSign },

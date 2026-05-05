@@ -242,8 +242,12 @@ export async function updateItinerary(id: string, data: any) {
     await updateDoc(doc(db, "itineraries", id), { ...data, updatedAt: new Date().toISOString() })
 }
 
-export async function updateItineraryStatus(id: string, status: ItineraryStatus) {
-    await updateDoc(doc(db, "itineraries", id), { status, updatedAt: new Date().toISOString() })
+export async function updateItineraryStatus(id: string, status: ItineraryStatus, extraData: Record<string, any> = {}) {
+    await updateDoc(doc(db, "itineraries", id), { 
+        status, 
+        ...extraData,
+        updatedAt: new Date().toISOString() 
+    })
     if (status === "handover" || status === "pre-ops") {
         // Init/sync Pre-Ops SOP checklist (called by sales/admin who have sops read permission)
         const cl = await getItinSub(id, "sopChecklist")

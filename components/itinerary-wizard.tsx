@@ -222,6 +222,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                         selectedNights: stop.nights,
                         mealPlan: stop.mealPlan,
                         roomType: stop.roomType || hotel.roomType || "Standard",
+                        roomCategory: stop.roomType || hotel.roomType || "Standard",
                         ratePerNight: stop.ratePerNight || 0,
                         location: stop.location || hotel.location || "",
                         starRating: stop.starRating || hotel.starRating || 3
