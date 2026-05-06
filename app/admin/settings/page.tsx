@@ -171,7 +171,7 @@ function SettingsContent() {
                 const userItineraries = allItineraries.filter(i => i.createdBy === user.uid)
                 const confirmed = userItineraries.filter(i => i.status === "confirmed" || i.status === "handover" || i.status === "post-ops" || i.status === "completed")
 
-                const totalRevenue = confirmed.reduce((acc, curr) => acc + (Number(curr.totalPrice) || 0), 0)
+                const totalRevenue = confirmed.reduce((acc, curr) => acc + (Number((curr.plans?.find((p:any) => p.planId === curr.selectedPlanId)?.totalPrice || curr.plans?.[0]?.totalPrice || 0)) || 0), 0)
                 const conversionRate = userItineraries.length > 0 ? (confirmed.length / userItineraries.length) * 100 : 0
 
                 return {

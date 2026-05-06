@@ -48,7 +48,7 @@ function MyTeamContent() {
     const teamConversion = teamTotal > 0 ? Math.round((teamConfirmed / teamTotal) * 100) : 0
     const teamRevenue = teamItins
         .filter((i: any) => ["confirmed", "handover", "completed"].includes(i.status))
-        .reduce((sum: number, i: any) => sum + Math.round((Number(i.totalPrice) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
+        .reduce((sum: number, i: any) => sum + Math.round((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
 
     // Per-member stats
     const getMemberStats = (uid: string) => {
@@ -59,7 +59,7 @@ function MyTeamContent() {
         const conversion = total > 0 ? Math.round((confirmed / total) * 100) : 0
         const revenue = memberItins
             .filter((i: any) => ["confirmed", "handover", "completed"].includes(i.status))
-            .reduce((sum: number, i: any) => sum + Math.round((Number(i.totalPrice) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
+            .reduce((sum: number, i: any) => sum + Math.round((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
         return { total, confirmed, drafts, conversion, revenue, itineraries: memberItins }
     }
 
@@ -227,7 +227,7 @@ function MyTeamContent() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                                                    {itin.totalPrice && <span className="font-sans text-xs font-bold" style={{ color: '#06a15c' }}>₹{Number(itin.totalPrice).toLocaleString()}</span>}
+                                                    {(itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0) && <span className="font-sans text-xs font-bold" style={{ color: '#06a15c' }}>₹{Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)).toLocaleString()}</span>}
                                                     <span className="px-2 py-0.5 rounded-full font-sans text-[9px] font-bold tracking-wider uppercase" style={{ background: `${statusColors[itin.status] || '#9ca3af'}15`, color: statusColors[itin.status] || '#9ca3af' }}>
                                                         {itin.status}
                                                     </span>
@@ -268,7 +268,7 @@ function MyTeamContent() {
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                                                    {itin.totalPrice && <span className="font-sans text-xs font-bold" style={{ color: '#06a15c' }}>₹{Number(itin.totalPrice).toLocaleString()}</span>}
+                                                    {(itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0) && <span className="font-sans text-xs font-bold" style={{ color: '#06a15c' }}>₹{Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)).toLocaleString()}</span>}
                                                     <span className="px-2 py-0.5 rounded-full font-sans text-[9px] font-bold tracking-wider uppercase" style={{ background: `${statusColors[itin.status] || '#9ca3af'}15`, color: statusColors[itin.status] || '#9ca3af' }}>
                                                         {itin.status}
                                                     </span>

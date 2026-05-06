@@ -163,7 +163,7 @@ function KPIContent() {
     const getStats = (itins: any[]) => {
         const total = itins.length
         const confirmed = itins.filter(i => ["confirmed", "handover", "completed"].includes(i.status)).length
-        const revenue = itins.filter(i => ["confirmed", "handover", "completed"].includes(i.status)).reduce((s: number, i: any) => s + Math.round((Number(i.totalPrice) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
+        const revenue = itins.filter(i => ["confirmed", "handover", "completed"].includes(i.status)).reduce((s: number, i: any) => s + Math.round((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
         const conversion = total > 0 ? Math.round((confirmed / total) * 100) : 0
         return { total, confirmed, revenue, conversion }
     }

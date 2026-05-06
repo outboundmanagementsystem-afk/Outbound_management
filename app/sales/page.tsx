@@ -39,7 +39,7 @@ function SalesContent() {
     const confirmed = itineraries.filter((i: any) => ["handover", "completed"].includes(i.status)).length
     const drafts = itineraries.filter((i: any) => ["draft", "negotiation"].includes(i.status)).length
     const conversion = total > 0 ? Math.round((confirmed / total) * 100) : 0
-    const revenue = itineraries.filter((i: any) => ["handover", "completed"].includes(i.status)).reduce((s: number, i: any) => s + Math.round((Number(i.totalPrice) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
+    const revenue = itineraries.filter((i: any) => ["handover", "completed"].includes(i.status)).reduce((s: number, i: any) => s + Math.round((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
 
     const kpis = [
         { label: "Total Itineraries", value: loading ? "—" : total, icon: FileText, color: "#06a15c" },
@@ -108,7 +108,7 @@ function SalesContent() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                            {itin.totalPrice && <span className="hidden sm:block font-sans text-sm font-bold" style={{ color: '#06a15c' }}>₹{Number(itin.totalPrice).toLocaleString()}</span>}
+                            {(itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0) && <span className="hidden sm:block font-sans text-sm font-bold" style={{ color: '#06a15c' }}>₹{Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)).toLocaleString()}</span>}
                             <span className="px-2 sm:px-3 py-1 rounded-full font-sans text-[9px] sm:text-[10px] font-bold tracking-wider uppercase" style={{ background: 'rgba(6,161,92,0.1)', color: '#06a15c', border: '1px solid rgba(6,161,92,0.2)' }}>
                                 {itin.status}
                             </span>

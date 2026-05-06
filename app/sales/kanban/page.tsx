@@ -154,7 +154,7 @@ function KanbanBoard() {
                                                                     </div>
                                                                     <div className="flex items-center justify-between mt-2">
                                                                         <span className="font-sans text-[11px]" style={{ color: 'rgba(5,34,16,0.4)' }}>{itin.nights || 0}N/{itin.days || 0}D</span>
-                                                                        {itin.totalPrice && <span className="font-sans text-xs font-bold" style={{ color: '#06a15c' }}>₹{Number(itin.totalPrice).toLocaleString()}</span>}
+                                                                        {(itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0) && <span className="font-sans text-xs font-bold" style={{ color: '#06a15c' }}>₹{Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)).toLocaleString()}</span>}
                                                                     </div>
                                                                 </Link>
                                                             </div>

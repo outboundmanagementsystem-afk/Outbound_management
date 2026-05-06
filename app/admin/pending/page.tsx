@@ -28,7 +28,7 @@ function PendingContent() {
     // Payment status: pending, partial, paid
     const pendingPayments = itineraries.filter(i => {
         const paid = Number(i.amountPaid) || 0
-        const total = Number(i.totalPrice) || 0
+        const total = Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0
         return total > 0 && paid < total && i.status !== "draft"
     })
 
@@ -39,14 +39,14 @@ function PendingContent() {
     })
 
     const togglePaymentStatus = async (itin: any) => {
-        const total = Number(itin.totalPrice) || 0
+        const total = Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)) || 0
         const newPaid = Number(itin.amountPaid || 0) >= total ? 0 : total
         await updateItinerary(itin.id, { amountPaid: newPaid })
         loadData()
     }
 
     const getPaymentPercent = (itin: any) => {
-        const total = Number(itin.totalPrice) || 1
+        const total = Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)) || 1
         const paid = Number(itin.amountPaid) || 0
         return Math.min(Math.round((paid / total) * 100), 100)
     }
@@ -92,7 +92,7 @@ function PendingContent() {
                             <DollarSign className="w-5 h-5 mb-2" style={{ color: '#ef4444' }} />
                             <p className="font-sans text-[10px] tracking-wider uppercase font-semibold" style={{ color: 'rgba(5,34,16,0.4)' }}>Total Outstanding</p>
                             <p className="font-serif text-2xl font-bold mt-1" style={{ color: '#ef4444' }}>
-                                ₹{pendingPayments.reduce((s, i) => s + ((Number(i.totalPrice) || 0) - (Number(i.amountPaid) || 0)), 0).toLocaleString()}
+                                ₹{pendingPayments.reduce((s, i) => s + ((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) - (Number(i.amountPaid) || 0)), 0).toLocaleString()}
                             </p>
                         </div>
                         <div className="rounded-2xl p-5" style={{ background: '#fff', border: '1px solid rgba(5,34,16,0.06)' }}>
@@ -111,7 +111,7 @@ function PendingContent() {
                         </div>
                     ) : filtered.map(itin => {
                         const percent = getPaymentPercent(itin)
-                        const outstanding = (Number(itin.totalPrice) || 0) - (Number(itin.amountPaid) || 0)
+                        const outstanding = (Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)) || 0) - (Number(itin.amountPaid) || 0)
                         return (
                             <div key={itin.id} className="rounded-2xl p-5" style={{ background: '#fff', border: '1px solid rgba(5,34,16,0.06)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
                                 <div className="flex items-center justify-between mb-3">
@@ -136,7 +136,7 @@ function PendingContent() {
                                 <div className="flex justify-between font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.5)' }}>
                                     <span>Paid: ₹{(Number(itin.amountPaid) || 0).toLocaleString()}</span>
                                     <span>Outstanding: ₹{outstanding.toLocaleString()}</span>
-                                    <span>Total: ₹{(Number(itin.totalPrice) || 0).toLocaleString()}</span>
+                                    <span>Total: ₹{(Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)) || 0).toLocaleString()}</span>
                                 </div>
                             </div>
                         )

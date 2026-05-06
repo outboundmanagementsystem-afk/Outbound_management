@@ -442,8 +442,13 @@ export default function PublicItineraryPage() {
                 {/* PRICING */}
                 <div className="pdf-chunk pdf-dark-bg w-full">
                     <PricingSection
-                        price={`₹${Number(pricing?.[0]?.perPersonPrice || pricing?.[0]?.totalPrice || itin.perPersonPrice || itin.totalPrice || 0).toLocaleString()}`}
-                        plans={pricing?.[0]?.plans || itin.plans}
+                        price={`₹${Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.perPersonPrice || itin.plans?.[0]?.perPersonPrice || 0) || (itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0) || pricing?.[0]?.perPersonPrice || pricing?.[0]?.totalPrice || 0).toLocaleString()}`}
+                        plans={(itin.plans || itin.options || pricing?.[0]?.plans || pricing?.[0]?.options || []).map((plan: any) => ({
+                            hotelName: plan.planName || plan.hotelName || "Option",
+                            category: plan.category || "Standard",
+                            total: plan.totalPrice ?? plan.overrideTotal ?? plan.total,
+                            perPersonPrice: plan.perPersonPrice
+                        }))}
                         inclusions={['Per Person']}
                         gstNote="5% GST applicable on total package cost"
                         baseUrl={baseUrl}

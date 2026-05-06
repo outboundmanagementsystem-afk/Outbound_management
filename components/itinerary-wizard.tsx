@@ -555,7 +555,19 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
             const total = netCost + marginAmt
             setTotalPrice(Math.round(total))
             setPerPersonPrice(pax > 0 ? Math.round(total / pax) : Math.round(total))
-            setPlans([{ hotelName: "No Hotel Selected", category: "Custom", total: Math.round(total), perPersonPrice: pax > 0 ? Math.round(total / pax) : Math.round(total), hotelCost, transferCost, activityCost, marginAmt: Math.round(marginAmt) }])
+            setPlans([{ 
+                planId: `plan_1`,
+                planName: "No Hotel Selected", 
+                category: "Custom", 
+                perPersonPrice: pax > 0 ? Math.round(total / pax) : Math.round(total),
+                totalPrice: Math.round(total),
+                costBreakup: {
+                    hotelCost,
+                    activityCost,
+                    transferCost,
+                    margin: Math.round(marginAmt)
+                }
+            }])
         } else {
             const categories = Array.from(new Set(selectedHotels.map(h => h.category || "Uncategorized")))
             const newPlans = categories.map((cat, idx) => {
@@ -566,18 +578,20 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 const marginAmt = netCost * (margin / 100)
                 const total = netCost + marginAmt
                 return {
-                    hotelName: `PLAN ${idx + 1} - ${cat}`,
+                    planId: `plan_${idx + 1}`,
+                    planName: `PLAN ${idx + 1} - ${cat}`,
                     category: cat,
-                    hotelCost,
-                    autoHotelCost,
-                    transferCost,
-                    activityCost,
-                    marginAmt: Math.round(marginAmt),
-                    total: Math.round(total),
-                    perPersonPrice: pax > 0 ? Math.round(total / pax) : Math.round(total)
+                    perPersonPrice: pax > 0 ? Math.round(total / pax) : Math.round(total),
+                    totalPrice: Math.round(total),
+                    costBreakup: {
+                        hotelCost,
+                        activityCost,
+                        transferCost,
+                        margin: Math.round(marginAmt)
+                    }
                 }
             })
-            setTotalPrice(newPlans[0].total)
+            setTotalPrice(newPlans[0].totalPrice)
             setPerPersonPrice(newPlans[0].perPersonPrice)
             setPlans(newPlans)
         }
@@ -609,7 +623,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 destinationId, destination: destinationName,
                 startDate, endDate, nights, days: totalDays,
                 adults, children, childAge: childAges.join(", "),
-                totalPrice, perPersonPrice, margin,
+                margin,
                 createdBy: userProfile?.uid || "",
                 createdByName: userProfile?.name || "",
                 pdfTemplate: selectedDest?.pdfTemplate || null,
@@ -623,6 +637,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 inclusions_customised: inclusionsCustomised,
                 module: mode === "package" ? "built-package" : "custom-itinerary",
                 plans: plans,
+                selectedPlanId: plans.length > 0 ? plans[0].planId : null,
             }
 
             let itinId = editId as string
@@ -2241,10 +2256,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {plans.map((plan, idx) => {
                                 const pax = adults + children
-                                const overrideTotal = plan.overrideTotal ?? null
-
-                                const displayTotal = overrideTotal !== null ? overrideTotal : plan.total
-                                const displayPerPerson = pax > 0 ? Math.round(displayTotal / pax) : displayTotal
+                                const displayTotal = plan.totalPrice || 0
+                                const displayPerPerson = plan.perPersonPrice || 0
 
                                 return (
                                     <div key={idx} className="flex flex-col p-5 rounded-2xl gap-4" style={{ background: '#ecfdf5', border: '1px solid #a7f3d0' }}>
@@ -2257,9 +2270,9 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                         {/* Breakdown table */}
                                         <div className="rounded-xl overflow-hidden text-[11px] font-sans" style={{ background: '#FFFFFF', border: '1px solid #d1fae5' }}>
                                             {[
-                                                { label: `Hotel Cost (${nights}N)`, val: plan.hotelCost ?? 0 },
-                                                { label: '+ Transfer Cost', val: plan.transferCost ?? 0 },
-                                                { label: '+ Activities Cost', val: plan.activityCost ?? 0 },
+                                                { label: `Hotel Cost (${nights}N)`, val: plan.costBreakup?.hotelCost ?? 0 },
+                                                { label: '+ Transfer Cost', val: plan.costBreakup?.transferCost ?? 0 },
+                                                { label: '+ Activities Cost', val: plan.costBreakup?.activityCost ?? 0 },
                                             ].map((row, i) => (
                                                 <div key={i} className="flex justify-between px-3 py-2" style={{ borderBottom: '1px solid #d1fae5' }}>
                                                     <span style={{ color: '#6b7280' }}>{row.label}</span>
@@ -2268,41 +2281,33 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                             ))}
                                             <div className="flex justify-between px-3 py-2" style={{ borderBottom: '1px solid #d1fae5', background: '#f0fdf4' }}>
                                                 <span style={{ color: '#6b7280' }}>Base Total</span>
-                                                <span className="font-bold" style={{ color: '#052210' }}>₹{((plan.hotelCost ?? 0) + (plan.transferCost ?? 0) + (plan.activityCost ?? 0)).toLocaleString()}</span>
+                                                <span className="font-bold" style={{ color: '#052210' }}>₹{((plan.costBreakup?.hotelCost ?? 0) + (plan.costBreakup?.transferCost ?? 0) + (plan.costBreakup?.activityCost ?? 0)).toLocaleString()}</span>
                                             </div>
                                             <div className="flex justify-between px-3 py-2" style={{ borderBottom: '1px solid #d1fae5' }}>
                                                 <span style={{ color: '#6b7280' }}>+ Margin ({margin}%)</span>
-                                                <span className="font-bold" style={{ color: '#059669' }}>₹{(plan.marginAmt ?? 0).toLocaleString()}</span>
+                                                <span className="font-bold" style={{ color: '#059669' }}>₹{(plan.costBreakup?.margin ?? 0).toLocaleString()}</span>
                                             </div>
                                         </div>
 
                                         {/* Override field */}
                                         {(mode === "package" || itinModule === "built-package") && (
                                             <div>
-                                                <label className="font-sans text-[10px] uppercase tracking-wider mb-1 block" style={{ color: '#059669' }}>Override Package Total (₹)</label>
+                                                <label className="font-sans text-[10px] uppercase tracking-wider mb-1 block" style={{ color: '#059669' }}>Package Total (₹)</label>
                                                 <input
                                                     type="number"
                                                     className="w-full pl-3 pr-3 py-2 rounded-lg font-sans text-sm font-bold outline-none"
                                                     style={{ background: '#FFFFFF', border: '1px solid #6ee7b7', color: '#052210' }}
-                                                    placeholder={`Auto: ${plan.total}`}
-                                                    value={(plan.overrideTotal === null || plan.overrideTotal === undefined) ? "" : plan.overrideTotal}
+                                                    placeholder="Enter custom total..."
+                                                    value={plan.totalPrice || ""}
                                                     onChange={e => {
                                                         let val = e.target.value.replace(/^0+/, '')
                                                         const newPlans = [...plans]
-                                                        const newTotal = val === "" ? null : Math.max(0, parseInt(val) || 0)
-                                                        newPlans[idx].overrideTotal = newTotal
-                                                        const finalTotal = newTotal ?? newPlans[idx].total
-                                                        const finalPP = pax > 0 ? Math.round(finalTotal / pax) : finalTotal
+                                                        const newTotal = val === "" ? 0 : Math.max(0, parseInt(val) || 0)
+                                                        newPlans[idx].totalPrice = newTotal
+                                                        const finalPP = pax > 0 ? Math.round(newTotal / pax) : newTotal
                                                         newPlans[idx].perPersonPrice = finalPP
                                                         setPlans(newPlans)
-                                                        if (idx === 0) { setTotalPrice(finalTotal); setPerPersonPrice(finalPP) }
-                                                    }}
-                                                    onBlur={e => {
-                                                        if (e.target.value === "") {
-                                                            const newPlans = [...plans]
-                                                            newPlans[idx].overrideTotal = null
-                                                            setPlans(newPlans)
-                                                        }
+                                                        if (idx === 0) { setTotalPrice(newTotal); setPerPersonPrice(finalPP) }
                                                     }}
                                                 />
                                             </div>
@@ -2349,7 +2354,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                     return `${h.name || h.hotelName}${details ? ` (${details})` : ""}`;
                                 }).join(", ") : "No hotel selected" },
                                 { l: "Activities", v: selectedActivities.map((a: any) => a.name || a.activityName).join(", ") || "None" },
-                                { l: "Plans", v: plans.filter(p => p.total > 0).map(p => `${p.hotelName} (₹${p.total.toLocaleString()})`).join(" | ") || "None" }
+                                { l: "Plans", v: plans.filter(p => (p.totalPrice || p.total) > 0).map(p => `${p.planName || p.hotelName} (₹${(p.totalPrice || p.total).toLocaleString()})`).join(" | ") || "None" }
                             ].map(item => (
                                 <div key={item.l} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-0 px-4 py-3 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                                     <span className="font-sans text-[11px] font-semibold uppercase tracking-wider sm:w-36 flex-shrink-0" style={{ color: '#059669' }}>{item.l}</span>

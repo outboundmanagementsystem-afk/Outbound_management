@@ -118,7 +118,7 @@ function AdminKanbanBoard() {
                                                                     </div>
                                                                     <div className="flex items-center justify-between mt-2">
                                                                         <span className="font-sans text-[11px]" style={{ color: 'rgba(5,34,16,0.4)' }}>{itin.nights || 0}N/{itin.days || 0}D</span>
-                                                                        {itin.totalPrice && <span className="font-sans text-xs font-bold" style={{ color: '#06a15c' }}>₹{Number(itin.totalPrice).toLocaleString()}</span>}
+                                                                        {(itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0) && <span className="font-sans text-xs font-bold" style={{ color: '#06a15c' }}>₹{Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)).toLocaleString()}</span>}
                                                                     </div>
                                                                     {itin.createdByName && (
                                                                         <div className="flex items-center gap-1.5 mt-2 pt-2" style={{ borderTop: '1px solid rgba(5,34,16,0.04)' }}>

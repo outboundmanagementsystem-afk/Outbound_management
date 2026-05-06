@@ -95,9 +95,9 @@ function AdminContent() {
     }
 
     // ── Global KPIs ──
-    const totalRevenue = allItineraries.reduce((s, i) => s + Math.round((Number(i.totalPrice) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
+    const totalRevenue = allItineraries.reduce((s, i) => s + Math.round((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
     const confirmedItins = allItineraries.filter((i: any) => ["handover", "completed"].includes(i.status))
-    const confirmedRevenue = confirmedItins.reduce((s: number, i: any) => s + Math.round((Number(i.totalPrice) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
+    const confirmedRevenue = confirmedItins.reduce((s: number, i: any) => s + Math.round((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
     const avgDeal = confirmedItins.length > 0 ? Math.round(confirmedRevenue / confirmedItins.length) : 0
     const conversionRate = allItineraries.length > 0 ? Math.round((confirmedItins.length / allItineraries.length) * 100) : 0
 
@@ -131,7 +131,7 @@ function AdminContent() {
 
     const pendingPayments = allItineraries.filter(i => {
         const paid = Number(i.amountPaid) || 0
-        const total = Number(i.totalPrice) || 0
+        const total = Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0
         return total > 0 && paid < total && i.status !== "draft"
     })
 
@@ -145,7 +145,7 @@ function AdminContent() {
     const getUserKpis = (userList: any[]) => userList.map((u: any) => {
         const itins = allItineraries.filter((i: any) => i.createdBy === u.uid)
         const conf = itins.filter((i: any) => ["handover", "completed"].includes(i.status))
-        const rev = conf.reduce((s: number, i: any) => s + Math.round((Number(i.totalPrice) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
+        const rev = conf.reduce((s: number, i: any) => s + Math.round((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
         return {
             uid: u.uid, name: u.name || u.email || "Unknown", role: u.role,
             employeeCode: u.employeeCode || "",
@@ -164,7 +164,7 @@ function AdminContent() {
         const memberUids = [lead.uid, ...members.map((m: any) => m.uid)]
         const itins = allItineraries.filter((i: any) => memberUids.includes(i.createdBy))
         const conf = itins.filter((i: any) => ["handover", "completed"].includes(i.status))
-        const rev = conf.reduce((s: number, i: any) => s + Math.round((Number(i.totalPrice) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
+        const rev = conf.reduce((s: number, i: any) => s + Math.round((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0)
         return {
             name: lead.name, code: lead.employeeCode, memberCount: members.length,
             total: itins.length, confirmed: conf.length, revenue: rev,
@@ -430,7 +430,7 @@ function AdminContent() {
                                     <p className="font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.45)' }}>{itin.destination || "—"} · by {itin.createdByName || "—"}</p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    {itin.totalPrice && <span className="font-sans text-xs font-bold" style={{ color: '#052210' }}>₹{Number(itin.totalPrice).toLocaleString()}</span>}
+                                    {(itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0) && <span className="font-sans text-xs font-bold" style={{ color: '#052210' }}>₹{Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)).toLocaleString()}</span>}
                                     <span className="px-2 py-0.5 rounded-full font-sans text-[9px] font-bold uppercase" style={{ background: 'rgba(6,161,92,0.1)', color: '#06a15c' }}>{itin.status}</span>
                                 </div>
                             </Link>

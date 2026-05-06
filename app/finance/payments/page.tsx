@@ -67,7 +67,7 @@ function PaymentsContent() {
 
     const getPaymentStatus = (itin: any) => {
         const paid = Number(itin.amountPaid) || 0
-        const total = Number(itin.totalPrice) || 0
+        const total = Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)) || 0
         if (!total) return "no_price"
         if (paid >= total) return "paid"
         if (paid > 0) return "partial"
@@ -149,7 +149,7 @@ function PaymentsContent() {
                     </div>
                 ) : filtered.map((itin: any) => {
                     const paid = Number(itin.amountPaid) || 0
-                    const total = Number(itin.totalPrice) || 0
+                    const total = Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)) || 0
                     const balance = total - paid
                     const pct = total > 0 ? Math.round((paid / total) * 100) : 0
                     const status = getPaymentStatus(itin)

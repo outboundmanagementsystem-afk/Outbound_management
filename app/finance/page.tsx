@@ -31,12 +31,12 @@ function FinanceContent() {
         finally { setLoading(false) }
     }
 
-    const totalPackageValue = itineraries.reduce((s, i) => s + (Number(i.totalPrice) || 0), 0)
+    const totalPackageValue = itineraries.reduce((s, i) => s + (Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0), 0)
     const totalCollected = itineraries.reduce((s, i) => s + (Number(i.amountPaid) || 0), 0)
     const totalPending = totalPackageValue - totalCollected
-    const fullyPaid = itineraries.filter(i => Number(i.amountPaid) >= Number(i.totalPrice) && Number(i.totalPrice) > 0)
-    const partiallyPaid = itineraries.filter(i => Number(i.amountPaid) > 0 && Number(i.amountPaid) < Number(i.totalPrice))
-    const notPaid = itineraries.filter(i => !Number(i.amountPaid) && Number(i.totalPrice) > 0)
+    const fullyPaid = itineraries.filter(i => Number(i.amountPaid) >= Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) && Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) > 0)
+    const partiallyPaid = itineraries.filter(i => Number(i.amountPaid) > 0 && Number(i.amountPaid) < Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)))
+    const notPaid = itineraries.filter(i => !Number(i.amountPaid) && Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) > 0)
 
     const kpis = [
         { label: "Total Package Value", value: `₹${totalPackageValue.toLocaleString()}`, icon: DollarSign, color: "#8b5cf6" },
@@ -94,7 +94,7 @@ function FinanceContent() {
                     </div>
                 ) : needsAttention.map((itin: any) => {
                     const paid = Number(itin.amountPaid) || 0
-                    const total = Number(itin.totalPrice) || 0
+                    const total = Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)) || 0
                     const balance = total - paid
                     const pct = total > 0 ? Math.round((paid / total) * 100) : 0
                     return (

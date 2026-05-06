@@ -86,7 +86,7 @@ function FinanceItineraryContent() {
     )
 
     const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
-    const totalPrice = Number(itin.totalPrice) || 0
+    const totalPrice = Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)) || 0
     const balance = totalPrice - totalPaid
     const pct = totalPrice > 0 ? Math.round((totalPaid / totalPrice) * 100) : 0
 

@@ -322,8 +322,20 @@ export function ReadyMadeGenerator() {
                 adults: Number(adults) || 0, 
                 cwb: Number(cwb) || 0, 
                 cnb: Number(cnb) || 0,
-                totalPrice: Math.round(totalPrice),
-                perPersonPrice: Math.round(totalPrice / ((Number(adults) || 0) + (Number(cwb) || 0) + (Number(cnb) || 0))),
+                plans: [{
+                    planId: "plan_1",
+                    planName: selectedPkg?.name || "Ready Made Package",
+                    category: "Standard",
+                    totalPrice: Math.round(totalPrice),
+                    perPersonPrice: Math.round(totalPrice / ((Number(adults) || 0) + (Number(cwb) || 0) + (Number(cnb) || 0))),
+                    costBreakup: {
+                        hotelCost: Number(adultPrice?.net) || 0,
+                        activityCost: 0,
+                        transferCost: 0,
+                        margin: Number(adultPrice?.margin) || 0
+                    }
+                }],
+                selectedPlanId: "plan_1",
                 destination: selectedDestinationData?.name || selectedDestinationData?.destinationName || destinations.find(d => d.id === selectedDestId)?.name || selectedPkg?.destination || "",
                 destinationName: selectedDestinationData?.name || selectedDestinationData?.destinationName || destinations.find(d => d.id === selectedDestId)?.name || selectedPkg?.destinationName || "",
                 createdBy: userProfile?.uid || "",
@@ -365,13 +377,19 @@ export function ReadyMadeGenerator() {
             for (const item of flights) await addItineraryFlight(itinId, item)
 
             await addItineraryPricing(itinId, {
-                hotelPrice: Number(adultPrice.net) || 0,
-                transferPrice: 0,
-                activityPrice: 0,
-                flightPrice: 0,
-                optionalPrice: 0,
-                totalPrice: Math.round(totalPrice),
-                perPersonPrice: Math.round(totalPrice / ((Number(adults) || 0) + (Number(cwb) || 0) + (Number(cnb) || 0))),
+                plans: [{
+                    planId: "plan_1",
+                    planName: selectedPkg?.name || "Ready Made Package",
+                    category: "Standard",
+                    totalPrice: Math.round(totalPrice),
+                    perPersonPrice: Math.round(totalPrice / ((Number(adults) || 0) + (Number(cwb) || 0) + (Number(cnb) || 0))),
+                    costBreakup: {
+                        hotelCost: Number(adultPrice?.net) || 0,
+                        activityCost: 0,
+                        transferCost: 0,
+                        margin: Number(adultPrice?.margin) || 0
+                    }
+                }],
                 margin: Number(adultPrice.margin) || 0,
                 nights: pkg.nights || 0,
                 adults: Number(adults) || 0, 

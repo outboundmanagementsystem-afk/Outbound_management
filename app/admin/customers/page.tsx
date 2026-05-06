@@ -34,7 +34,7 @@ function CustomersContent() {
     // Merge itineraries with customers by phone
     const enrichedCustomers = customers.map(c => {
         const trips = itineraries.filter((i: any) => i.customerPhone === c.phone || i.customerId === c.id)
-        return { ...c, tripCount: trips.length, totalRevenue: trips.reduce((s: number, i: any) => s + Math.round((Number(i.totalPrice) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0), trips }
+        return { ...c, tripCount: trips.length, totalRevenue: trips.reduce((s: number, i: any) => s + Math.round((Number((i.plans?.find((p:any) => p.planId === i.selectedPlanId)?.totalPrice || i.plans?.[0]?.totalPrice || 0)) || 0) * ((Number(i.margin) || 15) / (100 + (Number(i.margin) || 15)))), 0), trips }
     })
 
     const filtered = enrichedCustomers.filter(c => {
@@ -138,7 +138,7 @@ function CustomersContent() {
                                                 <div className="flex gap-3 mt-1">
                                                     <span className="font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.4)' }}>{t.nights}N/{t.days}D</span>
                                                     {t.quoteId && <span className="font-sans text-[10px] font-bold" style={{ color: '#06a15c' }}>{t.quoteId}</span>}
-                                                    {t.totalPrice && <span className="font-sans text-[10px] font-bold" style={{ color: '#052210' }}>₹{Number(t.totalPrice).toLocaleString()}</span>}
+                                                    {(t.plans?.find((p:any) => p.planId === t.selectedPlanId)?.totalPrice || t.plans?.[0]?.totalPrice || 0) && <span className="font-sans text-[10px] font-bold" style={{ color: '#052210' }}>₹{Number((t.plans?.find((p:any) => p.planId === t.selectedPlanId)?.totalPrice || t.plans?.[0]?.totalPrice || 0)).toLocaleString()}</span>}
                                                 </div>
                                             </div>
                                         ))}

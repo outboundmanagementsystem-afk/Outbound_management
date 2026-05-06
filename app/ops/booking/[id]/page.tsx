@@ -321,17 +321,17 @@ function BookingDetail() {
                     )}
 
                     {/* Pricing */}
-                    {pricing?.[0]?.plans && pricing[0].plans.length > 0 && (
+                    {(booking.plans?.length > 0 || pricing?.[0]?.plans?.length > 0) && (
                         <div className="rounded-2xl p-5" style={{ background: 'rgba(6,161,92,0.05)', border: '1px solid rgba(6,161,92,0.15)' }}>
                             <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Pricing</h3>
                             <div className="space-y-3">
-                                {pricing[0].plans.map((p: any, i: number) => (
+                                {(booking.plans || pricing?.[0]?.plans || []).map((p: any, i: number) => (
                                     <div key={i} className="flex justify-between items-end border-b pb-2 last:border-0 last:pb-0" style={{ borderColor: 'rgba(6,161,92,0.1)' }}>
                                         <div>
-                                            <p className="font-sans text-xs font-bold" style={{ color: '#052210' }}>{p.hotelName}</p>
-                                            <p className="font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.5)' }}>{p.category} | ₹{p.perPersonPrice?.toLocaleString()} pp</p>
+                                            <p className="font-sans text-xs font-bold" style={{ color: '#052210' }}>{p.planName || p.hotelName || "Option"}</p>
+                                            <p className="font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.5)' }}>{p.category || "Standard"} | ₹{(p.perPersonPrice || 0).toLocaleString()} pp</p>
                                         </div>
-                                        <p className="font-serif text-lg font-bold" style={{ color: '#06a15c' }}>₹{p.total?.toLocaleString()}</p>
+                                        <p className="font-serif text-lg font-bold" style={{ color: '#06a15c' }}>₹{(p.totalPrice ?? p.overrideTotal ?? p.total ?? 0).toLocaleString()}</p>
                                     </div>
                                 ))}
                             </div>

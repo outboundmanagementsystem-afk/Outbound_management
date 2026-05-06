@@ -47,7 +47,7 @@ export default function InvoicePage() {
     )
 
     const totalPaid = allPayments.reduce((s: number, p: any) => s + (Number(p.amount) || 0), 0)
-    const totalPrice = Number(itin.totalPrice) || 0
+    const totalPrice = Number((itin.plans?.find((p:any) => p.planId === itin.selectedPlanId)?.totalPrice || itin.plans?.[0]?.totalPrice || 0)) || 0
     const balance = totalPrice - totalPaid
     const invoiceNumber = `INV-${itinId.slice(0, 6).toUpperCase()}-${String(allPayments.findIndex((p: any) => p.id === paymentId) + 1).padStart(3, "0")}`
     const dateStr = payment.collectedAt ? new Date(payment.collectedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : "—"
