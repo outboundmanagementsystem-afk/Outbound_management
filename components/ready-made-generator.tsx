@@ -258,15 +258,12 @@ export function ReadyMadeGenerator() {
 
         // 2. Phone Validation
         const phoneToValidate = customerPhone ? customerPhone.trim() : "";
-        console.log("Debug phone:", phoneToValidate, "Length:", phoneToValidate.length);
-        console.log("Validation inputs:", { countryCode, phone: phoneToValidate, combinedPhone: `${countryCode}${phoneToValidate}` })
-
-        const phoneRegex = /^[6-9]\d{9}$/
+        const phoneRegex = /^\d{7,15}$/
         if (!phoneToValidate) {
             setPhoneError("Phone number is required")
             hasError = true
         } else if (!phoneRegex.test(phoneToValidate)) {
-            setPhoneError("Enter a valid 10-digit phone number starting with 6-9")
+            setPhoneError("Enter a valid 7-15 digit phone number")
             hasError = true
         }
 

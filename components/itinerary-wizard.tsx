@@ -123,17 +123,14 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
 
     const validatePhone = (phoneNum: string) => {
         const phoneToValidate = phoneNum ? phoneNum.trim() : "";
-        console.log("Debug phone:", phoneToValidate, "Length:", phoneToValidate.length);
-        console.log("Validation inputs:", { countryCode: customerCountryCode, phone: phoneToValidate, combinedPhone: `${customerCountryCode}${phoneToValidate}` })
-        
         if (!phoneToValidate) return "Phone number is required"
-        const phoneRegex = /^[6-9]\d{9}$/
-        if (!phoneRegex.test(phoneToValidate)) return "Enter a valid 10-digit phone number starting with 6-9"
+        const phoneRegex = /^\d{7,15}$/
+        if (!phoneRegex.test(phoneToValidate)) return "Enter a valid 7-15 digit phone number"
         return ""
     }
 
     const validateEmail = (email: string) => {
-        if (!email) return "Email is required"
+        if (!email) return ""
         const trimmed = email.trim()
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return "Enter a valid email address."
         return ""
@@ -893,10 +890,10 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                             className="flex-1 px-4 py-3 rounded-xl font-sans text-sm focus:border-emerald-400" 
                                             style={{ ...inputStyle, borderColor: errors.customerPhone ? '#ef4444' : '#e2e8f0' }} 
                                             value={customerPhoneNum} 
-                                            placeholder="9876543210"
+                                            placeholder="Phone number"
                                             onBlur={() => setErrors(prev => ({ ...prev, customerPhone: validatePhone(customerPhoneNum) }))}
                                             onChange={e => {
-                                                const val = e.target.value.replace(/\D/g, '').slice(0, 10); // Only digits, max 10
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 15); // Only digits, max 15
                                                 setCustomerPhoneNum(val);
                                                 const full = customerCountryCode + val;
                                                 setCustomerPhone(full);
@@ -907,7 +904,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                     {errors.customerPhone && <p className="text-[10px] text-red-500 mt-1 ml-1 font-semibold">{errors.customerPhone}</p>}
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <label className={labelClass} style={labelStyle}>Email <span className="text-red-500">*</span></label>
+                                    <label className={labelClass} style={labelStyle}>Email</label>
                                     <input 
                                         className={inputClass} 
                                         style={{ ...inputStyle, borderColor: errors.customerEmail ? '#ef4444' : '#e2e8f0' }} 
