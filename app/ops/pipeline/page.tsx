@@ -39,7 +39,7 @@ const getUrgency = (startDate: string) => {
 
 export default function PreOpsPipelinePage() {
     return (
-        <ProtectedRoute allowedRoles={["pre_ops", "pre_ops_lead", "admin"]}>
+        <ProtectedRoute allowedRoles={["pre_ops", "pre_ops_lead", "ops", "ops_lead", "admin"]}>
             <PreOpsPipeline />
         </ProtectedRoute>
     )
@@ -191,41 +191,41 @@ function PreOpsPipeline() {
                                                 </span>
                                             </div>
 
-                                                                            <div className="flex-1 p-3 space-y-2 min-h-[100px]">
-                                                                                {colItems
-                                                                                    .map(it => ({ ...it, urgency: getUrgency(it.startDate) }))
-                                                                                    .sort((a, b) => a.urgency.level - b.urgency.level)
-                                                                                    .map((itin: any, idx: number) => {
-                                                                                        const urgency = itin.urgency;
-                                                                                        return (
-                                                                                            <Draggable isDragDisabled={true} key={itin.id} draggableId={itin.id} index={idx}>
-                                                                                                {(provided, snapshot) => (
-                                                                                                    <div
-                                                                                                        ref={provided.innerRef}
-                                                                                                        {...provided.draggableProps}
-                                                                                                        {...provided.dragHandleProps}
-                                                                                                        className="rounded-xl p-3.5 transition-all relative overflow-hidden"
-                                                                                                        style={{
-                                                                                                            ...provided.draggableProps.style,
-                                                                                                            background: snapshot.isDragging ? '#f8faf9' : (urgency.bgColor || '#FFFFFF'),
-                                                                                                            border: `1px solid ${snapshot.isDragging ? 'rgba(6,161,92,0.3)' : 'rgba(5,34,16,0.08)'}`,
-                                                                                                            borderLeft: urgency.color ? `4px solid ${urgency.color}` : undefined,
-                                                                                                            boxShadow: snapshot.isDragging ? '0 10px 30px rgba(6,161,92,0.1)' : '0 2px 10px rgba(0,0,0,0.01)'
-                                                                                                        }}
-                                                                                                    >
-                                                                                                        {urgency.text && (
-                                                                                                            <div className="absolute top-2 right-2">
-                                                                                                                <span className="font-sans font-bold tracking-wider uppercase" style={{ 
-                                                                                                                    fontSize: '8px', 
-                                                                                                                    padding: '2px 8px', 
-                                                                                                                    borderRadius: '20px', 
-                                                                                                                    background: urgency.badgeBgColor || `${urgency.color}33`, 
-                                                                                                                    color: urgency.badgeTextColor || urgency.color 
-                                                                                                                }}>
-                                                                                                                    {urgency.text}
-                                                                                                                </span>
-                                                                                                            </div>
-                                                                                                        )}
+                                            <div className="flex-1 p-3 space-y-2 min-h-[100px]">
+                                                {colItems
+                                                    .map(it => ({ ...it, urgency: getUrgency(it.startDate) }))
+                                                    .sort((a, b) => a.urgency.level - b.urgency.level)
+                                                    .map((itin: any, idx: number) => {
+                                                        const urgency = itin.urgency;
+                                                        return (
+                                                            <Draggable isDragDisabled={false} key={itin.id} draggableId={itin.id} index={idx}>
+                                                                {(provided, snapshot) => (
+                                                                    <div
+                                                                        ref={provided.innerRef}
+                                                                        {...provided.draggableProps}
+                                                                        {...provided.dragHandleProps}
+                                                                        className="rounded-xl p-3.5 transition-all relative overflow-hidden"
+                                                                        style={{
+                                                                            ...provided.draggableProps.style,
+                                                                            background: snapshot.isDragging ? '#f8faf9' : (urgency.bgColor || '#FFFFFF'),
+                                                                            border: `1px solid ${snapshot.isDragging ? 'rgba(6,161,92,0.3)' : 'rgba(5,34,16,0.08)'}`,
+                                                                            borderLeft: urgency.color ? `4px solid ${urgency.color}` : undefined,
+                                                                            boxShadow: snapshot.isDragging ? '0 10px 30px rgba(6,161,92,0.1)' : '0 2px 10px rgba(0,0,0,0.01)'
+                                                                        }}
+                                                                    >
+                                                                        {urgency.text && (
+                                                                            <div className="absolute top-2 right-2">
+                                                                                <span className="font-sans font-bold tracking-wider uppercase" style={{ 
+                                                                                    fontSize: '8px', 
+                                                                                    padding: '2px 8px', 
+                                                                                    borderRadius: '20px', 
+                                                                                    background: urgency.badgeBgColor || `${urgency.color}33`, 
+                                                                                    color: urgency.badgeTextColor || urgency.color 
+                                                                                }}>
+                                                                                    {urgency.text}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
                                                                         <Link href={`/ops/booking/${itin.id}`}>
                                                                             <p className="font-sans text-sm font-semibold truncate pr-16" style={{ color: '#052210' }}>{itin.customerName || "Unnamed"}</p>
                                                                             {itin.quoteId && <p className="font-sans text-[9px] font-bold tracking-wider mt-0.5" style={{ color: '#06a15c' }}>{itin.quoteId}</p>}

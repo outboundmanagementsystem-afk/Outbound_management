@@ -27,6 +27,8 @@ export function getRoleDashboard(role: string | undefined | null): string {
         case "sales":
         case "sales_lead":
             return "/sales"
+        case "ops":
+        case "ops_lead":
         case "pre_ops":
         case "pre_ops_lead":
             return "/ops"
