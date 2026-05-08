@@ -98,21 +98,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return { uid: firebaseUser.uid, ...profile }
             }
 
-            const firstUserQuery = query(collection(db, "users"), limit(1))
-            const allUsersSnap = await getDocs(firstUserQuery)
-            const isFirstUser = allUsersSnap.empty
-
-            const isOwner = firebaseUser.email === "ahamedshafeek12345@gmail.com";
-            const newProfile: Omit<UserProfile, "uid"> = {
-                name: firebaseUser.displayName || "",
-                email: firebaseUser.email || "",
-                role: (isFirstUser || isOwner) ? "admin" : "sales",
-                employeeCode: (isFirstUser || isOwner) ? "ADMIN-001" : "",
-                createdAt: new Date().toISOString(),
-            }
-
-            await setDoc(userDocRef, newProfile)
-            return { uid: firebaseUser.uid, ...newProfile }
+            // If we reach here, the user is neither registered nor pre-registered
+            // Immediate security measure: Sign out unauthorized users
+            await firebaseSignOut(auth)
+            throw new Error("Access denied. You are not authorized to use this system. Please contact your administrator.")
         } catch (error: any) {
             console.error("fetchOrCreateProfile error:", error)
             throw error // Re-throw so the caller can handle it
@@ -135,9 +124,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 console.error("Auth state change error:", error)
                 setUserProfile(null)
                 setAuthError(
-                    error?.code === "permission-denied"
-                        ? "Access denied. Your account may not be registered. Contact your admin."
-                        : "Failed to load your profile. Please try again."
+                    error?.message?.includes("Access denied")
+                        ? error.message
+                        : error?.code === "permission-denied"
+                            ? "Access denied. Your account may not be registered. Contact your admin."
+                            : "Failed to load your profile. Please try again."
                 )
             } finally {
                 setLoading(false)

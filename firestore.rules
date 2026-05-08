@@ -34,15 +34,13 @@ service cloud.firestore {
 
     // ─── Users Collection ───────────────────────────────
     match /users/{userId} {
-      allow read: if isSignedIn();
-      // ✅ CHANGED: removed nested isAdmin() check, use direct email+role check
-      allow create: if isSignedIn() && (
-        getUserRole() in ['admin', 'owner'] ||
-        request.auth.token.email == 'ahamedshafeek12345@gmail.com' ||
-        request.auth.uid == userId
-      );
-      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
-      allow delete: if isAdmin() || (isSignedIn() && request.auth.token.email == resource.data.email);
+      // Only allow read by the user themselves or admin
+      allow read: if request.auth.uid == userId || 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'owner'];
+      
+      // Only admin can create or update user documents — users cannot create themselves
+      allow create, update, delete: if 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'owner'];
     }
 
     // rest of rules stay exactly the same...

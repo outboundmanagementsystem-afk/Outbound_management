@@ -15,6 +15,28 @@ const columns: { id: ItineraryStatus; label: string; color: string; icon: any }[
     { id: "post-ops", label: "Handed to Post-Ops", color: "#10b981", icon: ClipboardCheck },
 ]
 
+const getUrgency = (startDate: string) => {
+    if (!startDate) return { color: "#718096", bgColor: "#F7FAFC", text: "PLANNED", level: 8 };
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    
+    const diffTime = start.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return { level: 10 }; // Past dates: No color, no badge
+    
+    if (diffDays === 0) return { color: "#E53E3E", bgColor: "#FFF5F5", text: "TODAY", level: 1 };
+    if (diffDays <= 2) return { color: "#DD6B20", bgColor: "#FFFAF0", text: "1-2 DAYS LEFT", level: 2 };
+    if (diffDays <= 5) return { color: "#D69E2E", bgColor: "#FFFBEB", text: "3-5 DAYS LEFT", level: 3 };
+    if (diffDays <= 10) return { color: "#68A829", bgColor: "#F0FFF4", text: "6-10 DAYS LEFT", level: 4 };
+    if (diffDays <= 20) return { color: "#2C7A7B", bgColor: "#E6FFFA", text: "2-3 WEEKS", level: 5 };
+    if (diffDays <= 30) return { color: "#3182CE", bgColor: "#EBF8FF", text: "3-4 WEEKS", level: 6 };
+    return { color: "#718096", bgColor: "#F7FAFC", text: "PLANNED", level: 7 };
+};
+
 export default function PreOpsPipelinePage() {
     return (
         <ProtectedRoute allowedRoles={["pre_ops", "pre_ops_lead", "admin"]}>
@@ -92,6 +114,16 @@ function PreOpsPipeline() {
             || (it.destination || "").toLowerCase().includes(q)
     })
 
+    const legendItems = [
+        { label: "Today", color: "#E53E3E" },
+        { label: "1-2 Days", color: "#DD6B20" },
+        { label: "3-5 Days", color: "#D69E2E" },
+        { label: "6-10 Days", color: "#68A829" },
+        { label: "2-3 Weeks", color: "#2C7A7B" },
+        { label: "3-4 Weeks", color: "#3182CE" },
+        { label: "Planned", color: "#718096" },
+    ]
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -109,6 +141,17 @@ function PreOpsPipeline() {
                     />
                     <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'rgba(5,34,16,0.3)' }} />
                 </div>
+            </div>
+
+            {/* Urgency Legend Bar */}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-5 py-3 rounded-2xl" style={{ background: '#fff', border: '1px solid rgba(5,34,16,0.05)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                <span className="font-sans text-[10px] font-bold uppercase tracking-widest text-gray-400 mr-2">Urgency Legend:</span>
+                {legendItems.map(item => (
+                    <div key={item.label} className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
+                        <span className="font-sans text-[11px] font-semibold text-gray-600">{item.label}</span>
+                    </div>
+                ))}
             </div>
 
             {loading ? (
@@ -148,39 +191,58 @@ function PreOpsPipeline() {
                                                 </span>
                                             </div>
 
-                                            {/* Cards */}
-                                            <div className="flex-1 p-3 space-y-2 min-h-[100px]">
-                                                {colItems.map((itin: any, idx: number) => (
-                                                    <Draggable isDragDisabled={true} key={itin.id} draggableId={itin.id} index={idx}>
-                                                        {(provided, snapshot) => (
-                                                            <div
-                                                                ref={provided.innerRef}
-                                                                {...provided.draggableProps}
-                                                                {...provided.dragHandleProps}
-                                                                className="rounded-xl p-3.5 transition-all"
-                                                                style={{
-                                                                    ...provided.draggableProps.style,
-                                                                    background: snapshot.isDragging ? '#f8faf9' : '#FFFFFF',
-                                                                    border: `1px solid ${snapshot.isDragging ? 'rgba(6,161,92,0.3)' : 'rgba(5,34,16,0.08)'}`,
-                                                                    boxShadow: snapshot.isDragging ? '0 10px 30px rgba(6,161,92,0.1)' : '0 2px 10px rgba(0,0,0,0.02)'
-                                                                }}
-                                                            >
-                                                                <Link href={`/ops/booking/${itin.id}`}>
-                                                                    <p className="font-sans text-sm font-semibold truncate" style={{ color: '#052210' }}>{itin.customerName || "Unnamed"}</p>
-                                                                    {itin.quoteId && <p className="font-sans text-[9px] font-bold tracking-wider mt-0.5" style={{ color: '#06a15c' }}>{itin.quoteId}</p>}
-                                                                    <div className="flex items-center gap-2 mt-2">
-                                                                        <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(6,161,92,0.5)' }} />
-                                                                        <span className="font-sans text-[11px] truncate" style={{ color: 'rgba(5,34,16,0.5)' }}>{itin.destination || "—"}</span>
+                                                                            <div className="flex-1 p-3 space-y-2 min-h-[100px]">
+                                                                                {colItems
+                                                                                    .map(it => ({ ...it, urgency: getUrgency(it.startDate) }))
+                                                                                    .sort((a, b) => a.urgency.level - b.urgency.level)
+                                                                                    .map((itin: any, idx: number) => {
+                                                                                        const urgency = itin.urgency;
+                                                                                        return (
+                                                                                            <Draggable isDragDisabled={true} key={itin.id} draggableId={itin.id} index={idx}>
+                                                                                                {(provided, snapshot) => (
+                                                                                                    <div
+                                                                                                        ref={provided.innerRef}
+                                                                                                        {...provided.draggableProps}
+                                                                                                        {...provided.dragHandleProps}
+                                                                                                        className="rounded-xl p-3.5 transition-all relative overflow-hidden"
+                                                                                                        style={{
+                                                                                                            ...provided.draggableProps.style,
+                                                                                                            background: snapshot.isDragging ? '#f8faf9' : (urgency.bgColor || '#FFFFFF'),
+                                                                                                            border: `1px solid ${snapshot.isDragging ? 'rgba(6,161,92,0.3)' : 'rgba(5,34,16,0.08)'}`,
+                                                                                                            borderLeft: urgency.color ? `4px solid ${urgency.color}` : undefined,
+                                                                                                            boxShadow: snapshot.isDragging ? '0 10px 30px rgba(6,161,92,0.1)' : '0 2px 10px rgba(0,0,0,0.01)'
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        {urgency.text && (
+                                                                                                            <div className="absolute top-2 right-2">
+                                                                                                                <span className="font-sans font-bold tracking-wider uppercase" style={{ 
+                                                                                                                    fontSize: '8px', 
+                                                                                                                    padding: '2px 8px', 
+                                                                                                                    borderRadius: '20px', 
+                                                                                                                    background: urgency.badgeBgColor || `${urgency.color}33`, 
+                                                                                                                    color: urgency.badgeTextColor || urgency.color 
+                                                                                                                }}>
+                                                                                                                    {urgency.text}
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                        )}
+                                                                        <Link href={`/ops/booking/${itin.id}`}>
+                                                                            <p className="font-sans text-sm font-semibold truncate pr-16" style={{ color: '#052210' }}>{itin.customerName || "Unnamed"}</p>
+                                                                            {itin.quoteId && <p className="font-sans text-[9px] font-bold tracking-wider mt-0.5" style={{ color: '#06a15c' }}>{itin.quoteId}</p>}
+                                                                            <div className="flex items-center gap-2 mt-2">
+                                                                                <MapPin className="w-3 h-3 flex-shrink-0" style={{ color: 'rgba(6,161,92,0.5)' }} />
+                                                                                <span className="font-sans text-[11px] truncate" style={{ color: 'rgba(5,34,16,0.5)' }}>{itin.destination || "—"}</span>
+                                                                            </div>
+                                                                            <div className="flex items-center justify-between mt-2">
+                                                                                <span className="font-sans text-[11px]" style={{ color: 'rgba(5,34,16,0.4)' }}>{itin.nights || 0}N/{itin.days || 0}D</span>
+                                                                                {itin.startDate && <span className="font-sans text-[10px] uppercase tracking-wider font-bold" style={{ color: urgency.color || 'rgba(5,34,16,0.4)' }}>{itin.startDate}</span>}
+                                                                            </div>
+                                                                        </Link>
                                                                     </div>
-                                                                    <div className="flex items-center justify-between mt-2">
-                                                                        <span className="font-sans text-[11px]" style={{ color: 'rgba(5,34,16,0.4)' }}>{itin.nights || 0}N/{itin.days || 0}D</span>
-                                                                        {itin.startDate && <span className="font-sans text-[10px] uppercase tracking-wider font-semibold" style={{ color: col.color }}>{itin.startDate}</span>}
-                                                                    </div>
-                                                                </Link>
-                                                            </div>
-                                                        )}
-                                                    </Draggable>
-                                                ))}
+                                                                )}
+                                                            </Draggable>
+                                                        )
+                                                    })}
                                                 {provided.placeholder}
                                             </div>
                                         </div>
