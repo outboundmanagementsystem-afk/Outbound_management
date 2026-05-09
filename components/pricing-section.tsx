@@ -33,7 +33,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
   } else if (Array.isArray(inclusions)) {
     baseInclusions = inclusions
   } else {
-    baseInclusions = ['Per Person', 'Hand Baggage 7kg', 'Check-in 15kg']
+    baseInclusions = ['Hand Baggage 7kg', 'Check-in 15kg']
   }
 
   const displayInclusions = [...baseInclusions]
@@ -137,10 +137,10 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
                     <div className="mb-6">
                       <div className="flex flex-col items-center">
                         <span className="font-sans text-4xl font-black text-[#1A211D] tracking-tighter leading-none mb-2 price-amount" data-pdf-color="black">
-                          ₹{(plan.perPersonPrice || plan.total).toLocaleString()}
+                          ₹{(plan.total || plan.perPersonPrice).toLocaleString()}
                         </span>
                         <span className="font-sans text-[8px] font-black uppercase tracking-[0.35em] text-[#8E918F] per-person-label">
-                            NET PRICE PER PERSON
+                            TOTAL PACKAGE COST
                         </span>
                       </div>
                     </div>
@@ -184,7 +184,7 @@ export function PricingSection({ price, plans, inclusions, gstNote, applyGST, ap
                 <div className="flex items-center gap-2 mb-10">
                    <span className="text-[#FFE500] text-lg leading-none">•</span>
                    <span className="font-sans text-[11px] font-black uppercase tracking-[0.2em] text-[#000000]">
-                      Per Person
+                      TOTAL PACKAGE COST
                    </span>
                 </div>
 

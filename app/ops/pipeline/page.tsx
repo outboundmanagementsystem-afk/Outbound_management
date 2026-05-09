@@ -160,7 +160,7 @@ function PreOpsPipeline() {
                 </div>
             ) : (
                 <DragDropContext onDragEnd={handleDragEnd}>
-                    <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: '70vh' }}>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-4" style={{ minHeight: '70vh', width: '100%' }}>
                         {columns.map(col => {
                             const colItems = filteredItins.filter((it: any) => (it.status || "handover") === col.id)
                             const Icon = col.icon
@@ -171,7 +171,7 @@ function PreOpsPipeline() {
                                         <div
                                             ref={provided.innerRef}
                                             {...provided.droppableProps}
-                                            className="flex-shrink-0 w-72 rounded-2xl flex flex-col"
+                                            className="w-full rounded-2xl flex flex-col"
                                             style={{
                                                 background: snapshot.isDraggingOver ? '#f8faf9' : '#FFFFFF',
                                                 border: `1px solid ${snapshot.isDraggingOver ? 'rgba(6,161,92,0.2)' : 'rgba(5,34,16,0.06)'}`,

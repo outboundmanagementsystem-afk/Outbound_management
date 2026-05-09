@@ -521,20 +521,40 @@ If you have any questions, would like to make customizations, or have any concer
                     {/* Hotels */}
                     <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                         <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels ({hotels.length})</h3>
-                        {hotels.map((h: any, idx: number) => (
-                            <div key={`${h.id}-${idx}`} className="flex justify-between py-2 items-start" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
-                                <span className="font-sans text-sm" style={{ color: '#052210' }}>{h.name || h.hotelName || "Unnamed Hotel"}</span>
-                                <div className="flex flex-col items-end gap-0.5">
-                                    <span className="font-sans text-xs" style={{ color: 'rgba(5,34,16,0.6)' }}>{h.category}{h.rating ? ` · ${h.rating}★` : ''}</span>
-                                    {(h.roomCategory || h.roomType || h.room) && (
-                                        <span className="font-sans text-[10px] font-bold" style={{ color: '#06a15c' }}>{h.roomCategory || h.roomType || h.room}</span>
-                                    )}
-                                    {h.mealPlan && (
-                                        <span className="font-sans text-[9px] uppercase tracking-wider" style={{ color: 'rgba(5,34,16,0.4)' }}>{h.mealPlan}</span>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                        <div className="space-y-4">
+                            {hotels.map((h: any, idx: number) => {
+                                const planLabel = h.category || "Standard";
+                                const roomLabel = h.roomCategory || h.roomType || h.room || "Room";
+                                const mealLabel = h.mealPlan || "EP";
+                                const nights = h.nights || 1;
+
+                                return (
+                                    <div key={`${h.id}-${idx}`} className="flex justify-between items-start pb-4 last:pb-0 last:border-0" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                                        <div className="space-y-2">
+                                            <p className="font-sans text-sm font-bold" style={{ color: '#052210' }}>{h.name || h.hotelName || "Unnamed Hotel"}</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[rgba(5,34,16,0.08)] bg-[rgba(5,34,16,0.03)] text-[11px]">
+                                                    <span className="text-[rgba(5,34,16,0.4)]">Plan:</span>
+                                                    <span className="text-[rgba(5,34,16,0.7)] font-medium">{planLabel}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[rgba(5,34,16,0.08)] bg-[rgba(5,34,16,0.03)] text-[11px]">
+                                                    <span className="text-[rgba(5,34,16,0.4)]">Room:</span>
+                                                    <span className="text-[rgba(5,34,16,0.7)] font-medium">{roomLabel}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[rgba(5,34,16,0.08)] bg-[rgba(5,34,16,0.03)] text-[11px]">
+                                                    <span className="text-[rgba(5,34,16,0.4)]">Meal:</span>
+                                                    <span className="text-[rgba(5,34,16,0.7)] font-medium">{mealLabel}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end shrink-0 pt-1">
+                                            <span className="font-sans text-[10px] text-gray-400 font-medium italic">{nights} night{nights !== 1 ? 's' : ''}</span>
+                                            {h.rating && <span className="font-sans text-[10px] text-amber-500 font-bold mt-0.5">{h.rating}★</span>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
 
                     {/* Flights */}

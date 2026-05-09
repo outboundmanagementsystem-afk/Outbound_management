@@ -7,14 +7,13 @@ import Link from "next/link"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { MapPin, PlaneTakeoff, Navigation, PlaneLanding, CheckCircle } from "lucide-react"
 
-type PostOpStage = "pre-ops" | "pre-arrival" | "on-tour" | "trip-ending" | "completed"
+type PostOpStage = "pre-arrival" | "on-tour" | "trip-ending" | "completed"
 
 const columns: { id: PostOpStage; label: string; color: string; icon: any }[] = [
-    { id: "pre-ops", label: "Pre-Ops", color: "#10b981", icon: MapPin },
     { id: "pre-arrival", label: "Pre-Arrival", color: "#60a5fa", icon: PlaneTakeoff },
     { id: "on-tour", label: "On Tour", color: "#f59e0b", icon: Navigation },
     { id: "trip-ending", label: "Trip Ending", color: "#a78bfa", icon: PlaneLanding },
-    { id: "completed", label: "Handed Over", color: "#34d399", icon: CheckCircle },
+    { id: "completed", label: "Feedback & Closure", color: "#34d399", icon: CheckCircle },
 ]
 
 export default function PostOpsPipelinePage() {
@@ -55,13 +54,8 @@ function PostOpsPipeline() {
 
         if (!itinerary) return
 
-        // If moving TO pre-ops
-        if (newStage === "pre-ops") {
-            await updateItineraryStatus(itinId, "pre-ops")
-            setItineraries(prev => prev.map(it => it.id === itinId ? { ...it, status: "pre-ops", postOpStage: null } : it))
-        }
         // If moving TO completed
-        else if (newStage === "completed") {
+        if (newStage === "completed") {
             await updateItineraryStatus(itinId, "completed")
             setItineraries(prev => prev.map(it => it.id === itinId ? { ...it, status: "completed" } : it))
         }
@@ -91,9 +85,11 @@ function PostOpsPipeline() {
                     <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: '70vh' }}>
                         {columns.map(col => {
                             const colItems = itineraries.filter((it: any) => {
-                                if (col.id === ("completed" as string)) return it.status === "completed"
-                                if (col.id === "pre-ops") return it.status === "pre-ops"
-                                return it.status === "post-ops" && (it.postOpStage || "pre-arrival") === col.id
+                                if (col.id === "completed") return it.status === "completed"
+                                if (col.id === "pre-arrival") {
+                                    return (it.status === "post-ops" && (it.postOpStage === "pre-arrival" || !it.postOpStage)) || it.status === "pre-ops"
+                                }
+                                return it.status === "post-ops" && it.postOpStage === col.id
                             })
                             const Icon = col.icon
 
