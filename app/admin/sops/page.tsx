@@ -169,6 +169,11 @@ function SOPsContent() {
     }
     
     const handleSave = async () => {
+        if (!formTitle.trim()) {
+            showStatus("error", "Title Required", "Please enter a title for this SOP Template")
+            return
+        }
+
         const items = formItems.filter(i => i.title.trim()).map(i => ({
             id: i.id,
             title: i.title.trim(),
@@ -181,7 +186,12 @@ function SOPsContent() {
             extraInfo: i.extraInfo || '',
             ...(i.options ? { options: i.options } : {}),
         }))
-        if (!formTitle.trim() || items.length === 0) return
+
+        if (items.length === 0) {
+            showStatus("error", "Steps Required", "Please add at least one process step with a title")
+            return
+        }
+
         try {
             if (editSOP) {
                 await updateSOP(editSOP.id, { title: formTitle, items, whatsappTemplate: formWhatsapp })

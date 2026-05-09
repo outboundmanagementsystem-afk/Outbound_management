@@ -616,6 +616,13 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
         setSaving(true)
         try {
             const selectedDest = destinations.find((d: any) => d.id === destinationId)
+            
+            // Clean highlights - trim and remove empty ones before saving
+            const cleanedDayPlans = dayPlans.map(day => ({
+                ...day,
+                highlights: day.highlights?.map((h: string) => h.trim()).filter((h: string) => h.length > 0) || []
+            }))
+
             const baseData = {
                 destinationId, destination: destinationName,
                 startDate, endDate, nights, days: totalDays,
@@ -653,7 +660,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     itinId = await createPackage(packageData)
                 }
 
-                for (const day of dayPlans) await addPackageDay(itinId, day)
+                for (const day of cleanedDayPlans) await addPackageDay(itinId, day)
                 for (const flight of flightSegments) await addPackageFlight(itinId, flight)
                 for (const hotel of selectedHotels) await addPackageHotel(itinId, hotel)
                 for (const transfer of transfers) await addPackageTransfer(itinId, transfer)
@@ -671,7 +678,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     console.log("SAVE PIPELINE PAYLOAD:", itineraryDataForPipeline);
                     const pipelineItinId = await createItinerary(itineraryDataForPipeline)
                     pipelineItinIdForOnSave = pipelineItinId
-                    for (const day of dayPlans) await addItineraryDay(pipelineItinId, day)
+                    for (const day of cleanedDayPlans) await addItineraryDay(pipelineItinId, day)
                     for (const flight of flightSegments) await addItineraryFlight(pipelineItinId, flight)
                     for (const hotel of selectedHotels) await addItineraryHotel(pipelineItinId, hotel)
                     for (const transfer of transfers) await addItineraryTransfer(pipelineItinId, transfer)
@@ -704,7 +711,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     }
                 }
 
-                for (const day of dayPlans) await addItineraryDay(itinId, day)
+                for (const day of cleanedDayPlans) await addItineraryDay(itinId, day)
                 for (const flight of flightSegments) await addItineraryFlight(itinId, flight)
                 for (const hotel of selectedHotels) await addItineraryHotel(itinId, hotel)
                 for (const transfer of transfers) await addItineraryTransfer(itinId, transfer)
@@ -1901,7 +1908,7 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
 
                                         <div className="pt-2">
                                             <label className="font-sans text-[10px] tracking-wider uppercase mb-1.5 block font-semibold" style={{ color: '#059669' }}>Highlights</label>
-                                            <input className={inputClass} style={inputStyle} placeholder="Highlights (comma-separated)" value={day.highlights?.join(", ") || ""} onChange={e => { const d = [...dayPlans]; d[idx].highlights = e.target.value.split(",").map((h: string) => h.trim()); setDayPlans(d) }} />
+                                            <input className={inputClass} style={inputStyle} placeholder="Highlights (comma-separated)" value={day.highlights?.join(",") || ""} onChange={e => { const d = [...dayPlans]; d[idx].highlights = e.target.value.split(","); setDayPlans(d) }} />
                                         </div>
 
                                         {/* Optional Pricing - hidden in package mode */}

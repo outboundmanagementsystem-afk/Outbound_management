@@ -86,8 +86,12 @@ function PostOpsBookingDetail() {
                     console.error("Sync failed:", syncErr)
                 }
             }
+            // Deduplicate items to prevent React 18 strict mode double-mount artifacts
+            const uniqueCl = cl.filter((item: any, index: number, self: any[]) =>
+                index === self.findIndex((i) => i.id === item.id)
+            )
             // Sort to maintain correct SOP order according to ID/creation (which are sequential)
-            setChecklist(cl.sort((a, b) => a.id.localeCompare(b.id)))
+            setChecklist(uniqueCl.sort((a, b) => a.id.localeCompare(b.id)))
         } catch (err) { console.error(err) }
         finally { setLoading(false) }
     }
@@ -434,7 +438,10 @@ function PostOpsBookingDetail() {
                                     <div className="flex-1 px-6 py-4 flex items-start gap-4 text-left">
                                         <button
                                             onClick={() => toggleItem(item.id, item.checked)}
-                                            disabled={(item.requiresAcknowledgement && !item.acknowledged && !item.checked) || (["file_upload", "File Upload"].includes(item.type) && !item.fileUrl && !item.checked)}
+                                            disabled={
+                                                (item.requiresAcknowledgement && !item.acknowledged && !item.checked) || 
+                                                (["file_upload", "File Upload"].includes(item.type) && !item.fileUrl && !item.checked)
+                                            }
                                             className={`mt-0.5 transition-colors ${((item.requiresAcknowledgement && !item.acknowledged && !item.checked) || (["file_upload", "File Upload"].includes(item.type) && !item.fileUrl && !item.checked)) ? "opacity-50 cursor-not-allowed" : "hover:scale-110"}`}
                                         >
                                             {item.checked ? (

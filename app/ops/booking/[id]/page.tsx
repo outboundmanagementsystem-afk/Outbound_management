@@ -9,7 +9,7 @@ import {
 } from "@/lib/firestore"
 import { storage } from "@/lib/firebase"
 import Link from "next/link"
-import { ArrowLeft, CheckCircle, Circle, Package, FileText, Eye, Download, Share2, FileEdit } from "lucide-react"
+import { ArrowLeft, CheckCircle, Circle, Package, FileText, Eye, Download, Share2, FileEdit, X, UploadCloud } from "lucide-react"
 
 export default function BookingDetailPage() {
     return (
@@ -77,18 +77,46 @@ function BookingDetail() {
                 }
             }
             
-            setChecklist(cl)
+            // Deduplicate items by name to prevent duplicates if they were added multiple times (e.g. during sync)
+            const uniqueCl = cl.filter((item: any, index: number, self: any[]) =>
+                index === self.findIndex((i) => 
+                    (i.name || i.title || "").trim().toLowerCase() === 
+                    (item.name || item.title || "").trim().toLowerCase()
+                )
+            )
+            setChecklist(uniqueCl)
         } catch (err) { console.error(err) }
         finally { setLoading(false) }
     }
 
     const toggleItem = async (itemId: string, currentChecked: boolean) => {
-        await updateSopItem(bookingId, itemId, {
-            checked: !currentChecked,
-            updatedAt: new Date().toISOString(),
-        })
-        const updatedChecklist = checklist.map(c => c.id === itemId ? { ...c, checked: !currentChecked } : c)
-        setChecklist(updatedChecklist)
+        console.log("Toggle Item Clicked:", itemId, "Current state:", currentChecked);
+        
+        const item = checklist.find(c => c.id === itemId);
+        if (!item) return;
+
+        // Validation: If checking (unmarked -> marked) and mandatory input is missing
+        if (!currentChecked && item.isRequired !== false) {
+            const needsText = ['text_input', 'Text Input', 'text', 'TEXT_INPUT'].includes(item.type) && !item.response;
+            const needsFile = ['file_upload', 'File Upload', 'file', 'FILE_UPLOAD'].includes(item.type) && !item.fileUrl;
+            
+            if (needsText || needsFile) {
+                alert(`Please ${needsText ? "enter a response" : "upload a file"} before marking this mandatory task as complete.`);
+                return;
+            }
+        }
+
+        try {
+            await updateSopItem(bookingId, itemId, {
+                checked: !currentChecked,
+                updatedAt: new Date().toISOString(),
+            })
+            const updatedChecklist = checklist.map(c => c.id === itemId ? { ...c, checked: !currentChecked } : c)
+            setChecklist(updatedChecklist)
+        } catch (err) {
+            console.error("Toggle Item Failed:", err);
+            alert("Failed to update item. Please check your connection.");
+        }
     }
 
     const updateSopItemState = async (itemId: string, data: any) => {
@@ -475,65 +503,181 @@ function BookingDetail() {
                     </div>
 
                     <div className="rounded-2xl overflow-hidden" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                        <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(6,161,92,0.08)' }}>
+                            <h3 className="font-serif text-lg tracking-wide" style={{ color: '#06a15c' }}>Operations SOP Checklist</h3>
+                            <div className="px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-100 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="font-sans text-[10px] font-bold text-emerald-600 uppercase tracking-wider">{completedCount} / {requiredChecklist.length} Mandatory Done</span>
+                            </div>
+                        </div>
                         {checklist.length === 0 ? (
                             <div className="px-6 py-10 text-center">
                                 <Package className="w-10 h-10 mx-auto mb-3" style={{ color: 'rgba(6,161,92,0.2)' }} />
                                 <p className="font-sans text-sm font-semibold" style={{ color: '#052210' }}>SOP Checklist not initialized</p>
                             </div>
                         ) : (
-                            checklist.map((item: any) => (
-                                <div key={item.id} className="w-full px-6 py-5 flex items-start gap-4 border-b last:border-0" style={{ borderColor: 'rgba(6,161,92,0.06)' }}>
-                                    <button
-                                        onClick={() => toggleItem(item.id, item.checked)}
-                                        disabled={!item.response && !item.fileUrl && !item.checked && item.isRequired !== false}
-                                        className="mt-1 transition-all"
-                                    >
-                                        {item.checked ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <Circle className="w-5 h-5 text-gray-300" />}
-                                    </button>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="font-sans text-sm font-bold truncate" style={{ color: '#052210' }}>{item.name || item.title}</span>
-                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold tracking-widest uppercase ${item.isRequired === false ? 'bg-gray-100 text-gray-400' : 'bg-red-50 text-red-400'}`}>
-                                                {item.isRequired === false ? 'Optional' : 'Mandatory'}
-                                            </span>
-                                        </div>
-                                        
-                                        {/* Input area */}
-                                        {['text_input', 'Text Input'].includes(item.type) && (
-                                            <input type="text" value={item.response || ""} onChange={(e) => updateSopItemState(item.id, { response: e.target.value })} placeholder="Enter response..." className="w-full px-3 py-2 rounded-lg font-sans text-xs border border-gray-100 bg-gray-50/50 outline-none focus:border-emerald-200" />
-                                        )}
-                                        {['file_upload', 'File Upload'].includes(item.type) && (
-                                            <div className="flex items-center gap-3">
-                                                {!item.fileUrl ? (
-                                                    <>
-                                                        <input type="file" id={`f-${item.id}`} className="hidden" onChange={(e) => handleFileUpload(item.id, e.target.files?.[0])} />
-                                                        <label htmlFor={`f-${item.id}`} className="cursor-pointer px-3 py-1.5 rounded-lg bg-emerald-50 border border-dashed border-emerald-200 text-[#06a15c] font-sans text-[10px] font-bold uppercase tracking-wider">Upload File</label>
-                                                        {uploadingItemId === item.id && <span className="text-[10px] text-gray-400 animate-pulse">Uploading...</span>}
-                                                    </>
-                                                ) : (
-                                                    <div className="flex items-center gap-2">
-                                                        <a href={item.fileUrl} target="_blank" rel="noreferrer" className="text-xs font-medium text-emerald-600 hover:underline">View Uploaded File</a>
-                                                        <button onClick={() => updateSopItemState(item.id, { fileUrl: '' })} className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Remove</button>
-                                                    </div>
-                                                )}
+                            checklist.map((item: any) => {
+                                const isMandatory = item.isRequired !== false;
+                                const type = (item.type || "").toUpperCase();
+                                
+                                const hasText = !!item.response && item.response.toString().trim().length > 0;
+                                const hasFile = !!item.fileUrl;
+                                const hasAck = !!item.acknowledged;
+                                
+                                // Validation for activation
+                                let isAnswered = false;
+                                if (type === "MULTIPLE CHOICE" || type === "MULTIPLE_CHOICE") {
+                                    isAnswered = !!item.response;
+                                } else if (type === "FILE UPLOAD" || type === "FILE_UPLOAD") {
+                                    isAnswered = hasFile;
+                                } else if (item.requiresAcknowledgement || type === "CHECKBOX CHECK" || type === "CHECKBOX_CHECK") {
+                                    isAnswered = hasAck;
+                                } else if (type === "TEXT INPUT" || type === "TEXT_INPUT" || type === "NUMBER INPUT" || type === "NUMBER_INPUT" || type === "DATE PICKER" || type === "DATE_PICKER") {
+                                    isAnswered = hasText;
+                                } else {
+                                    isAnswered = true;
+                                }
+
+                                return (
+                                    <div key={item.id} className="w-full px-6 py-5 flex items-start gap-4 border-b last:border-0" style={{ borderColor: 'rgba(6,161,92,0.06)' }}>
+                                        <button
+                                            onClick={() => toggleItem(item.id, item.checked)}
+                                            disabled={!isAnswered && !item.checked}
+                                            className={`mt-1 transition-all ${item.checked ? "scale-95" : isAnswered ? "hover:scale-110 cursor-pointer" : "opacity-30 cursor-not-allowed"}`}
+                                        >
+                                            {item.checked ? <CheckCircle className="w-5 h-5 text-emerald-500" /> : <Circle className="w-5 h-5 text-gray-300" />}
+                                        </button>
+                                        <div className="flex-1 space-y-4">
+                                            <div className="flex items-center justify-between gap-4">
+                                                <span className={`font-sans text-sm font-bold transition-all ${item.checked ? 'text-gray-300 line-through' : 'text-[#052210]'}`}>{item.name || item.title}</span>
+                                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${isMandatory ? "bg-red-50 text-red-500 border border-red-100" : "bg-gray-50 text-gray-400 border border-gray-100"}`}>
+                                                    {isMandatory ? "Mandatory" : "Optional"}
+                                                </span>
                                             </div>
-                                        )}
-                                        
-                                        {item.notes && <p className="font-sans text-[10px] italic text-gray-400 mt-2">{item.notes}</p>}
+
+                                            {!item.checked && (
+                                                <div className="space-y-4 pt-1">
+                                                    {/* Date Picker */}
+                                                    {(type === "DATE PICKER" || type === "DATE_PICKER") && (
+                                                        <input 
+                                                            type="date" 
+                                                            value={item.response || ""} 
+                                                            onChange={(e) => updateSopItemState(item.id, { response: e.target.value })} 
+                                                            className="w-full sm:w-64 px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 font-sans text-sm outline-none focus:border-emerald-500 transition-all"
+                                                        />
+                                                    )}
+
+                                                    {/* Text/Number Input */}
+                                                    {(type === "TEXT INPUT" || type === "TEXT_INPUT" || type === "NUMBER INPUT" || type === "NUMBER_INPUT") && (
+                                                        <input 
+                                                            type={type.includes("NUMBER") ? "number" : "text"}
+                                                            value={item.response || ""} 
+                                                            onChange={(e) => updateSopItemState(item.id, { response: e.target.value })} 
+                                                            placeholder="Enter details..."
+                                                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 font-sans text-sm outline-none focus:border-emerald-500 transition-all"
+                                                        />
+                                                    )}
+
+                                                    {/* File Upload */}
+                                                    {(type === "FILE UPLOAD" || type === "FILE_UPLOAD") && (
+                                                        <div className="w-full">
+                                                            {!item.fileUrl ? (
+                                                                <div className="flex items-center gap-3">
+                                                                    <input
+                                                                        type="file"
+                                                                        id={`f-${item.id}`}
+                                                                        className="hidden"
+                                                                        onChange={(e) => handleFileUpload(item.id, e.target.files?.[0])}
+                                                                    />
+                                                                    <label htmlFor={`f-${item.id}`} className="cursor-pointer flex items-center gap-3 px-5 py-3 rounded-xl border-2 border-dashed border-gray-200 hover:border-emerald-500 hover:bg-emerald-50/30 transition-all group">
+                                                                        <UploadCloud className="w-5 h-5 text-gray-400 group-hover:text-emerald-500" />
+                                                                        <div className="text-left">
+                                                                            <p className="font-sans text-[11px] font-bold text-gray-700 uppercase tracking-wider">Click to upload</p>
+                                                                            <p className="font-sans text-[9px] text-gray-400">PDF, JPG, PNG accepted</p>
+                                                                        </div>
+                                                                    </label>
+                                                                    {uploadingItemId === item.id && <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                                                                    <a href={item.fileUrl} target="_blank" rel="noreferrer" className="flex items-center gap-2 text-xs font-bold text-emerald-700 hover:underline">
+                                                                        <FileText className="w-4 h-4" /> View Document
+                                                                    </a>
+                                                                    <button onClick={() => updateSopItemState(item.id, { fileUrl: '' })} className="p-1.5 hover:bg-emerald-100 rounded-lg text-emerald-600 transition-colors">
+                                                                        <X className="w-4 h-4" />
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Multiple Choice */}
+                                                    {(type === "MULTIPLE CHOICE" || type === "MULTIPLE_CHOICE") && (
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {(item.options || []).map((opt: string) => {
+                                                                const isSelected = item.response === opt;
+                                                                return (
+                                                                    <button
+                                                                        key={opt}
+                                                                        onClick={() => updateSopItemState(item.id, { response: opt })}
+                                                                        className={`px-4 py-1.5 rounded-full border font-sans text-xs font-semibold transition-all ${isSelected ? 'bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm' : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'}`}
+                                                                    >
+                                                                        {opt}
+                                                                    </button>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Checkbox Check (Acknowledgement) */}
+                                                    {(item.requiresAcknowledgement || type === "CHECKBOX CHECK" || type === "CHECKBOX_CHECK") && (
+                                                        <label className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-100 cursor-pointer hover:bg-gray-100 transition-all group">
+                                                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${item.acknowledged ? "bg-emerald-500 border-emerald-500" : "border-gray-300 group-hover:border-emerald-500"}`}>
+                                                                {item.acknowledged && <CheckCircle className="w-3 h-3 text-white" />}
+                                                                <input 
+                                                                    type="checkbox" 
+                                                                    className="hidden" 
+                                                                    checked={item.acknowledged || false}
+                                                                    onChange={(e) => updateSopItemState(item.id, { acknowledged: e.target.checked })}
+                                                                />
+                                                            </div>
+                                                            <span className="font-sans text-[11px] font-bold text-gray-500 uppercase tracking-wider">Yes, I have completed this step</span>
+                                                        </label>
+                                                    )}
+
+                                                    {/* Helper Notes */}
+                                                    {item.notes && (
+                                                        <div className="flex gap-2 text-[11px] text-gray-400 italic bg-gray-50/50 p-2 rounded-lg border border-gray-100/50">
+                                                            <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                                            <span>{item.notes}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))
+                                )
+                            })
                         )}
                     </div>
 
-                    <button
-                        onClick={handleHandover}
-                        disabled={loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked)) || booking.status === "post-ops"}
-                        className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-sans font-bold text-sm tracking-widest uppercase transition-all ${loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked)) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-[1.01] active:scale-[0.98]'}`}
-                        style={{ background: '#06a15c', color: '#FFFFFF', boxShadow: '0 4px 15px rgba(6,161,92,0.3)' }}
-                    >
-                        Handover to Post-Operation <ArrowLeft className="w-4 h-4 rotate-180" />
-                    </button>
+                    {booking.status === "post-ops" || booking.status === "completed" ? (
+                        <div className="w-full py-8 rounded-2xl bg-emerald-50 border border-emerald-100 flex flex-col items-center justify-center gap-2 animate-in fade-in zoom-in duration-500">
+                             <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                                <CheckCircle className="w-6 h-6 text-white" />
+                             </div>
+                             <p className="font-serif text-lg text-emerald-800 tracking-wide mt-2">Handover Completed Successfully</p>
+                             <p className="font-sans text-[11px] text-emerald-600 uppercase font-bold tracking-[0.2em]">Ready for Post-Operations Processing</p>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleHandover}
+                            disabled={loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked))}
+                            className={`w-full flex items-center justify-center gap-2 px-6 py-4 rounded-xl font-sans font-bold text-sm tracking-widest uppercase transition-all ${loading || (requiredChecklist.length > 0 && requiredChecklist.some(c => !c.checked)) ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#06a15c] text-white hover:scale-[1.01] active:scale-[0.98] shadow-lg shadow-emerald-900/10'}`}
+                        >
+                            Handover to Post-Operation <ArrowLeft className="w-4 h-4 rotate-180" />
+                        </button>
+                    )}
                 </div>
             )}
         </div>
