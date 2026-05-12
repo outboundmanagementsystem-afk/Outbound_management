@@ -16,6 +16,41 @@ const columns: { id: PostOpStage; label: string; color: string; icon: any }[] = 
     { id: "completed", label: "Feedback & Closure", color: "#34d399", icon: CheckCircle },
 ]
 
+const parseDate = (dateStr: string) => {
+    if (!dateStr) return new Date(0)
+    const [year, month, day] = dateStr.split('-').map(Number)
+    return new Date(year, month - 1, day)
+}
+
+const getPostOpsStage = (booking: any) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    if (!booking.startDate || !booking.endDate) return "pre-arrival"
+
+    const start = parseDate(booking.startDate)
+    const end = parseDate(booking.endDate)
+    start.setHours(0, 0, 0, 0)
+    end.setHours(0, 0, 0, 0)
+
+    // Already manually marked as feedback-closure — respect it
+    if (booking.postOpsStatus === 'completed' || booking.status === 'completed' || booking.postOpsStatus === 'feedback-closure') return 'completed'
+
+    // Trip ends today exactly
+    if (today.getTime() === end.getTime()) return 'trip-ending'
+
+    // Trip has already ended (past end date) — feedback & closure
+    if (today > end) return 'completed'
+
+    // Trip is currently active (started but not ended yet)
+    if (today >= start && today < end) return 'on-tour'
+
+    // Trip hasn't started yet
+    if (today < start) return 'pre-arrival'
+
+    return 'pre-arrival'
+}
+
 export default function PostOpsPipelinePage() {
     return (
         <ProtectedRoute allowedRoles={["post_ops", "admin"]}>
@@ -37,7 +72,26 @@ function PostOpsPipeline() {
                 getItinerariesByStatus("post-ops"),
                 getItinerariesByStatus("completed"),
             ])
-            setItineraries([...preOps, ...postOps, ...completed])
+            const allItins = [...preOps, ...postOps, ...completed]
+            
+            // Silent sync stages based on dates
+            const syncedItins = await Promise.all(allItins.map(async (itin) => {
+                const calculatedStage = getPostOpsStage(itin)
+                // Use postOpStage or postOpsStatus to check for sync
+                const currentStage = itin.postOpsStatus || itin.postOpStage || "pre-arrival"
+                if (calculatedStage !== currentStage) {
+                    const { updateItinerary } = await import("@/lib/firestore")
+                    await updateItinerary(itin.id, { 
+                        postOpsStatus: calculatedStage === "completed" ? "feedback-closure" : calculatedStage,
+                        postOpStage: calculatedStage,
+                        postOpsStatusUpdatedAt: new Date().toISOString()
+                    })
+                    return { ...itin, postOpsStatus: calculatedStage === "completed" ? "feedback-closure" : calculatedStage, postOpStage: calculatedStage }
+                }
+                return itin
+            }))
+
+            setItineraries(syncedItins)
         } catch (err) {
             console.error(err)
         } finally {
@@ -57,15 +111,30 @@ function PostOpsPipeline() {
         // If moving TO completed
         if (newStage === "completed") {
             await updateItineraryStatus(itinId, "completed")
-            setItineraries(prev => prev.map(it => it.id === itinId ? { ...it, status: "completed" } : it))
+            const { updateItinerary } = await import("@/lib/firestore")
+            await updateItinerary(itinId, { 
+                postOpsStatus: "feedback-closure",
+                postOpStage: "completed",
+                postOpsStatusUpdatedAt: new Date().toISOString()
+            })
+            setItineraries(prev => prev.map(it => it.id === itinId ? { ...it, status: "completed", postOpsStatus: "feedback-closure", postOpStage: "completed" } : it))
         }
         // If moving TO post-ops active stages (pre-arrival, on-tour, trip-ending)
+        // Only allow manual move IF the date logic would otherwise put it there, or if we want to allow manual overrides.
+        // The user says "only manually movable by the post-ops team" for Feedback & Closure.
+        // For other stages, they want it automatic.
         else {
             if (itinerary.status !== "post-ops") {
                 await updateItineraryStatus(itinId, "post-ops")
             }
             await updateItineraryStage(itinId, newStage)
-            setItineraries(prev => prev.map(it => it.id === itinId ? { ...it, status: "post-ops", postOpStage: newStage } : it))
+            const { updateItinerary } = await import("@/lib/firestore")
+            await updateItinerary(itinId, { 
+                postOpsStatus: newStage === "completed" ? "feedback-closure" : newStage,
+                postOpStage: newStage,
+                postOpsStatusUpdatedAt: new Date().toISOString()
+            })
+            setItineraries(prev => prev.map(it => it.id === itinId ? { ...it, status: "post-ops", postOpsStatus: newStage === "completed" ? "feedback-closure" : newStage, postOpStage: newStage } : it))
         }
     }
 
@@ -85,11 +154,7 @@ function PostOpsPipeline() {
                     <div className="flex gap-4 overflow-x-auto pb-4" style={{ minHeight: '70vh' }}>
                         {columns.map(col => {
                             const colItems = itineraries.filter((it: any) => {
-                                if (col.id === "completed") return it.status === "completed"
-                                if (col.id === "pre-arrival") {
-                                    return (it.status === "post-ops" && (it.postOpStage === "pre-arrival" || !it.postOpStage)) || it.status === "pre-ops"
-                                }
-                                return it.status === "post-ops" && it.postOpStage === col.id
+                                return getPostOpsStage(it) === col.id
                             })
                             const Icon = col.icon
 

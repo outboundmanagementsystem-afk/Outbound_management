@@ -186,7 +186,11 @@ export default function VoucherPage() {
                             <div className="flex items-center gap-2"><Mail className="w-4 h-4" style={{ color: '#9ca3af' }} /> <span style={{ color: '#111827' }}>{itin.customerEmail || "—"}</span></div>
                             <div><span className="block text-sm uppercase tracking-wider mb-1" style={{ color: '#6b7280' }}>Duration</span> <span className="font-semibold" style={{ color: '#1f2937' }}>{itin.days} Days / {itin.nights} Nights</span></div>
 
-                            <div className="col-span-2 mt-2 pt-4" style={{ borderTop: '1px solid #e5e7eb' }}>
+                            <div className="mt-2 pt-4" style={{ borderTop: '1px solid #e5e7eb' }}>
+                                <span className="block text-sm uppercase tracking-wider mb-1" style={{ color: '#6b7280' }}>Trip ID</span>
+                                <span className="font-bold text-emerald-600 text-lg">{itin.quoteId || "—"}</span>
+                            </div>
+                            <div className="mt-2 pt-4" style={{ borderTop: '1px solid #e5e7eb' }}>
                                 <span className="block text-sm uppercase tracking-wider mb-1" style={{ color: '#6b7280' }}>Passengers</span>
                                 <span className="font-semibold text-lg" style={{ color: '#1f2937' }}>{itin.adults} Adults{itin.children > 0 ? `, ${itin.children} Children (${itin.childAge || 'Age not specified'})` : ''}</span>
                             </div>

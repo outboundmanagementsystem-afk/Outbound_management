@@ -546,7 +546,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
         const baseShared = transferCost + activityCost
 
         if (selectedHotels.length === 0) {
-            const hotelCost = (planHotelCostOverrides[0] !== null && planHotelCostOverrides[0] !== undefined) ? planHotelCostOverrides[0] : (manualHotelCost !== null ? manualHotelCost : 0)
+            const autoHotelCost = manualHotelCost || 0
+            const hotelCost = (planHotelCostOverrides[0] !== null && planHotelCostOverrides[0] !== undefined) ? planHotelCostOverrides[0] : autoHotelCost
             const netCost = baseShared + hotelCost
             const marginAmt = netCost * (margin / 100)
             const total = netCost + marginAmt
@@ -558,6 +559,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                 category: "Custom", 
                 perPersonPrice: pax > 0 ? Math.round(total / pax) : Math.round(total),
                 totalPrice: Math.round(total),
+                autoHotelCost,
+                hotelCost,
                 costBreakup: {
                     hotelCost,
                     activityCost,
@@ -580,6 +583,8 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                     category: cat,
                     perPersonPrice: pax > 0 ? Math.round(total / pax) : Math.round(total),
                     totalPrice: Math.round(total),
+                    autoHotelCost,
+                    hotelCost,
                     costBreakup: {
                         hotelCost,
                         activityCost,
@@ -2202,9 +2207,6 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                             <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                                 <div>
                                     <span className="font-sans text-sm font-medium" style={{ color: '#374151' }}>Transfer Cost</span>
-                                    {transfers.some(t => Number(t.price) > 0) && manualTransferCost === 0 && (
-                                        <span className="ml-2 font-sans text-[10px]" style={{ color: '#9ca3af' }}>Auto: ₹{transfers.reduce((s, t) => s + (Number(t.price) || 0), 0).toLocaleString()}</span>
-                                    )}
                                 </div>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 font-sans text-sm font-bold" style={{ color: '#6b7280' }}>₹</span>
@@ -2213,8 +2215,16 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                         className="w-36 pl-7 pr-3 py-2 rounded-lg font-sans text-sm font-bold text-right outline-none"
                                         style={inputStyle}
                                         placeholder="0"
-                                        value={(manualTransferCost === 0 || manualTransferCost === null) ? "" : manualTransferCost}
-                                        onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualTransferCost(0); else setManualTransferCost(Math.max(0, parseInt(val) || 0)); }}
+                                        value={(() => {
+                                            const autoTransferSum = transfers.reduce((s, t) => s + (Number(t.price) || 0), 0)
+                                            const displayVal = manualTransferCost > 0 ? manualTransferCost : autoTransferSum
+                                            return displayVal === 0 ? "" : displayVal
+                                        })()}
+                                        onChange={e => { 
+                                            let val = e.target.value.replace(/^0+/, ''); 
+                                            if (val === "") setManualTransferCost(0); 
+                                            else setManualTransferCost(Math.max(0, parseInt(val) || 0)); 
+                                        }}
                                         onBlur={e => { if (e.target.value === "") setManualTransferCost(0); }}
                                     />
                                 </div>
@@ -2224,14 +2234,6 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                             <div className="flex justify-between items-center p-3.5 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                                 <div>
                                     <span className="font-sans text-sm font-medium" style={{ color: '#374151' }}>Activities Cost</span>
-                                    {selectedActivities.length > 0 && manualActivityCost === 0 && (
-                                        <span className="ml-2 font-sans text-[10px]" style={{ color: '#9ca3af' }}>
-                                            Auto: ₹{selectedActivities.reduce((s, a) => {
-                                                const p = a.isActivity ? ((Number(a.price) || 0) + (Number(a.vehiclePrice) || 0)) : (Number(a.entryFee) || Number(a.price) || 0)
-                                                return s + p * (adults + children)
-                                            }, 0).toLocaleString()}
-                                        </span>
-                                    )}
                                 </div>
                                 <div className="relative">
                                     <span className="absolute left-3 top-1/2 -translate-y-1/2 font-sans text-sm font-bold" style={{ color: '#6b7280' }}>₹</span>
@@ -2240,8 +2242,19 @@ export function ItineraryWizard({ mode = "custom", onSave }: ItineraryWizardProp
                                         className="w-36 pl-7 pr-3 py-2 rounded-lg font-sans text-sm font-bold text-right outline-none"
                                         style={inputStyle}
                                         placeholder="0"
-                                        value={(manualActivityCost === 0 || manualActivityCost === null) ? "" : manualActivityCost}
-                                        onChange={e => { let val = e.target.value.replace(/^0+/, ''); if (val === "") setManualActivityCost(0); else setManualActivityCost(Math.max(0, parseInt(val) || 0)); }}
+                                        value={(() => {
+                                            const autoActivitySum = selectedActivities.reduce((s, a) => {
+                                                const p = a.isActivity ? ((Number(a.price) || 0) + (Number(a.vehiclePrice) || 0)) : (Number(a.entryFee) || Number(a.price) || 0)
+                                                return s + p * (adults + children)
+                                            }, 0)
+                                            const displayVal = manualActivityCost > 0 ? manualActivityCost : autoActivitySum
+                                            return displayVal === 0 ? "" : displayVal
+                                        })()}
+                                        onChange={e => { 
+                                            let val = e.target.value.replace(/^0+/, ''); 
+                                            if (val === "") setManualActivityCost(0); 
+                                            else setManualActivityCost(Math.max(0, parseInt(val) || 0)); 
+                                        }}
                                         onBlur={e => { if (e.target.value === "") setManualActivityCost(0); }}
                                     />
                                 </div>

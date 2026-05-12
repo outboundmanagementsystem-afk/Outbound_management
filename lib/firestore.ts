@@ -321,6 +321,7 @@ export async function initSopChecklist(itinId: string) {
     const q = query(collection(db, "sops"), where("department", "==", "pre_ops"))
     const snap = await getDocs(q)
     const sops = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))
+    sops.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
 
     // Sort by creation time or rely on order, then add items
     let orderIndex = 0;
@@ -353,7 +354,9 @@ export async function initSopChecklist(itinId: string) {
                 originalId,
                 options: isObj ? (item.options || []) : [],
                 order: orderIndex++,
-                updatedAt: ""
+                updatedAt: "",
+                sopId: sop.id,
+                sopTitle: sop.title
             })
         }
     }
@@ -363,6 +366,7 @@ export async function initPostOpsChecklist(itinId: string) {
     const q = query(collection(db, "sops"), where("department", "==", "post_ops"))
     const snap = await getDocs(q)
     const sops = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))
+    sops.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
 
     let orderIndex = 0;
     for (const sop of sops) {
@@ -394,7 +398,9 @@ export async function initPostOpsChecklist(itinId: string) {
                 originalId,
                 options: isObj ? (item.options || []) : [],
                 order: orderIndex++,
-                updatedAt: ""
+                updatedAt: "",
+                sopId: sop.id,
+                sopTitle: sop.title
             })
         }
     }
@@ -404,6 +410,7 @@ export async function initSalesChecklist(itinId: string) {
     const q = query(collection(db, "sops"), where("department", "==", "sales"))
     const snap = await getDocs(q)
     const sops = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }))
+    sops.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
 
     let orderIndex = 0;
     for (const sop of sops) {
@@ -435,7 +442,9 @@ export async function initSalesChecklist(itinId: string) {
                 originalId,
                 options: isObj ? (item.options || []) : [],
                 order: orderIndex++,
-                updatedAt: ""
+                updatedAt: "",
+                sopId: sop.id,
+                sopTitle: sop.title
             })
         }
     }
@@ -447,6 +456,7 @@ export async function syncChecklist(itinId: string, department: string, subName:
     const q = query(collection(db, "sops"), where("department", "==", department));
     const snap = await getDocs(q);
     const sops = snap.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
+    sops.sort((a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
 
     const expectedItems: any[] = [];
     let orderIndex = 0;
@@ -467,7 +477,7 @@ export async function syncChecklist(itinId: string, department: string, subName:
             const order = orderIndex++;
 
             expectedItems.push({
-                name, type, isRequired, requiresAcknowledgement, notes, points, extraInfo, dependsOn, originalId, options, order
+                name, type, isRequired, requiresAcknowledgement, notes, points, extraInfo, dependsOn, originalId, options, order, sopId: sop.id, sopTitle: sop.title
             });
         }
     }
@@ -497,7 +507,9 @@ export async function syncChecklist(itinId: string, department: string, subName:
                 match.dependsOn !== exp.dependsOn ||
                 match.originalId !== exp.originalId ||
                 JSON.stringify(match.options || []) !== JSON.stringify(exp.options || []) ||
-                match.order !== exp.order;
+                match.order !== exp.order ||
+                match.sopId !== exp.sopId ||
+                match.sopTitle !== exp.sopTitle;
 
             if (needsUpdate) {
                 await updateItinSub(itinId, subName, match.id, exp);
@@ -759,10 +771,12 @@ export async function getSOPs(department?: string) {
     if (department) {
         q = query(collection(db, "sops"), where("department", "==", department))
     } else {
-        q = query(collection(db, "sops"), orderBy("createdAt", "desc"))
+        q = query(collection(db, "sops"))
     }
     const snap = await getDocs(q)
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const results = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    // Sort by createdAt ascending (oldest first) as requested by Bug 1
+    return results.sort((a: any, b: any) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime())
 }
 
 export async function createSOP(data: { title: string; department: string; items: any[]; whatsappTemplate?: string }) {
@@ -875,4 +889,16 @@ export async function getAllPayments(): Promise<any[]> {
         }
     }
     return results
+}
+
+// ─── Post-Ops Data ──────────────────────────────────
+export async function getPostOpsData(itinId: string) {
+    const docRef = doc(db, "itineraries", itinId, "postOps", "data")
+    const snap = await getDoc(docRef)
+    return snap.exists() ? snap.data() : null
+}
+
+export async function updatePostOpsData(itinId: string, data: any) {
+    const docRef = doc(db, "itineraries", itinId, "postOps", "data")
+    await setDoc(docRef, { ...data, updatedAt: new Date().toISOString() }, { merge: true })
 }

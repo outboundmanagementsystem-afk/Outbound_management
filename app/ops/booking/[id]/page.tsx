@@ -278,40 +278,51 @@ function BookingDetail() {
 
                         {/* Hotels */}
                         <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                            <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels ({hotels.length})</h3>
+                            <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels</h3>
                             <div className="space-y-4">
-                                {hotels.map((h: any, idx: number) => {
-                                    const planLabel = h.category || "Standard";
-                                    const roomLabel = h.roomCategory || h.roomType || h.room || "Room";
-                                    const mealLabel = h.mealPlan || "EP";
-                                    const nights = h.nights || 1;
+                                {(() => {
+                                    const allPlans = booking?.plans || pricing?.[0]?.plans || []
+                                    const activePlan = booking?.selectedPlanId 
+                                        ? allPlans.find((p: any) => p.planId === booking.selectedPlanId || p.category === booking.selectedPlanId)
+                                        : allPlans[0]
+                                    const activeCategory = activePlan?.category || null
+                                    
+                                    const filteredHotels = activeCategory 
+                                        ? hotels.filter((h: any) => h.category === activeCategory)
+                                        : hotels
+                                                                      return filteredHotels.map((h: any, idx: number) => {
+                                        const planLabel = h.category || "Standard";
+                                        const roomLabel = h.roomCategory || h.roomType || h.room || "Room";
+                                        const mealLabel = h.mealPlan || "EP";
+                                        const nights = h.nights || 1;
 
-                                    return (
-                                        <div key={`${h.id}-${idx}`} className="flex justify-between items-start pb-4 last:pb-0 last:border-0" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
-                                            <div className="space-y-2">
-                                                <p className="font-sans text-sm font-bold" style={{ color: '#052210' }}>{h.name || h.hotelName || "Unnamed Hotel"}</p>
-                                                <div className="flex flex-wrap gap-2">
-                                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[rgba(5,34,16,0.08)] bg-[rgba(5,34,16,0.03)] text-[11px]">
-                                                        <span className="text-[rgba(5,34,16,0.4)]">Plan:</span>
-                                                        <span className="text-[rgba(5,34,16,0.7)] font-medium">{planLabel}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[rgba(5,34,16,0.08)] bg-[rgba(5,34,16,0.03)] text-[11px]">
-                                                        <span className="text-[rgba(5,34,16,0.4)]">Room:</span>
-                                                        <span className="text-[rgba(5,34,16,0.7)] font-medium">{roomLabel}</span>
-                                                    </div>
-                                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[rgba(5,34,16,0.08)] bg-[rgba(5,34,16,0.03)] text-[11px]">
-                                                        <span className="text-[rgba(5,34,16,0.4)]">Meal:</span>
-                                                        <span className="text-[rgba(5,34,16,0.7)] font-medium">{mealLabel}</span>
+                                        return (
+                                            <div key={`${h.id}-${idx}`} className="flex justify-between items-start pb-4 last:pb-0 last:border-0" style={{ borderBottom: '1px solid rgba(6,161,92,0.05)' }}>
+                                                <div className="space-y-2">
+                                                    <p className="font-sans text-sm font-bold" style={{ color: '#052210' }}>{h.name || h.hotelName || "Unnamed Hotel"}</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[rgba(5,34,16,0.08)] bg-[rgba(5,34,16,0.03)] text-[11px]">
+                                                            <span className="text-[rgba(5,34,16,0.4)]">Plan:</span>
+                                                            <span className="text-[rgba(5,34,16,0.7)] font-medium">{planLabel}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[rgba(5,34,16,0.08)] bg-[rgba(5,34,16,0.03)] text-[11px]">
+                                                            <span className="text-[rgba(5,34,16,0.4)]">Room:</span>
+                                                            <span className="text-[rgba(5,34,16,0.7)] font-medium">{roomLabel}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-[rgba(5,34,16,0.08)] bg-[rgba(5,34,16,0.03)] text-[11px]">
+                                                            <span className="text-[rgba(5,34,16,0.4)]">Meal:</span>
+                                                            <span className="text-[rgba(5,34,16,0.7)] font-medium">{mealLabel}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
+                                                <div className="flex flex-col items-end shrink-0 pt-1">
+                                                    <span className="font-sans text-[10px] text-gray-400 font-medium italic">{nights} night{nights !== 1 ? 's' : ''}</span>
+                                                    {h.rating && <span className="font-sans text-[10px] text-amber-500 font-bold mt-0.5">{h.rating}★</span>}
+                                                </div>
                                             </div>
-                                            <div className="flex flex-col items-end shrink-0 pt-1">
-                                                <span className="font-sans text-[10px] text-gray-400 font-medium italic">{nights} night{nights !== 1 ? 's' : ''}</span>
-                                                {h.rating && <span className="font-sans text-[10px] text-amber-500 font-bold mt-0.5">{h.rating}★</span>}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
+                                        )
+                                    })
+                                })()}
                             </div>
                         </div>
 
@@ -367,22 +378,34 @@ function BookingDetail() {
                     )}
 
                     {/* Pricing */}
-                    {(booking.plans?.length > 0 || pricing?.[0]?.plans?.length > 0) && (
-                        <div className="rounded-2xl p-5" style={{ background: 'rgba(6,161,92,0.05)', border: '1px solid rgba(6,161,92,0.15)' }}>
-                            <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Pricing</h3>
-                            <div className="space-y-3">
-                                {(booking.plans || pricing?.[0]?.plans || []).map((p: any, i: number) => (
-                                    <div key={i} className="flex justify-between items-end border-b pb-2 last:border-0 last:pb-0" style={{ borderColor: 'rgba(6,161,92,0.1)' }}>
-                                        <div>
-                                            <p className="font-sans text-xs font-bold" style={{ color: '#052210' }}>{p.planName || p.hotelName || "Option"}</p>
-                                            <p className="font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.5)' }}>{p.category || "Standard"} | ₹{(p.perPersonPrice || 0).toLocaleString()} pp</p>
+                    {(() => {
+                        const allPlans = booking.plans || pricing?.[0]?.plans || []
+                        const activePlan = booking.selectedPlanId 
+                            ? allPlans.find((p: any) => p.planId === booking.selectedPlanId || p.category === booking.selectedPlanId)
+                            : allPlans[0]
+                        
+                        // If we have an active plan, show only that. Otherwise show all (fallback)
+                        const displayPlans = activePlan ? [activePlan] : allPlans
+                        
+                        if (displayPlans.length === 0) return null
+
+                        return (
+                            <div className="rounded-2xl p-5" style={{ background: 'rgba(6,161,92,0.05)', border: '1px solid rgba(6,161,92,0.15)' }}>
+                                <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Pricing</h3>
+                                <div className="space-y-3">
+                                    {displayPlans.map((p: any, i: number) => (
+                                        <div key={i} className="flex justify-between items-end border-b pb-2 last:border-0 last:pb-0" style={{ borderColor: 'rgba(6,161,92,0.1)' }}>
+                                            <div>
+                                                <p className="font-sans text-xs font-bold" style={{ color: '#052210' }}>{p.planName || p.hotelName || "Option"}</p>
+                                                <p className="font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.5)' }}>{p.category || "Standard"} | ₹{(p.perPersonPrice || 0).toLocaleString()} pp</p>
+                                            </div>
+                                            <p className="font-serif text-lg font-bold" style={{ color: '#06a15c' }}>₹{(p.totalPrice ?? p.overrideTotal ?? p.total ?? 0).toLocaleString()}</p>
                                         </div>
-                                        <p className="font-serif text-lg font-bold" style={{ color: '#06a15c' }}>₹{(p.totalPrice ?? p.overrideTotal ?? p.total ?? 0).toLocaleString()}</p>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    })()}
 
                     {/* Day Plans */}
                     {days.length > 0 && (
@@ -430,51 +453,53 @@ function BookingDetail() {
                                         <div key={idx} className="px-6 py-4 border-b last:border-0" style={{ borderColor: 'rgba(5,34,16,0.05)' }}>
                                             <p className="font-sans text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: 'rgba(5,34,16,0.6)' }}>{item.name || item.title}</p>
                                             
-                                            {/* Priority 1: File */}
-                                            {hasFile ? (
-                                                <button
-                                                    onClick={() => window.open(item.fileUrl, '_blank')}
-                                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg font-sans text-[10px] font-bold tracking-wider uppercase transition-all hover:scale-105" 
-                                                    style={{ background: 'transparent', color: '#06a15c', border: '1.5px solid #06a15c' }}
-                                                >
-                                                    📎 View File
-                                                </button>
-                                            ) : type.includes("file") ? (
-                                                <p className="text-[11px] font-sans italic text-gray-400">No file uploaded</p>
-                                            ) : 
-                                            
-                                            /* Priority 2: Choice with Options */
-                                            (type.includes("choice") && (item.options || item.points)) ? (
-                                                <div className="flex flex-wrap gap-2">
-                                                    {(item.options || item.points || []).map((opt: any, i: number) => {
-                                                        const isSelected = Array.isArray(item.response) ? item.response.includes(opt) : item.response === opt;
-                                                        return (
-                                                            <span key={i} className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider" style={{ background: isSelected ? '#06a15c' : 'rgba(5,34,16,0.08)', color: isSelected ? '#FFFFFF' : 'rgba(5,34,16,0.4)' }}>
-                                                                {opt}
-                                                            </span>
-                                                        );
-                                                    })}
-                                                </div>
-                                            ) : 
+                                            <div className="space-y-3 mt-1">
+                                                {/* File Attachment */}
+                                                {hasFile && (
+                                                    <button
+                                                        onClick={() => window.open(item.fileUrl, '_blank')}
+                                                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg font-sans text-[10px] font-bold tracking-wider uppercase transition-all hover:scale-105" 
+                                                        style={{ background: 'transparent', color: '#06a15c', border: '1.5px solid #06a15c' }}
+                                                    >
+                                                        📎 View Attachment
+                                                    </button>
+                                                )}
+                                                
+                                                {/* Choice with Options */}
+                                                {(type.includes("choice") && (item.options || item.points)) && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {(item.options || item.points || []).map((opt: any, i: number) => {
+                                                            const isSelected = Array.isArray(item.response) ? item.response.includes(opt) : item.response === opt;
+                                                            return (
+                                                                <span key={i} className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider" style={{ background: isSelected ? '#06a15c' : 'rgba(5,34,16,0.08)', color: isSelected ? '#FFFFFF' : 'rgba(5,34,16,0.4)' }}>
+                                                                    {opt}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
 
-                                            /* Priority 3: Any Text/Response */
-                                            hasResponse ? (
-                                                <div className="font-sans" style={{ background: 'rgba(5,34,16,0.03)', border: '0.5px solid rgba(5,34,16,0.1)', borderRadius: '6px', padding: '7px 10px', fontSize: '13px', color: '#052210', pointerEvents: 'none' }}>
-                                                    {item.response}
-                                                </div>
-                                            ) :
+                                                {/* Text Response */}
+                                                {(hasResponse && !type.includes("choice")) && (
+                                                    <div className="font-sans" style={{ background: 'rgba(5,34,16,0.03)', border: '0.5px solid rgba(5,34,16,0.1)', borderRadius: '6px', padding: '7px 10px', fontSize: '13px', color: '#052210' }}>
+                                                        {item.response}
+                                                    </div>
+                                                )}
 
-                                            /* Priority 4: Checkbox/Acknowledgement */
-                                            (hasAck || type.includes("checkbox") || item.requiresAcknowledgement) ? (
-                                                <div className="flex items-center gap-2 text-[#06a15c]">
-                                                    <CheckCircle className="w-4 h-4" />
-                                                    <span className="font-sans text-xs font-semibold">Confirmed — "Yes, I understand and agree"</span>
-                                                </div>
-                                            ) : (
-                                                <div className="font-sans italic" style={{ background: 'rgba(5,34,16,0.03)', border: '0.5px solid rgba(5,34,16,0.1)', borderRadius: '6px', padding: '7px 10px', fontSize: '13px', color: 'rgba(5,34,16,0.4)', pointerEvents: 'none' }}>
-                                                    N/A
-                                                </div>
-                                            )}
+                                                {/* Checkbox/Acknowledgement */}
+                                                {(hasAck || type.includes("checkbox") || item.requiresAcknowledgement) && !hasResponse && (
+                                                    <div className="flex items-center gap-2 text-[#06a15c]">
+                                                        <CheckCircle className="w-4 h-4" />
+                                                        <span className="font-sans text-xs font-semibold">Confirmed</span>
+                                                    </div>
+                                                )}
+
+                                                {(!hasFile && !hasResponse && !hasAck && !type.includes("choice")) && (
+                                                    <div className="font-sans italic" style={{ background: 'rgba(5,34,16,0.03)', border: '0.5px solid rgba(5,34,16,0.1)', borderRadius: '6px', padding: '7px 10px', fontSize: '13px', color: 'rgba(5,34,16,0.4)' }}>
+                                                        N/A
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })}

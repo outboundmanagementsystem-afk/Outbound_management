@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation"
 import {
     getItinerary, getItineraryDays, getItineraryHotels, getItineraryTransfers,
     getItineraryPricing, updateItineraryStatus, initSopChecklist, getItineraryFlights, getItineraryActivities,
-    getSalesChecklist, updateSalesItem, initSalesChecklist, syncChecklist, addPayment
+    getSalesChecklist, updateSalesItem, initSalesChecklist, syncChecklist, addPayment, updateItinerary
 } from "@/lib/firestore"
 import { storage } from "@/lib/firebase"
 import { useAuth } from "@/lib/auth-context"
@@ -186,6 +186,14 @@ function ItineraryDetail() {
             collectedByName: userProfile?.name || "",
             collectedAt: new Date().toISOString(),
         })
+
+        // UPDATE ITINERARY WITH SELECTED PLAN IF PROVIDED
+        if (data.selectedPlan) {
+            const planToSave = data.selectedPlan.planId || data.selectedPlan.category
+            if (planToSave) {
+                await updateItinerary(itinId, { selectedPlanId: planToSave })
+            }
+        }
 
         setShowPaymentModal(false)
         // Now proceed with the status change
@@ -520,9 +528,20 @@ If you have any questions, would like to make customizations, or have any concer
 
                     {/* Hotels */}
                     <div className="rounded-2xl p-5" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.08)', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                        <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels ({hotels.length})</h3>
+                        <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Hotels</h3>
                         <div className="space-y-4">
-                            {hotels.map((h: any, idx: number) => {
+                            {(() => {
+                                const allPlans = itin.plans || pricing?.[0]?.plans || []
+                                const activePlan = itin.selectedPlanId 
+                                    ? allPlans.find((p: any) => p.planId === itin.selectedPlanId)
+                                    : null
+                                const activeCategory = activePlan?.category || null
+                                
+                                const filteredHotels = activeCategory 
+                                    ? hotels.filter((h: any) => h.category === activeCategory)
+                                    : hotels
+                                    
+                                return filteredHotels.map((h: any, idx: number) => {
                                 const planLabel = h.category || "Standard";
                                 const roomLabel = h.roomCategory || h.roomType || h.room || "Room";
                                 const mealLabel = h.mealPlan || "EP";
@@ -552,8 +571,9 @@ If you have any questions, would like to make customizations, or have any concer
                                             {h.rating && <span className="font-sans text-[10px] text-amber-500 font-bold mt-0.5">{h.rating}★</span>}
                                         </div>
                                     </div>
-                                );
-                            })}
+                                )
+                            })
+                            })()}
                         </div>
                     </div>
 
@@ -609,15 +629,21 @@ If you have any questions, would like to make customizations, or have any concer
                         <h3 className="font-serif text-sm tracking-wider uppercase mb-4" style={{ color: '#06a15c' }}>Pricing</h3>
                         {(itin.plans?.length > 0 || pricing?.[0]?.plans?.length > 0) ? (
                             <div className="space-y-3">
-                                {(itin.plans || pricing?.[0]?.plans || []).map((p: any, i: number) => (
-                                    <div key={i} className="flex justify-between items-end border-b pb-2 last:border-0 last:pb-0" style={{ borderColor: 'rgba(6,161,92,0.1)' }}>
-                                        <div>
-                                            <p className="font-sans text-xs font-bold" style={{ color: '#052210' }}>{p.planName || p.hotelName || "Option"}</p>
-                                            <p className="font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.5)' }}>{p.category || "Standard"} | ₹{(p.perPersonPrice || 0).toLocaleString()} pp</p>
+                                {(itin.plans || pricing?.[0]?.plans || []).map((p: any, i: number) => {
+                                    const isSelected = itin.selectedPlanId && (itin.selectedPlanId === p.planId || itin.selectedPlanId === p.category)
+                                    return (
+                                        <div key={i} className={`flex justify-between items-end border-b pb-2 last:border-0 last:pb-0 transition-all ${isSelected ? 'scale-[1.02] origin-left' : ''}`} style={{ borderColor: 'rgba(6,161,92,0.1)' }}>
+                                            <div className="flex items-center gap-2">
+                                                {isSelected && <div className="w-1 h-1 rounded-full bg-[#06a15c]" />}
+                                                <div>
+                                                    <p className={`font-sans text-xs font-bold ${isSelected ? 'text-[#06a15c]' : 'text-[#052210]'}`}>{p.planName || p.hotelName || "Option"}</p>
+                                                    <p className="font-sans text-[10px]" style={{ color: 'rgba(5,34,16,0.5)' }}>{p.category || "Standard"} | ₹{(p.perPersonPrice || 0).toLocaleString()} pp</p>
+                                                </div>
+                                            </div>
+                                            <p className={`font-serif text-lg font-bold ${isSelected ? 'text-[#06a15c]' : 'text-[#06a15c]/60'}`}>₹{(p.totalPrice ?? p.overrideTotal ?? p.total ?? 0).toLocaleString()}</p>
                                         </div>
-                                        <p className="font-serif text-lg font-bold" style={{ color: '#06a15c' }}>₹{(p.totalPrice ?? p.overrideTotal ?? p.total ?? 0).toLocaleString()}</p>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         ) : (
                             <>
@@ -680,6 +706,7 @@ If you have any questions, would like to make customizations, or have any concer
             title="Collect Advance Payment"
             submitLabel="Save Payment & Move to Handover"
             plans={pricing?.[0]?.plans ?? []}
+            itineraryId={itinId}
         />
         </>
     )

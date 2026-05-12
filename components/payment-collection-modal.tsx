@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { X, Upload, DollarSign, Wallet, Building2, Smartphone, CheckCircle } from "lucide-react"
 
 export type PaymentMethod = "cash" | "gpay" | "phonepe" | "bank_transfer"
@@ -32,7 +32,8 @@ interface PaymentCollectionModalProps {
     defaultType?: PaymentType
     title?: string
     submitLabel?: string
-    plans?: PlanOption[]
+    plans?: any[]
+    itineraryId?: string
 }
 
 const methodIcons: Record<PaymentMethod, any> = {
@@ -67,6 +68,7 @@ export default function PaymentCollectionModal({
     title = "Record Payment",
     submitLabel = "Save Payment & Continue",
     plans = [],
+    itineraryId,
 }: PaymentCollectionModalProps) {
     const [amount, setAmount] = useState<string>("")
     const [method, setMethod] = useState<PaymentMethod | "">("")
@@ -76,13 +78,30 @@ export default function PaymentCollectionModal({
     const [previewUrl, setPreviewUrl] = useState<string | undefined>()
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState("")
+    const [alreadyPaidSum, setAlreadyPaidSum] = useState(amountAlreadyPaid)
     const [selectedPlanIdx, setSelectedPlanIdx] = useState<number | null>(null)
 
+    // Fetch actual payments sum from Firestore when modal opens
+    useEffect(() => {
+        if (isOpen && itineraryId) {
+            import("@/lib/firestore").then(({ getItineraryPayments }) => {
+                getItineraryPayments(itineraryId).then(pyms => {
+                    const sum = pyms.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+                    setAlreadyPaidSum(sum)
+                })
+            })
+        }
+    }, [isOpen, itineraryId])
+
     // If multiple plans exist, use the selected plan's total; otherwise fall back to totalPrice prop
-    const hasPlans = plans && plans.length > 1
+    const hasPlans = plans && plans.length > 0
     const activePlan = hasPlans && selectedPlanIdx !== null ? plans[selectedPlanIdx] : null
-    const effectiveTotal = activePlan ? activePlan.total : (hasPlans ? 0 : totalPrice)
-    const balance = effectiveTotal - amountAlreadyPaid
+    
+    // Read total package cost from selected plan (prioritizing overrideTotal)
+    const getPlanTotal = (p: any) => Number(p?.overrideTotal || p?.totalPrice || p?.total || 0)
+    
+    const effectiveTotal = activePlan ? getPlanTotal(activePlan) : (hasPlans ? 0 : totalPrice)
+    const balance = effectiveTotal - alreadyPaidSum
 
     const numAmount = Number(amount)
     const planRequired = hasPlans && selectedPlanIdx === null
@@ -190,7 +209,7 @@ export default function PaymentCollectionModal({
                                     >
                                         <span>Plan {idx + 1} — {plan.category}</span>
                                         <span className="font-serif text-base font-bold" style={{ color: isActive ? '#4ade80' : '#06a15c' }}>
-                                            ₹{plan.total.toLocaleString()}
+                                            ₹{getPlanTotal(plan).toLocaleString()}
                                         </span>
                                     </button>
                                 )
@@ -205,16 +224,16 @@ export default function PaymentCollectionModal({
                         {
                             label: "Total Package",
                             value: hasPlans
-                                ? (activePlan ? `₹${activePlan.total.toLocaleString()}` : "Select a plan")
+                                ? (activePlan ? `₹${getPlanTotal(activePlan).toLocaleString()}` : "Select a plan")
                                 : (totalPrice > 0 ? `₹${Number(totalPrice).toLocaleString()}` : "—"),
                             color: activePlan || !hasPlans ? '#052210' : '#9ca3af',
                         },
-                        { label: "Already Paid", value: `₹${Number(amountAlreadyPaid).toLocaleString()}`, color: '#06a15c' },
+                        { label: "Already Paid", value: `₹${Number(alreadyPaidSum).toLocaleString()}`, color: '#06a15c' },
                         {
                             label: "Remaining",
                             value: hasPlans
-                                ? (activePlan ? `₹${balance.toLocaleString()}` : "—")
-                                : `₹${Number(balance).toLocaleString()}`,
+                                ? (activePlan ? `₹${(balance || 0).toLocaleString()}` : "—")
+                                : `₹${Number(balance || 0).toLocaleString()}`,
                             color: (!hasPlans || activePlan) ? (balance > 0 ? '#d97706' : '#06a15c') : '#9ca3af',
                         },
                     ].map(item => (

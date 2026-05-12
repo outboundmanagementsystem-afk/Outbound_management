@@ -20,7 +20,44 @@ function PostOpsContent() {
     const [sops, setSOPs] = useState<any[]>([])
     const [sopFillModal, setSopFillModal] = useState<any>(null)
     const [sopFormData, setSopFormData] = useState<Record<string, string>>({})
+    const [selectedBookingId, setSelectedBookingId] = useState<string>("")
     const [whatsappMsg, setWhatsappMsg] = useState("")
+    const [isSaving, setIsSaving] = useState(false)
+
+    const parseDate = (dateStr: string) => {
+        if (!dateStr) return new Date(0)
+        const [year, month, day] = dateStr.split('-').map(Number)
+        return new Date(year, month - 1, day)
+    }
+
+    const getPostOpsStage = (booking: any) => {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+
+        if (!booking.startDate || !booking.endDate) return "pre-arrival"
+
+        const start = parseDate(booking.startDate)
+        const end = parseDate(booking.endDate)
+        start.setHours(0, 0, 0, 0)
+        end.setHours(0, 0, 0, 0)
+
+        // Already manually marked as feedback-closure — respect it
+        if (booking.postOpsStatus === 'completed' || booking.status === 'completed' || booking.postOpsStatus === 'feedback-closure') return 'completed'
+
+        // Trip ends today exactly
+        if (today.getTime() === end.getTime()) return 'trip-ending'
+
+        // Trip has already ended (past end date) — feedback & closure
+        if (today > end) return 'completed'
+
+        // Trip is currently active (started but not ended yet)
+        if (today >= start && today < end) return 'on-tour'
+
+        // Trip hasn't started yet
+        if (today < start) return 'pre-arrival'
+
+        return 'pre-arrival'
+    }
 
     useEffect(() => { loadBookings() }, [])
 
@@ -37,20 +74,57 @@ function PostOpsContent() {
         finally { setLoading(false) }
     }
 
-    const today = new Date().toISOString().split("T")[0]
-    const onTrip = bookings.filter(b => b.status === "post-ops")
-    const endingToday = bookings.filter(b => {
-        if (!b.endDate) return false
-        const end = new Date(b.endDate).toISOString().split("T")[0]
-        return end === today
-    })
-    const totalCompleted = bookings.filter(b => b.status === "completed")
+    const onTour = bookings.filter(b => getPostOpsStage(b) === "on-tour")
+    const endingToday = bookings.filter(b => getPostOpsStage(b) === "trip-ending")
+    const activeTrips = bookings.filter(b => ["pre-arrival", "on-tour", "trip-ending"].includes(getPostOpsStage(b)))
+    const totalCompleted = bookings.filter(b => getPostOpsStage(b) === "completed")
 
     const openSopFill = (sop: any) => {
         setSopFillModal(sop)
         setSopFormData({})
+        setSelectedBookingId("")
         // Build WhatsApp template with placeholders
         setWhatsappMsg(sop.whatsappTemplate || "")
+    }
+
+    const saveAndSend = async () => {
+        if (!selectedBookingId) {
+            // Just open WhatsApp if no booking selected
+            window.open(buildWhatsappUrl(), '_blank')
+            return
+        }
+
+        setIsSaving(true)
+        try {
+            const dataToSave = {
+                driverName: sopFormData.driver_name || "",
+                driverContact: sopFormData.driver_phone || "",
+                vehicleInfo: "", // Can add more fields if needed
+                emergencyContact: "",
+                guideName: "",
+                guideContact: "",
+                vehicleDetails: "",
+                hotelDetails: sopFormData.hotel_details || "",
+            }
+            
+            // Clean up empty strings to avoid overwriting existing data if merge is used
+            const cleanData: any = {}
+            Object.entries(dataToSave).forEach(([k, v]) => {
+                if (v) cleanData[k] = v
+            })
+
+            const { updatePostOpsData } = await import("@/lib/firestore")
+            await updatePostOpsData(selectedBookingId, cleanData)
+            
+            window.open(buildWhatsappUrl(), '_blank')
+            setSopFillModal(null)
+        } catch (err) {
+            console.error(err)
+            alert("Failed to save data to booking, but you can still send the message.")
+            window.open(buildWhatsappUrl(), '_blank')
+        } finally {
+            setIsSaving(false)
+        }
     }
 
     const buildWhatsappUrl = () => {
@@ -71,9 +145,9 @@ function PostOpsContent() {
             {/* Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                 {[
-                    { label: "On-Trip Clients", value: onTrip.length, icon: Plane, color: "#f59e0b", desc: "Currently travelling" },
+                    { label: "On-Trip Clients", value: onTour.length, icon: Plane, color: "#f59e0b", desc: "Currently travelling" },
                     { label: "Ending Today", value: endingToday.length, icon: CalendarCheck, color: "#ef4444", desc: "Trips ending today" },
-                    { label: "Active Trips", value: onTrip.length, icon: Package, color: "#34d399", desc: "Post-ops pipeline" },
+                    { label: "Active Trips", value: activeTrips.length, icon: Package, color: "#34d399", desc: "Post-ops pipeline" },
                     { label: "Completed", value: totalCompleted.length, icon: ClipboardCheck, color: "#06a15c", desc: "Marketing handover" },
                 ].map((s, i) => (
                     <div key={i} className="rounded-2xl p-4 sm:p-5 transition-all hover:-translate-y-1" style={{ background: '#FFFFFF', border: '1px solid rgba(5,34,16,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.03)' }}>
@@ -142,16 +216,16 @@ function PostOpsContent() {
             <div className="rounded-2xl overflow-hidden" style={{ background: 'rgba(248,250,249,1)', border: '1px solid rgba(6,161,92,0.1)' }}>
                 <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(6,161,92,0.08)' }}>
                     <h3 className="font-serif text-lg tracking-wide" style={{ color: '#06a15c' }}>Active Trips (Post-Op)</h3>
-                    <span className="font-sans text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(6,161,92,0.1)', color: '#06a15c' }}>{onTrip.length}</span>
+                    <span className="font-sans text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(6,161,92,0.1)', color: '#06a15c' }}>{activeTrips.length}</span>
                 </div>
                 {loading ? (
                     <div className="px-6 py-8 text-center"><p className="font-sans text-sm" style={{ color: 'rgba(5,34,16,0.4)' }}>Loading...</p></div>
-                ) : onTrip.length === 0 ? (
+                ) : activeTrips.length === 0 ? (
                     <div className="px-6 py-12 text-center">
                         <Package className="w-10 h-10 mx-auto mb-3" style={{ color: 'rgba(6,161,92,0.2)' }} />
                         <p className="font-sans text-sm" style={{ color: 'rgba(5,34,16,0.4)' }}>No active trips in Post-Operation</p>
                     </div>
-                ) : onTrip.map((b: any) => (
+                ) : activeTrips.map((b: any) => (
                     <Link key={b.id} href={`/post-ops/booking/${b.id}`} className="px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between hover:bg-white/[0.02] transition-colors block" style={{ borderBottom: '1px solid rgba(6,161,92,0.06)' }}>
                         <div className="flex items-center gap-3 min-w-0">
                             <div className="w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 rounded-xl flex items-center justify-center" style={{ background: 'rgba(52,211,153,0.1)' }}>
@@ -165,7 +239,7 @@ function PostOpsContent() {
                         <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                             {b.quoteId && <span className="hidden sm:block font-sans text-[9px] font-bold tracking-wider" style={{ color: '#06a15c' }}>{b.quoteId}</span>}
                             <span className="px-2 sm:px-3 py-1 rounded-full font-sans text-[9px] sm:text-[10px] font-bold tracking-wider uppercase" style={{ background: '#34d39915', color: '#34d399' }}>
-                                {b.status}
+                                {getPostOpsStage(b)}
                             </span>
                             <ChevronRight className="w-4 h-4" style={{ color: 'rgba(3,26,12,0.4)' }} />
                         </div>
@@ -183,6 +257,20 @@ function PostOpsContent() {
                         </div>
 
                         <div className="space-y-3 mb-5">
+                            <div>
+                                <label className="font-sans text-[10px] font-bold tracking-wider uppercase block mb-1" style={{ color: 'rgba(5,34,16,0.5)' }}>Associate with Booking (Optional)</label>
+                                <select 
+                                    value={selectedBookingId} 
+                                    onChange={e => setSelectedBookingId(e.target.value)}
+                                    className="w-full px-4 py-2.5 rounded-xl font-sans text-sm bg-emerald-50/30 border border-emerald-100 outline-none focus:border-emerald-500 transition-all"
+                                >
+                                    <option value="">Select a booking...</option>
+                                    {bookings.map(b => (
+                                        <option key={b.id} value={b.id}>{b.customerName} ({b.destination})</option>
+                                    ))}
+                                </select>
+                                <p className="font-sans text-[9px] text-gray-400 mt-1 italic">Saving here will update the OPS INFO in the booking page.</p>
+                            </div>
                             <div>
                                 <label className="font-sans text-[10px] font-bold tracking-wider uppercase block mb-1" style={{ color: 'rgba(5,34,16,0.5)' }}>Driver Name</label>
                                 <input value={sopFormData.driver_name || ""} onChange={e => setSopFormData(p => ({ ...p, driver_name: e.target.value }))} className="w-full px-4 py-2.5 rounded-xl font-sans text-sm" placeholder="Enter driver name" style={{ border: '1px solid rgba(5,34,16,0.1)', outline: 'none' }} />
@@ -216,9 +304,14 @@ function PostOpsContent() {
 
                         <div className="flex gap-3">
                             <button onClick={() => setSopFillModal(null)} className="flex-1 py-2.5 rounded-xl font-sans text-xs font-bold tracking-wider uppercase" style={{ border: '1px solid rgba(5,34,16,0.1)', color: 'rgba(5,34,16,0.5)' }}>Cancel</button>
-                            <a href={buildWhatsappUrl()} target="_blank" rel="noopener noreferrer" className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-sans text-xs font-bold tracking-wider uppercase" style={{ background: '#25D366', color: '#fff' }}>
-                                <Send className="w-3.5 h-3.5" /> Send via WhatsApp
-                            </a>
+                            <button 
+                                onClick={saveAndSend}
+                                disabled={isSaving}
+                                className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-sans text-xs font-bold tracking-wider uppercase disabled:opacity-50" 
+                                style={{ background: '#25D366', color: '#fff' }}
+                            >
+                                {isSaving ? "Saving..." : <><Send className="w-3.5 h-3.5" /> Send & Save</>}
+                            </button>
                         </div>
                     </div>
                 </div>
